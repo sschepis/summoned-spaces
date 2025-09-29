@@ -4,6 +4,8 @@ import { VolumeCard } from './VolumeCard';
 import { FileUploadZone } from './FileUploadZone';
 import { MemberList } from './MemberList';
 import { ResonanceLockingVisualizer } from './ResonanceLockingVisualizer';
+import { SpaceSettings } from './SpaceSettings';
+import { FileDetailsModal } from './FileDetailsModal';
 
 interface SpaceViewProps {
   spaceId: string | null;
@@ -46,6 +48,9 @@ const mockVolumes = [
 export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
   const [activeTab, setActiveTab] = useState<'volumes' | 'upload' | 'members' | 'resonance'>('volumes');
   const [showUploadZone, setShowUploadZone] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showFileDetails, setShowFileDetails] = useState(false);
 
   const tabs = [
     { id: 'volumes', label: 'Volumes', icon: Zap },
@@ -67,7 +72,10 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
           <h1 className="text-3xl font-bold text-white mb-2">Project Quantum</h1>
           <p className="text-gray-400">Research collaboration space for quantum computing papers</p>
         </div>
-        <button className="p-3 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5">
+        <button 
+          onClick={() => setShowSettings(true)}
+          className="p-3 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+        >
           <Settings className="w-6 h-6" />
         </button>
       </div>
@@ -120,6 +128,18 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
       {activeTab === 'members' && <MemberList />}
 
       {activeTab === 'resonance' && <ResonanceLockingVisualizer />}
+
+      <SpaceSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        spaceId={spaceId || ''}
+      />
+
+      <FileDetailsModal
+        isOpen={showFileDetails}
+        onClose={() => setShowFileDetails(false)}
+        file={selectedFile}
+      />
     </div>
   );
 }

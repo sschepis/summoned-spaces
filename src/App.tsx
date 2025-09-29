@@ -3,12 +3,15 @@ import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import { SpaceView } from './components/SpaceView';
 import { SemanticSearch } from './components/SemanticSearch';
+import { AnalyticsBoard } from './components/AnalyticsBoard';
+import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 
-export type View = 'dashboard' | 'space' | 'search';
+export type View = 'dashboard' | 'space' | 'search' | 'analytics';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const { notifications, dismissNotification, showSuccess, showResonance } = useNotifications();
 
   const handleViewSpace = (spaceId: string) => {
     setSelectedSpaceId(spaceId);
@@ -21,6 +24,8 @@ function App() {
         return <SpaceView spaceId={selectedSpaceId} onBack={() => setCurrentView('dashboard')} />;
       case 'search':
         return <SemanticSearch onBack={() => setCurrentView('dashboard')} />;
+      case 'analytics':
+        return <AnalyticsBoard />;
       default:
         return <Dashboard onViewSpace={handleViewSpace} />;
     }
@@ -33,6 +38,10 @@ function App() {
       <main className="relative">
         {renderCurrentView()}
       </main>
+      <NotificationSystem 
+        notifications={notifications} 
+        onDismiss={dismissNotification} 
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { SpaceCard } from './SpaceCard';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { QuickStats } from './QuickStats';
+import { ActivityFeed } from './ActivityFeed';
 
 interface DashboardProps {
   onViewSpace: (spaceId: string) => void;
@@ -63,30 +64,38 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <QuickStats />
       
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Your Spaces</h2>
-          <p className="text-gray-400">Manage your collaborative quantum spaces</p>
-        </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg 
-                   hover:from-cyan-400 hover:to-purple-400 transition-all duration-200 
-                   shadow-lg hover:shadow-xl flex items-center space-x-2 group"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
-          <span className="font-medium">Create Space</span>
-        </button>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-2">Your Spaces</h2>
+              <p className="text-gray-400">Manage your collaborative quantum spaces</p>
+            </div>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg 
+                       hover:from-cyan-400 hover:to-purple-400 transition-all duration-200 
+                       shadow-lg hover:shadow-xl flex items-center space-x-2 group"
+            >
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
+              <span className="font-medium">Create Space</span>
+            </button>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockSpaces.map((space) => (
-          <SpaceCard
-            key={space.id}
-            space={space}
-            onSelect={() => onViewSpace(space.id)}
-          />
-        ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {mockSpaces.map((space) => (
+              <SpaceCard
+                key={space.id}
+                space={space}
+                onSelect={() => onViewSpace(space.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <ActivityFeed />
+        </div>
       </div>
 
       <CreateSpaceModal

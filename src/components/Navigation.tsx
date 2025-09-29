@@ -1,4 +1,4 @@
-import { Search, Home, Zap, Settings } from 'lucide-react';
+import { Search, Home, Zap, Settings, BarChart3 } from 'lucide-react';
 import { View } from '../App';
 
 interface NavigationProps {
@@ -10,6 +10,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
   const navItems = [
     { id: 'dashboard' as View, icon: Home, label: 'Spaces' },
     { id: 'search' as View, icon: Search, label: 'Semantic Search' },
+    { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },
   ];
 
   return (
