@@ -8,8 +8,9 @@ import { DirectMessages } from './components/DirectMessages';
 import { SocialNetwork } from './components/SocialNetwork';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 import { PublicActivityStream } from './components/PublicActivityStream';
+import { UserSettings } from './components/UserSettings';
 
-export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends';
+export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends' | 'settings';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('feed');
@@ -37,6 +38,8 @@ function App() {
         return <AnalyticsBoard />;
       case 'dashboard':
         return <Dashboard onViewSpace={handleViewSpace} />;
+      case 'settings':
+        return <UserSettings onBack={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onViewSpace={handleViewSpace} />;
     }

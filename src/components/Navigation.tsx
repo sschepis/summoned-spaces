@@ -86,7 +86,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
               <Settings className="w-4 h-4" />
             </button>
           </div>
-        </div>
+          <button 
+            onClick={() => onViewChange('settings')}
+            className="p-2 rounded-lg text-gray-300 hover:text-cyan-300 hover:bg-white/5 transition-all duration-200"
+          >
         
         {/* Stats Row */}
         <div className="py-3">
