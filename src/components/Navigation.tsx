@@ -112,6 +112,34 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                 className="w-8 h-8 rounded-full object-cover border-2 border-white/10 
                          group-hover:border-cyan-400/50 transition-colors"
               />
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                showUserMenu ? 'rotate-180' : ''
+              }`} />
+            </button>
+            {/* Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 top-12 w-64 bg-slate-800/95 backdrop-blur-xl 
+                           rounded-xl shadow-2xl border border-white/10 py-2 z-50 
+                           animate-in slide-in-from-top-2 duration-200">
+                
+                {/* User Info Header */}
+                <div className="px-4 py-3 border-b border-white/10">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2"
+                      alt="Your avatar"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
+                    />
+                    <div>
+                      <div className="font-semibold text-white">Your Name</div>
+                      <div className="text-sm text-gray-400">@yourhandle</div>
+                    </div>
+                  </div>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                showUserMenu ? 'rotate-180' : ''
+              }`} />
+            </button>
+            
             {/* Dropdown Menu */}
             {showUserMenu && (
               <div className="absolute right-0 top-12 w-64 bg-slate-800/95 backdrop-blur-xl 
@@ -132,7 +160,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                     </div>
                   </div>
                 </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                
                 {/* Menu Items */}
                 <div className="py-1">
                   <button
@@ -146,7 +174,6 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </button>
-                showUserMenu ? 'rotate-180' : ''
                   <button
                     onClick={() => {
                       // TODO: Navigate to user profile
@@ -158,13 +185,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                     <User className="w-4 h-4" />
                     <span>Your Profile</span>
                   </button>
-              }`} />
+                  
                   <div className="my-1 border-t border-white/10"></div>
-            </button>
+                  
                   <button
-                    onClick={() => {
-                      // TODO: Handle logout
-                      setShowUserMenu(false);
                     }}
                     className="w-full px-4 py-2 text-left text-red-400 hover:text-red-300 
                              hover:bg-red-500/10 transition-colors flex items-center space-x-3"
