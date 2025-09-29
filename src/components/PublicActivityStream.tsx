@@ -1,47 +1,12 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark, Grid3x3 as Grid3X3, List, Minimize2 } from 'lucide-react';
+import { Globe, List, Grid3x3 as Grid3X3, Minimize2 } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
 import { UserNetworkSidebar } from './UserNetworkSidebar';
-
-interface ActivityItem {
-  id: string;
-  type: 'file_contributed' | 'file_summoned' | 'space_created' | 'member_joined' | 'resonance_locked' | 'file_starred' | 'space_updated' | 'collaboration_started' | 'user_followed' | 'space_joined';
-  user: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-    isFollowing: boolean;
-    verified?: boolean;
-  };
-  action: string;
-  target?: string;
-  space?: string;
-  details?: string;
-  timestamp: string;
-  metrics?: {
-    likes: number;
-    comments: number;
-    shares: number;
-    hasLiked?: boolean;
-    hasBookmarked?: boolean;
-  };
-  resonanceData?: {
-    strength: number;
-    timeToLock: string;
-  };
-  media?: {
-    type: 'image' | 'video' | 'audio' | 'file';
-    url: string;
-    thumbnail?: string;
-    filename?: string;
-    artist?: string;
-    duration?: number;
-  };
-}
-
+import { ActivityCard } from './common/ActivityCard';
+import { FeedLayout } from './layouts/FeedLayout';
+import { Tabs } from './ui/Tabs';
 const mockActivityStream: ActivityItem[] = [
   {
     id: '1',
@@ -176,31 +141,6 @@ const mockActivityStream: ActivityItem[] = [
   }
 ];
 
-const activityIcons = {
-  file_contributed: Upload,
-  file_summoned: Download,
-  space_created: Settings,
-  member_joined: Users,
-  user_followed: UserPlus,
-  resonance_locked: Zap,
-  file_starred: Star,
-  space_updated: Settings,
-  collaboration_started: Users,
-  space_joined: Users
-};
-
-const activityColors = {
-  file_contributed: 'text-blue-400',
-  file_summoned: 'text-green-400',
-  space_created: 'text-purple-400',
-  member_joined: 'text-cyan-400',
-  user_followed: 'text-pink-400',
-  resonance_locked: 'text-yellow-400',
-  file_starred: 'text-orange-400',
-  collaboration_started: 'text-emerald-400',
-  space_joined: 'text-indigo-400'
-};
-
 type ViewMode = 'card' | 'thumbnail' | 'compact';
 
 export function PublicActivityStream() {
@@ -282,261 +222,46 @@ export function PublicActivityStream() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Feed Column */}
-        <div className="lg:col-span-2">
-      {/* Feed Header */}
-          <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
+    <FeedLayout
+      title="Your Network"
+      subtitle="Posts from people you follow and spaces you're in"
+      icon={Globe}
+      composer={<ContentComposer onPost={handleNewPost} />}
+      sidebar={<UserNetworkSidebar />}
+    >
+      {/* View Mode Controls */}
+      <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-full 
-                            flex items-center justify-center">
-                <span className="text-white font-bold text-lg">You</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Your Network</h1>
-                <p className="text-gray-400 text-sm">Posts from people you follow and spaces you're in</p>
-              </div>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-white">Activity Feed</h2>
           
           {/* View Mode Toolbar */}
-          <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('card')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === 'card'
-                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
-                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
-              }`}
-              title="Card View"
-            >
-              <List className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => setViewMode('thumbnail')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === 'thumbnail'
-                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
-                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
-              }`}
-              title="Thumbnail View"
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => setViewMode('compact')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === 'compact'
-                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
-                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
-              }`}
-              title="Compact View"
-            >
-              <Minimize2 className="w-4 h-4" />
-            </button>
-          </div>
+          <Tabs
+            variant="pills"
+            tabs={[
+              { id: 'card', label: 'Cards', icon: List },
+              { id: 'thumbnail', label: 'Thumbnails', icon: Grid3X3 },
+              { id: 'compact', label: 'Compact', icon: Minimize2 }
+            ]}
+            activeTab={viewMode}
+            onTabChange={(mode) => setViewMode(mode as ViewMode)}
+          />
         </div>
-      </div>
-
-      {/* Content Composer */}
-      <div className="mb-8">
-        <ContentComposer onPost={handleNewPost} />
       </div>
 
       <div className="space-y-6">
         {activities.map((activity) => {
-          const ActivityIcon = activityIcons[activity.type];
-          const iconColor = activityColors[activity.type];
-
-          // Card View - Full detailed layout
           if (viewMode === 'card') {
             return (
-              <div
+              <ActivityCard
                 key={activity.id}
-                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/8 
-                         transition-all duration-200 overflow-hidden"
-              >
-                {/* Post Header */}
-                <div className="p-6 pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      {/* User Avatar with Activity Icon */}
-                      <div className="relative">
-                        <img
-                          src={activity.user.avatar}
-                          alt={activity.user.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
-                        />
-                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-full bg-slate-800 border border-white/10 ${iconColor}`}>
-                          <ActivityIcon className="w-3 h-3" />
-                        </div>
-                      </div>
-
-                      {/* User Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-white">{activity.user.name}</span>
-                          <span className="text-sm text-gray-400">{activity.user.username}</span>
-                          {activity.user.verified && (
-                            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white rounded-full" />
-                            </div>
-                          )}
-                          <span className="text-sm text-gray-500">•</span>
-                          <span className="text-sm text-gray-500">{activity.timestamp}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Follow Button & More Menu */}
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleFollow(activity.user.id)}
-                        className={`px-3 py-1.5 text-xs rounded-full transition-colors font-medium ${
-                          activity.user.isFollowing
-                            ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                            : 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30'
-                        }`}
-                      >
-                        {activity.user.isFollowing ? (
-                          <><UserCheck className="w-3 h-3 inline mr-1" />Following</>
-                        ) : (
-                          <><UserPlus className="w-3 h-3 inline mr-1" />Follow</>
-                        )}
-                      </button>
-                      
-                      <button className="p-1.5 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Post Content */}
-                <div className="px-6 pb-4">
-                  <div className="text-white mb-3 leading-relaxed">
-                    <span>{activity.action}</span>
-                    {activity.target && (
-                      <>
-                        {activity.space && (
-                          <>
-                            <span className="text-gray-400 mx-1">in</span>
-                            <span className="text-purple-300 font-medium">{activity.space}</span>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {activity.details && (
-                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">{activity.details}</p>
-                  )}
-
-                  {/* Media Content */}
-                  {activity.media && activity.media.type === 'image' && (
-                    <div className="mb-4 rounded-xl overflow-hidden">
-                      <img
-                        src={activity.media.url}
-                        alt="Shared content"
-                        className="w-full max-h-96 object-cover hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                  )}
-
-                  {activity.media && activity.media.type === 'video' && (
-                    <div className="mb-4">
-                      <VideoPlayer
-                        src={activity.media.url}
-                        thumbnail={activity.media.thumbnail}
-                        title={activity.target}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-
-                  {activity.media && activity.media.type === 'audio' && (
-                    <div className="mb-4">
-                      <AudioPlayer
-                        src={activity.media.url}
-                        title={activity.target || 'Audio Track'}
-                        artist={activity.media.artist || activity.user.name}
-                        artwork={activity.user.avatar}
-                        duration={activity.media.duration}
-                        showDownload={true}
-                        onLike={() => handleLike(activity.id)}
-                        onShare={() => console.log('Share audio:', activity.id)}
-                      />
-                    </div>
-                  )}
-
-                  {/* Resonance Data */}
-                  {activity.resonanceData && (
-                    <div className="flex items-center space-x-4 mb-4 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 
-                                  rounded-lg border border-cyan-500/20">
-                      <div className="flex items-center space-x-2">
-                        <Zap className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm text-gray-300">Resonance Lock:</span>
-                        <span className="text-sm font-mono text-cyan-400">
-                          {(activity.resonanceData.strength * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-300">Time:</span>
-                        <span className="text-sm font-mono text-green-400">
-                          {activity.resonanceData.timeToLock}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Post Actions */}
-                {activity.metrics && (
-                  <div className="px-6 py-4 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      {/* Engagement Actions */}
-                      <div className="flex items-center space-x-6">
-                        <button
-                          onClick={() => handleLike(activity.id)}
-                          className={`flex items-center space-x-2 transition-colors group ${
-                            activity.metrics.hasLiked ? 'text-pink-400' : 'text-gray-400 hover:text-pink-400'
-                          }`}
-                        >
-                          <Heart className={`w-5 h-5 ${activity.metrics.hasLiked ? 'fill-current' : 'group-hover:fill-current'}`} />
-                          <span className="text-sm font-medium">{formatNumber(activity.metrics.likes)}</span>
-                        </button>
-                        
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-blue-400 transition-colors">
-                          <MessageCircle className="w-5 h-5" />
-                          <span className="text-sm font-medium">{formatNumber(activity.metrics.comments)}</span>
-                        </button>
-                        
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-green-400 transition-colors">
-                          <Share className="w-5 h-5" />
-                          <span className="text-sm font-medium">{formatNumber(activity.metrics.shares)}</span>
-                        </button>
-                      </div>
-
-                      {/* Save/Bookmark */}
-                      <button
-                        onClick={() => handleBookmark(activity.id)}
-                        className={`p-2 rounded-full transition-colors ${
-                          activity.metrics.hasBookmarked 
-                            ? 'text-yellow-400 bg-yellow-400/10' 
-                            : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10'
-                        }`}
-                      >
-                        <Bookmark className={`w-4 h-4 ${activity.metrics.hasBookmarked ? 'fill-current' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                activity={activity}
+                onLike={handleLike}
+                onBookmark={handleBookmark}
+                onFollow={handleFollow}
+              />
             );
           }
 
@@ -740,24 +465,6 @@ export function PublicActivityStream() {
           );
         })}
       </div>
-
-      {/* Load More */}
-      <div className="mt-8 text-center">
-        <button className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                         rounded-xl hover:from-cyan-400 hover:to-purple-400 transition-all 
-                         duration-200 font-medium shadow-lg hover:shadow-xl">
-          Load More Posts
-        </button>
-      </div>
-        </div>
-
-        {/* Sidebar Column */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-8">
-            <UserNetworkSidebar />
-          </div>
-        </div>
-      </div>
-    </div>
+    </FeedLayout>
   );
 }

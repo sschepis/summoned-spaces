@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Shield, Zap, Bell, Database, Palette, Download, Upload, Globe, Lock, Eye, EyeOff, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { User, Shield, Zap, Bell, Database, Palette, Download, Upload, Globe, Lock, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { SettingsLayout } from './layouts/SettingsLayout';
+import { Input } from './ui/Input';
+import { Toggle } from './ui/Toggle';
+import { Button } from './ui/Button';
 
 interface UserSettingsProps {
   onBack: () => void;
@@ -102,44 +106,16 @@ export function UserSettings({ onBack }: UserSettingsProps) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center space-x-4 mb-8">
-        <button
-          onClick={onBack}
-          className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-          <p className="text-gray-400">Manage your account and quantum preferences</p>
-        </div>
-      </div>
-
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
-        <div className="flex h-[700px]">
-          {/* Sidebar */}
-          <div className="w-64 border-r border-white/10 bg-slate-900/50">
-            <nav className="p-4 space-y-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-cyan-500/20 text-cyan-300'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+    <SettingsLayout
+      title="Settings"
+      subtitle="Manage your account and quantum preferences"
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={(tab) => setActiveTab(tab as any)}
+      onBack={onBack}
+      onSave={handleSave}
+      saveLabel="Save Changes"
+    >
             {activeTab === 'profile' && (
               <div className="space-y-6">
                 <div>
@@ -166,91 +142,60 @@ export function UserSettings({ onBack }: UserSettingsProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Display Name
-                        </label>
-                        <input
-                          type="text"
+                        <Input
+                          label="Display Name"
                           value={profile.name}
                           onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                                   placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
-                                   focus:border-transparent"
+                          icon={User}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Username
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
+                        <Input
+                          label="Username"
                             value={profile.username}
                             onChange={(e) => setProfile({ ...profile, username: e.target.value })}
-                            className="w-full pl-8 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                                     placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
-                                     focus:border-transparent"
+                          placeholder="your_quantum_handle"
                           />
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">@</span>
-                        </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Email
-                        </label>
-                        <input
+                        <Input
+                          label="Email"
                           type="email"
                           value={profile.email}
                           onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                                   placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
-                                   focus:border-transparent"
+                          icon={User}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Location
-                        </label>
-                        <input
-                          type="text"
+                        <Input
+                          label="Location"
                           value={profile.location}
                           onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                                   placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
-                                   focus:border-transparent"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Bio
-                      </label>
                       <textarea
+                        placeholder="Tell others about yourself..."
                         value={profile.bio}
                         onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                         rows={3}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
                                  placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
                                  focus:border-transparent"
-                        placeholder="Tell others about yourself..."
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Website
-                      </label>
-                      <input
+                      <Input
+                        label="Website"
                         type="url"
                         value={profile.website}
                         onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                                 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
-                                 focus:border-transparent"
                         placeholder="https://yourwebsite.com"
                       />
                     </div>
@@ -300,28 +245,29 @@ export function UserSettings({ onBack }: UserSettingsProps) {
 
                     <div className="space-y-4">
                       {[
-                        { key: 'allowFollowRequests', label: 'Allow Follow Requests', desc: 'Let others request to follow you' },
-                        { key: 'showResonanceStats', label: 'Show Resonance Statistics', desc: 'Display your quantum performance metrics' },
-                        { key: 'showSpaceMemberships', label: 'Show Space Memberships', desc: 'Display which spaces you belong to' }
+                        { 
+                          key: 'allowFollowRequests', 
+                          label: 'Allow Follow Requests', 
+                          description: 'Let others request to follow you' 
+                        },
+                        { 
+                          key: 'showResonanceStats', 
+                          label: 'Show Resonance Statistics', 
+                          description: 'Display your quantum performance metrics' 
+                        },
+                        { 
+                          key: 'showSpaceMemberships', 
+                          label: 'Show Space Memberships', 
+                          description: 'Display which spaces you belong to' 
+                        }
                       ].map((setting) => (
-                        <div key={setting.key} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                          <div>
-                            <h4 className="font-medium text-white">{setting.label}</h4>
-                            <p className="text-sm text-gray-400">{setting.desc}</p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
+                        <div key={setting.key} className="p-4 bg-white/5 rounded-lg">
+                          <Toggle
+                            label={setting.label}
+                            description={setting.description}
                               checked={privacy[setting.key as keyof PrivacySettings] as boolean}
                               onChange={(e) => setPrivacy({ ...privacy, [setting.key]: e.target.checked })}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer 
-                                          peer-checked:after:translate-x-full peer-checked:after:border-white 
-                                          after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                                          after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all 
-                                          peer-checked:bg-cyan-500"></div>
-                          </label>
+                          />
                         </div>
                       ))}
                     </div>
@@ -676,28 +622,6 @@ export function UserSettings({ onBack }: UserSettingsProps) {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end p-6 border-t border-white/10 space-x-3">
-          <button
-            onClick={onBack}
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                     rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
-                     duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save Changes</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </SettingsLayout>
   );
 }

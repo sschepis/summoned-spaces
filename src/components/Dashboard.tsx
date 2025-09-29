@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { SpaceCard } from './SpaceCard';
+import { SpaceCard } from './common/SpaceCard';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { PublicActivityStream } from './PublicActivityStream';
 import { UserDiscovery } from './UserDiscovery';
 import { SpaceDiscovery } from './SpaceDiscovery';
 import { ActivityFeed } from './ActivityFeed';
+import { PageLayout } from './layouts/PageLayout';
+import { Tabs } from './ui/Tabs';
+import { Button } from './ui/Button';
+import { Grid } from './ui/Grid';
 
 interface DashboardProps {
   onViewSpace: (spaceId: string) => void;
@@ -65,96 +69,68 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
   const [discoverTab, setDiscoverTab] = useState<'people' | 'spaces'>('people');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageLayout sidebar={activeTab === 'spaces' ? <ActivityFeed /> : undefined}>
       {/* Tab Navigation */}
-      <div className="mb-8">
-        <nav className="flex space-x-8 border-b border-white/10">
-          {[
-            { id: 'spaces', label: 'Your Spaces' },
-            { id: 'activity', label: 'Network Activity' },  
-            { id: 'discover', label: 'Discover' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-cyan-400 text-cyan-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'spaces', label: 'Your Spaces' },
+          { id: 'activity', label: 'Network Activity' },  
+          { id: 'discover', label: 'Discover' }
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as any)}
+        className="mb-8"
+      />
 
       {activeTab === 'spaces' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-3xl font-bold text-white mb-2">My Spaces</h2>
-                <p className="text-gray-400">Your personal spaces for sharing and collaboration</p>
-              </div>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg 
-                         hover:from-cyan-400 hover:to-purple-400 transition-all duration-200 
-                         shadow-lg hover:shadow-xl flex items-center space-x-2 group"
-              >
-                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
-                <span className="font-medium">Create Space</span>
-              </button>
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-2">My Spaces</h2>
+              <p className="text-gray-400">Your personal spaces for sharing and collaboration</p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockSpaces.map((space) => (
-                <SpaceCard
-                  key={space.id}
-                  space={space}
-                  onSelect={() => onViewSpace(space.id)}
-                />
-              ))}
-            </div>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              Create Space
+            </Button>
           </div>
 
-          <div className="lg:col-span-1">
-            <ActivityFeed />
+          <Grid cols={2}>
+            {mockSpaces.map((space) => (
+              <SpaceCard
+                key={space.id}
+                space={space}
+                onSelect={() => onViewSpace(space.id)}
+                showRole={true}
+              />
+            ))}
+          </Grid>
           </div>
         </div>
       )}
 
       {activeTab === 'activity' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <PublicActivityStream />
-          </div>
+        <div>
+          <PublicActivityStream />
         </div>
       )}
       
       {activeTab === 'discover' && (
         <div className="space-y-8">
           {/* Toggle between People and Spaces */}
-          <div className="flex items-center justify-center">
-            <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-1">
-              {[
+          <div className="flex justify-center">
+            <Tabs
+              variant="pills"
+              tabs={[
                 { id: 'people', label: 'Discover People' },
                 { id: 'spaces', label: 'Discover Spaces' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setDiscoverTab(tab.id as any)}
-                  className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
-                    discoverTab === tab.id
-                      ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
-                      : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+              ]}
+              activeTab={discoverTab}
+              onTabChange={(tab) => setDiscoverTab(tab as any)}
+            />
           </div>
           
           {discoverTab === 'people' && <UserDiscovery />}
@@ -166,6 +142,6 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
-    </div>
+    </PageLayout>
   );
 }
