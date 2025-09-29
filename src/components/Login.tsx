@@ -43,7 +43,7 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword, onLoginSuc
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%2523ffffff%22%20fill-opacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-20"></div>
       
       <div className="relative w-full max-w-md mx-auto px-6">
@@ -152,8 +152,8 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword, onLoginSuc
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                       rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
+              className="w-full py-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
+                       rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                        duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
                        disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
