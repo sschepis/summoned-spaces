@@ -142,7 +142,7 @@ export function AnalyticsBoard() {
             View full activity log
           </button>
         </div>
-        </div>
+      </div>
       </div>
     </div>
   );
