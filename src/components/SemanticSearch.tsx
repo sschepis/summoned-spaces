@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ArrowLeft, Sparkles, User, Users, FileText, TrendingUp, Filter, SortAsc, Clock, Heart, MessageCircle, Share, UserPlus, Plus, Globe, Lock, Zap, Star, ChevronDown } from 'lucide-react';
+import { Search, ArrowLeft, Sparkles, User, Users, FileText, TrendingUp, Filter, Import as SortAsc, Clock, Heart, MessageCircle, Share, UserPlus, Plus, Globe, Lock, Zap, Star, ChevronDown } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 
 interface SemanticSearchProps {
