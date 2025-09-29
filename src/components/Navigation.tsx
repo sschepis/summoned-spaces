@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Home, Zap, Settings, BarChart3, MessageCircle } from 'lucide-react';
-import { Users, Database, Clock, User, LogOut, ChevronDown } from 'lucide-react';
+import { Users, Database, Clock, User, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 import { View } from '../App';
 
