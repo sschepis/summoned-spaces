@@ -1,5 +1,5 @@
 import { ReactNode, ButtonHTMLAttributes } from 'react';
-import { Video as LucideIcon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
@@ -23,14 +23,14 @@ export function Button({
   disabled,
   ...props 
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800';
+  const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus-ring';
   
   const variantClasses = {
-    primary: 'bg-gradient-to-r from-blue-500 to-teal-500 text-white hover:from-blue-400 hover:to-teal-400 shadow-lg hover:shadow-xl focus:ring-blue-500',
-    secondary: 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 focus:ring-white/50',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    ghost: 'text-gray-400 hover:text-white hover:bg-white/10 focus:ring-white/50',
-    success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
+    primary: 'primary-gradient text-white hover:shadow-primary hover:-translate-y-0.5',
+    secondary: 'glass text-white glass-hover',
+    danger: 'bg-red-600 text-white hover:bg-red-700 hover:-translate-y-0.5',
+    ghost: 'text-gray-400 hover:text-white hover:bg-white/10',
+    success: 'bg-green-600 text-white hover:bg-green-700 hover:-translate-y-0.5'
   };
 
   const sizeClasses = {

@@ -1,5 +1,5 @@
 import { InputHTMLAttributes, forwardRef } from 'react';
-import { Video as LucideIcon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -36,12 +36,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         <input
           ref={ref}
           className={`
-            w-full bg-white/5 border rounded-lg text-white placeholder-gray-400 
-            focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent 
-            transition-colors
+            w-full glass rounded-lg text-white placeholder-gray-400 focus-ring
+            transition-all duration-200
             ${Icon && iconPosition === 'left' ? 'pl-10 pr-4 py-3' : 'px-4 py-3'}
             ${Icon && iconPosition === 'right' ? 'pl-4 pr-10 py-3' : ''}
-            ${error ? 'border-red-500' : 'border-white/10'}
+            ${error ? 'border-red-500' : ''}
             ${className}
           `}
           {...props}

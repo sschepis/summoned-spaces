@@ -1,0 +1,11 @@
+export { ProfileSettingsTab } from './ProfileSettingsTab';
+export type { UserProfile } from './ProfileSettingsTab';
+export { PrivacySettingsTab } from './PrivacySettingsTab';
+export type { PrivacySettings } from './PrivacySettingsTab';
+export { ResonanceSettingsTab } from './ResonanceSettingsTab';
+export type { ResonanceSettings } from './ResonanceSettingsTab';
+export { NotificationSettingsTab } from './NotificationSettingsTab';
+export type { NotificationSettings } from './NotificationSettingsTab';
+export { DataSettingsTab } from './DataSettingsTab';
+export { AppearanceSettingsTab } from './AppearanceSettingsTab';
+export { DangerZoneTab } from './DangerZoneTab';

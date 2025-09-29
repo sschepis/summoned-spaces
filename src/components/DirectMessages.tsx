@@ -1,37 +1,15 @@
 import { useState } from 'react';
-import { Search, MessageCircle, Shield, Clock, CheckCheck, ArrowLeft, Send, Paperclip, Smile } from 'lucide-react';
+import { Shield, MessageCircle } from 'lucide-react';
+import { PageLayout } from './layouts/PageLayout';
+import { ConversationList, MessageThread, MessageInput } from './common/messaging';
+import type { Conversation, Message } from './common/messaging';
+import { Alert } from './ui/feedback/Alert';
 
-interface Conversation {
-  id: string;
-  participant: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-    isOnline: boolean;
-    lastSeen?: string;
-  };
-  lastMessage: {
-    content: string;
-    timestamp: Date;
-    isFromMe: boolean;
-    isRead: boolean;
-  };
-  unreadCount: number;
-  isEncrypted: boolean;
-  quantumSignature: string;
+interface DirectMessagesProps {
+  onBack: () => void;
 }
 
-interface Message {
-  id: string;
-  senderId: string;
-  content: string;
-  timestamp: Date;
-  deliveryStatus: 'sending' | 'sent' | 'delivered' | 'read';
-  isEncrypted: boolean;
-  quantumSignature: string;
-}
-
+// Mock data
 const mockConversations: Conversation[] = [
   {
     id: '1',
@@ -123,15 +101,10 @@ const mockMessages: Message[] = [
   }
 ];
 
-interface DirectMessagesProps {
-  onBack: () => void;
-}
-
 export function DirectMessages({ onBack }: DirectMessagesProps) {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [conversations, setConversations] = useState(mockConversations);
   const [messages, setMessages] = useState(mockMessages);
-  const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredConversations = conversations.filter(conv =>
@@ -141,13 +114,13 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
 
   const selectedConv = conversations.find(c => c.id === selectedConversation);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+  const handleSendMessage = (content: string) => {
+    if (!selectedConversation) return;
 
     const message: Message = {
       id: Date.now().toString(),
       senderId: 'current-user',
-      content: newMessage,
+      content,
       timestamp: new Date(),
       deliveryStatus: 'sending',
       isEncrypted: true,
@@ -155,7 +128,6 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
     };
 
     setMessages(prev => [...prev, message]);
-    setNewMessage('');
 
     // Update conversation last message
     setConversations(prev => 
@@ -164,7 +136,7 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
           ? {
               ...conv,
               lastMessage: {
-                content: newMessage,
+                content,
                 timestamp: new Date(),
                 isFromMe: true,
                 isRead: false
@@ -186,243 +158,57 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
     }, 1000);
   };
 
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (minutes < 1) return 'now';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
-  };
+  const conversationListFooter = (
+    <div className="text-xs text-gray-500 flex items-center space-x-1">
+      <Shield className="w-3 h-3 text-green-400" />
+      <span>All messages are quantum-encrypted</span>
+    </div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center space-x-4 mb-8">
-        <button
-          onClick={onBack}
-          className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Direct Messages</h1>
-          <p className="text-gray-400">Private messages with people you mutually follow</p>
-        </div>
-      </div>
-
+    <PageLayout
+      title="Direct Messages"
+      subtitle="Private messages with people you mutually follow"
+      onBack={onBack}
+    >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
         {/* Conversations List */}
-        <div className="lg:col-span-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 flex flex-col">
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-center space-x-3 mb-4">
-              <MessageCircle className="w-5 h-5 text-cyan-400" />
-              <h2 className="text-lg font-semibold text-white">Conversations</h2>
-            </div>
-            
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations..."
-                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white 
-                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            <div className="space-y-1 p-2">
-              {filteredConversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  onClick={() => setSelectedConversation(conversation.id)}
-                  className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
-                    selectedConversation === conversation.id
-                      ? 'bg-cyan-500/20 border border-cyan-500/30'
-                      : 'hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="relative">
-                      <img
-                        src={conversation.participant.avatar}
-                        alt={conversation.participant.name}
-                        className="w-12 h-12 rounded-full object-cover border border-white/10"
-                      />
-                      {conversation.participant.isOnline && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800" />
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-white truncate">
-                          {conversation.participant.name}
-                        </span>
-                        <div className="flex items-center space-x-1">
-                          {conversation.unreadCount > 0 && (
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full" />
-                          )}
-                          <span className="text-xs text-gray-400">
-                            {formatTimestamp(conversation.lastMessage.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-gray-400 truncate">
-                        {conversation.lastMessage.isFromMe && 'You: '}
-                        {conversation.lastMessage.content}
-                      </p>
-                      
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-gray-500">
-                          {conversation.participant.username}
-                        </span>
-                        <div className="flex items-center space-x-1">
-                          {conversation.isEncrypted && (
-                            <Shield className="w-3 h-3 text-green-400" />
-                          )}
-                          {conversation.unreadCount > 0 && (
-                            <div className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-xs rounded-full">
-                              {conversation.unreadCount}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="p-3 border-t border-white/10">
-            <div className="text-xs text-gray-500 flex items-center space-x-1">
-              <Shield className="w-3 h-3 text-green-400" />
-              <span>All messages are quantum-encrypted</span>
-            </div>
-          </div>
+        <div className="lg:col-span-1">
+          <ConversationList
+            conversations={filteredConversations}
+            selectedId={selectedConversation}
+            onSelectConversation={setSelectedConversation}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            title="Conversations"
+            icon={MessageCircle}
+            showEncryption={true}
+            footer={conversationListFooter}
+            className="h-full"
+          />
         </div>
 
         {/* Message Thread */}
         <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 flex flex-col">
           {selectedConv ? (
             <>
-              {/* Chat Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <img
-                      src={selectedConv.participant.avatar}
-                      alt={selectedConv.participant.name}
-                      className="w-10 h-10 rounded-full object-cover border border-white/10"
-                    />
-                    {selectedConv.participant.isOnline && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white">{selectedConv.participant.name}</h3>
-                    <p className="text-sm text-gray-400">
-                      {selectedConv.participant.isOnline ? 'Online' : `Last seen ${selectedConv.participant.lastSeen}`}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-sm text-gray-400">
-                  <Shield className="w-4 h-4 text-green-400" />
-                  <span>Quantum Encrypted</span>
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => {
-                  const isOwnMessage = message.senderId === 'current-user';
-                  
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}>
-                        <div
-                          className={`rounded-2xl px-4 py-2 ${
-                            isOwnMessage
-                              ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white'
-                              : 'bg-white/10 text-white'
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        </div>
-                        
-                        <div className={`flex items-center space-x-2 mt-1 text-xs text-gray-500 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                          <span>{formatTimestamp(message.timestamp)}</span>
-                          <span className="font-mono">{message.quantumSignature}</span>
-                          {isOwnMessage && (
-                            <div className="flex items-center space-x-1">
-                              {message.deliveryStatus === 'sending' && (
-                                <Clock className="w-3 h-3 text-gray-500" />
-                              )}
-                              {message.deliveryStatus === 'delivered' && (
-                                <CheckCheck className="w-3 h-3 text-gray-400" />
-                              )}
-                              {message.deliveryStatus === 'read' && (
-                                <CheckCheck className="w-3 h-3 text-cyan-400" />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Message Input */}
-              <div className="p-4 border-t border-white/10">
-                <div className="flex items-center space-x-3">
-                  <button className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/10">
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      placeholder="Type a quantum-encrypted message..."
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white 
-                               placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                    <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-white transition-colors">
-                      <Smile className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
-                    className="p-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white rounded-xl
-                             hover:from-blue-400 hover:to-teal-400 transition-all duration-200
-                             disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                  <span>Messages are quantum-encrypted and distributed non-locally</span>
-                  <span>Press Enter to send</span>
-                </div>
-              </div>
+              <MessageThread
+                messages={messages}
+                currentUserId="current-user"
+                participant={selectedConv.participant}
+                showEncryption={true}
+                showDeliveryStatus={true}
+                showSignatures={true}
+                className="flex-1"
+              />
+              
+              <MessageInput
+                onSend={handleSendMessage}
+                placeholder="Type a quantum-encrypted message..."
+                showAttachment={true}
+                showEmoji={true}
+                helperText="Messages are quantum-encrypted and distributed non-locally • Press Enter to send"
+              />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -444,18 +230,20 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
       </div>
 
       {/* Info Banner */}
-      <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <Shield className="w-5 h-5 text-cyan-400 mt-0.5" />
-          <div>
-            <h4 className="font-medium text-cyan-300 mb-1">Mutual Following Required</h4>
-            <p className="text-sm text-gray-300">
-              You can only send direct messages to users who follow you back. This ensures privacy and reduces spam 
-              while maintaining secure quantum-encrypted communication channels.
-            </p>
+      <div className="mt-6">
+        <Alert variant="info">
+          <div className="flex items-start space-x-3">
+            <Shield className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-cyan-300 mb-1">Mutual Following Required</h4>
+              <p className="text-sm text-gray-300">
+                You can only send direct messages to users who follow you back. This ensures privacy and reduces spam 
+                while maintaining secure quantum-encrypted communication channels.
+              </p>
+            </div>
           </div>
-        </div>
+        </Alert>
       </div>
-    </div>
+    </PageLayout>
   );
 }

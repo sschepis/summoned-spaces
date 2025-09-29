@@ -1,4 +1,4 @@
-import { Users, Database, Clock, Globe, Lock, Plus } from 'lucide-react';
+import { Clock, Globe, Lock, Plus } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -21,8 +21,7 @@ export function SpaceCard({
   onJoin, 
   showJoinButton = false,
   showResonance = true,
-  showRole = false,
-  size = 'md' 
+  showRole = false
 }: SpaceCardProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -40,11 +39,10 @@ export function SpaceCard({
   };
 
   return (
-    <Card 
-      hover={!!onSelect} 
+    <Card
+      hover={!!onSelect}
       onClick={onSelect}
       className="relative overflow-hidden"
-      gradient={space.color}
     >
       {/* Cover Image */}
       {space.cover && (
@@ -74,9 +72,9 @@ export function SpaceCard({
                   {space.name}
                 </h3>
                 {space.isPublic ? (
-                  <Globe className="w-4 h-4 text-green-400" title="Public space" />
+                  <Globe className="w-4 h-4 text-green-400" aria-label="Public space" />
                 ) : (
-                  <Lock className="w-4 h-4 text-orange-400" title="Private space" />
+                  <Lock className="w-4 h-4 text-orange-400" aria-label="Private space" />
                 )}
                 {showRole && space.role && (
                   <Badge variant={getRoleColor(space.role) as any} size="sm">
@@ -152,13 +150,13 @@ export function SpaceCard({
           
           {/* Tags */}
           <div className="flex flex-wrap gap-1">
-            {space.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="blue" size="sm">
+            {space.tags?.slice(0, 2)?.map((tag) => (
+              <Badge key={tag} variant="info" size="sm">
                 {tag}
               </Badge>
             ))}
-            {space.tags.length > 2 && (
-              <span className="text-xs text-gray-400">+{space.tags.length - 2}</span>
+            {(space.tags?.length || 0) > 2 && (
+              <span className="text-xs text-gray-400">+{(space.tags?.length || 0) - 2}</span>
             )}
           </div>
         </div>
