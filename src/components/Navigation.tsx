@@ -116,29 +116,6 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                 showUserMenu ? 'rotate-180' : ''
               }`} />
             </button>
-            {/* Dropdown Menu */}
-            {showUserMenu && (
-              <div className="absolute right-0 top-12 w-64 bg-slate-800/95 backdrop-blur-xl 
-                           rounded-xl shadow-2xl border border-white/10 py-2 z-50 
-                           animate-in slide-in-from-top-2 duration-200">
-                
-                {/* User Info Header */}
-                <div className="px-4 py-3 border-b border-white/10">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2"
-                      alt="Your avatar"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
-                    />
-                    <div>
-                      <div className="font-semibold text-white">Your Name</div>
-                      <div className="text-sm text-gray-400">@yourhandle</div>
-                    </div>
-                  </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
-                showUserMenu ? 'rotate-180' : ''
-              }`} />
-            </button>
             
             {/* Dropdown Menu */}
             {showUserMenu && (
@@ -189,6 +166,9 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                   <div className="my-1 border-t border-white/10"></div>
                   
                   <button
+                    onClick={() => {
+                      // TODO: Handle sign out
+                      setShowUserMenu(false);
                     }}
                     className="w-full px-4 py-2 text-left text-red-400 hover:text-red-300 
                              hover:bg-red-500/10 transition-colors flex items-center space-x-3"
