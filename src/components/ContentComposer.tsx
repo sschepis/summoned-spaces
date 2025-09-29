@@ -19,19 +19,19 @@ interface PostContent {
   tags: string[];
 }
 
-const feedOptions = [
+const spaceOptions = [
   { 
-    id: 'personal-feed', 
-    name: 'Your Feed', 
+    id: 'personal-space', 
+    name: 'Your Personal Space', 
     icon: User, 
-    description: 'Share to your personal timeline',
+    description: 'Share to your personal space',
     type: 'personal' as const
   },
   { 
-    id: 'global-feed', 
-    name: 'Global Feed', 
+    id: 'global-space', 
+    name: 'Global Space', 
     icon: Globe, 
-    description: 'Share publicly to everyone',
+    description: 'Share publicly to the global space',
     type: 'global' as const
   },
   { 
@@ -60,9 +60,9 @@ const feedOptions = [
 export function ContentComposer({ onPost }: ContentComposerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [content, setContent] = useState('');
-  const [selectedFeed, setSelectedFeed] = useState(feedOptions[0]);
+  const [selectedSpace, setSelectedSpace] = useState(spaceOptions[0]);
   const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
-  const [showFeedSelector, setShowFeedSelector] = useState(false);
+  const [showSpaceSelector, setShowSpaceSelector] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -74,8 +74,8 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
     const postContent: PostContent = {
       text: content,
       media: attachedFiles,
-      feedId: selectedFeed.id,
-      feedName: selectedFeed.name,
+      feedId: selectedSpace.id,
+      feedName: selectedSpace.name,
       tags
     };
 
@@ -86,7 +86,7 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
     setAttachedFiles([]);
     setTags([]);
     setIsExpanded(false);
-    setSelectedFeed(feedOptions[0]);
+    setSelectedSpace(spaceOptions[0]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,12 +280,12 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
                                duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
                                disabled:cursor-not-allowed flex items-center space-x-2"
                     >
-                      <selectedFeed.icon className="w-4 h-4" />
-                      <span>Share to {selectedFeed.name}</span>
+                      <selectedSpace.icon className="w-4 h-4" />
+                      <span>Share to {selectedSpace.name}</span>
                     </button>
                     
                     <button
-                      onClick={() => setShowFeedSelector(!showFeedSelector)}
+                      onClick={() => setShowSpaceSelector(!showSpaceSelector)}
                       className="px-3 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
                                rounded-r-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
                                duration-200 shadow-lg hover:shadow-xl border-l border-white/20"
@@ -294,31 +294,31 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
                     </button>
                   </div>
 
-                  {/* Feed Selection Dropdown */}
-                  {showFeedSelector && (
+                  {/* Space Selection Dropdown */}
+                  {showSpaceSelector && (
                     <div className="absolute bottom-12 right-0 z-50 bg-slate-800 rounded-lg shadow-2xl 
                                   border border-white/10 py-2 min-w-72">
                       <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-white/10">
-                        Choose destination
+                        Choose space
                       </div>
-                      {feedOptions.map((feed) => (
+                      {spaceOptions.map((space) => (
                         <button
-                          key={feed.id}
+                          key={space.id}
                           onClick={() => {
-                            setSelectedFeed(feed);
-                            setShowFeedSelector(false);
+                            setSelectedSpace(space);
+                            setShowSpaceSelector(false);
                           }}
                           className={`w-full px-4 py-3 text-left hover:bg-white/10 transition-colors 
                                    flex items-start space-x-3 ${
-                            selectedFeed.id === feed.id ? 'bg-cyan-500/10 border-l-2 border-cyan-400' : ''
+                            selectedSpace.id === space.id ? 'bg-cyan-500/10 border-l-2 border-cyan-400' : ''
                           }`}
                         >
-                          <feed.icon className="w-4 h-4 text-gray-400 mt-0.5" />
+                          <space.icon className="w-4 h-4 text-gray-400 mt-0.5" />
                           <div className="flex-1">
-                            <div className="text-white text-sm font-medium">{feed.name}</div>
-                            <div className="text-gray-400 text-xs">{feed.description}</div>
+                            <div className="text-white text-sm font-medium">{space.name}</div>
+                            <div className="text-gray-400 text-xs">{space.description}</div>
                           </div>
-                          {selectedFeed.id === feed.id && (
+                          {selectedSpace.id === space.id && (
                             <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5" />
                           )}
                         </button>
@@ -354,8 +354,8 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
           </div>
           
           <div className="text-xs text-gray-500 flex items-center space-x-1">
-            <selectedFeed.icon className="w-3 h-3" />
-            <span>Sharing to {selectedFeed.name}</span>
+            <selectedSpace.icon className="w-3 h-3" />
+            <span>Sharing to {selectedSpace.name}</span>
           </div>
         </div>
       )}
