@@ -93,7 +93,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                 <div key={stat.label} className="flex items-center space-x-2">
                   <stat.icon className={`w-4 h-4 ${stat.color}`} />
                   <div className="flex items-baseline space-x-2">
-                    <span className="text-lg font-bold text-white">{stat.value}</span>
+                    <span className="text-sm font-bold text-white">{stat.value}</span>
                     <span className="text-xs text-gray-400">{stat.label}</span>
                   </div>
                   <span className="text-xs text-green-400">{stat.change}</span>
@@ -103,10 +103,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
             
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <div className="text-sm font-medium text-white">Global Resonance Health</div>
+                <div className="text-xs font-medium text-white">Global Resonance Health</div>
                 <div className="text-xs text-gray-400">Network-wide quantum coherence</div>
               </div>
-              <div className="text-xl font-bold text-cyan-400">94.7%</div>
+              <div className="text-sm font-bold text-cyan-400">94.7%</div>
               <div className="w-32">
                 <ResonanceIndicator strength={0.947} size="small" animated />
               </div>
