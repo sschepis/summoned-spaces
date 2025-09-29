@@ -60,6 +60,7 @@ export function UserAvatar({
         />
       ) : (
         <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 
+        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-blue-500 to-teal-500 
                       border-2 border-white/10 flex items-center justify-center
                       ${onClick ? 'hover:border-cyan-400/50 transition-colors' : ''}`}>
           <span className="text-white font-medium text-sm">

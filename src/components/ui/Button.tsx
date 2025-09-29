@@ -26,7 +26,7 @@ export function Button({
   const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800';
   
   const variantClasses = {
-    primary: 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:from-cyan-400 hover:to-purple-400 shadow-lg hover:shadow-xl focus:ring-cyan-500',
+    primary: 'bg-gradient-to-r from-blue-500 to-teal-500 text-white hover:from-blue-400 hover:to-teal-400 shadow-lg hover:shadow-xl focus:ring-blue-500',
     secondary: 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 focus:ring-white/50',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
     ghost: 'text-gray-400 hover:text-white hover:bg-white/10 focus:ring-white/50',

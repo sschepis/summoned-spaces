@@ -134,7 +134,7 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
                         <div className="text-sm text-gray-400">{privacy.desc}</div>
                       </div>
                       <div className={`w-4 h-4 rounded-full border-2 ${
-                        formData.privacy === privacy.id ? 'border-purple-400 bg-purple-400' : 'border-gray-500'
+                        formData.privacy === privacy.id ? 'border-blue-400 bg-blue-400' : 'border-gray-500'
                       }`} />
                     </label>
                   ))}
