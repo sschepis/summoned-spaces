@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
+import { SpaceInfoSidebar } from './SpaceInfoSidebar';
 
 interface ActivityItem {
   id: string;
@@ -278,9 +279,12 @@ export function PublicActivityStream() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Feed Column */}
+        <div className="lg:col-span-2">
       {/* Feed Header */}
-      <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6">
+          <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
         <h1 className="text-2xl font-bold text-white">Feed</h1>
         <p className="text-gray-400 text-sm">See what's happening in your network</p>
       </div>
@@ -399,6 +403,21 @@ export function PublicActivityStream() {
                   </div>
                 )}
 
+                {activity.media && activity.media.type === 'audio' && (
+                  <div className="mb-4">
+                    <AudioPlayer
+                      src={activity.media.url}
+                      title={activity.target || 'Audio Track'}
+                      artist={activity.media.artist || activity.user.name}
+                      artwork={activity.user.avatar}
+                      duration={activity.media.duration}
+                      showDownload={true}
+                      onLike={() => handleLike(activity.id)}
+                      onShare={() => console.log('Share audio:', activity.id)}
+                    />
+                  </div>
+                )}
+
                 {/* Resonance Data */}
                 {activity.resonanceData && (
                   <div className="flex items-center space-x-4 mb-4 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 
@@ -473,6 +492,16 @@ export function PublicActivityStream() {
                          duration-200 font-medium shadow-lg hover:shadow-xl">
           Load More Posts
         </button>
+      </div>
+    </div>
+        </div>
+
+        {/* Sidebar Column */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-8">
+            <SpaceInfoSidebar />
+          </div>
+        </div>
       </div>
     </div>
   );
