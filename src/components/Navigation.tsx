@@ -7,9 +7,10 @@ import { View } from '../App';
 interface NavigationProps {
   currentView: View;
   onViewChange: (view: View) => void;
+  onLogout: () => void;
 }
 
-export function Navigation({ currentView, onViewChange }: NavigationProps) {
+export function Navigation({ currentView, onViewChange, onLogout }: NavigationProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -192,7 +193,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                   
                   <button
                     onClick={() => {
-                      // TODO: Handle sign out
+                      onLogout();
                       setShowUserMenu(false);
                     }}
                     className="w-full px-4 py-2 text-left text-red-400 hover:text-red-300 
