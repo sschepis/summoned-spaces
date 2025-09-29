@@ -4,7 +4,6 @@ import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
 import { UserNetworkSidebar } from './UserNetworkSidebar';
-import { SpaceInfoSidebar } from './SpaceInfoSidebar';
 
 interface ActivityItem {
   id: string;
@@ -755,7 +754,7 @@ export function PublicActivityStream() {
         {/* Sidebar Column */}
         <div className="lg:col-span-1">
           <div className="sticky top-8">
-            <SpaceInfoSidebar />
+            <UserNetworkSidebar />
           </div>
         </div>
       </div>
