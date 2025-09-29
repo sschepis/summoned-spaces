@@ -389,8 +389,7 @@ export function SpaceChat({ spaceId, currentUserId }: SpaceChatProps) {
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim()}
-            className="p-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl
-             className="p-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white rounded-xl
+            className="p-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white rounded-xl
                      hover:from-blue-400 hover:to-teal-400 transition-all duration-200
                      disabled:opacity-50 disabled:cursor-not-allowed"
           >
