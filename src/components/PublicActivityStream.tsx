@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark, Grid3X3, List, Minimize2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark, Grid3x3 as Grid3X3, List, Minimize2 } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
@@ -754,7 +754,7 @@ export function PublicActivityStream() {
         {/* Sidebar Column */}
         <div className="lg:col-span-1">
           <div className="sticky top-8">
-            <UserNetworkSidebar />
+            <SpaceInfoSidebar />
           </div>
         </div>
       </div>
