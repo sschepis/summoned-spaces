@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
+import { VideoPlayer } from './VideoPlayer';
 
 interface ActivityItem {
   id: string;
@@ -59,6 +60,29 @@ const mockActivityStream: ActivityItem[] = [
       type: 'image',
       url: 'https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=800',
       thumbnail: 'https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=400'
+    }
+  },
+  {
+    id: '1.5',
+    type: 'file_contributed',
+    user: {
+      id: 'maya-patel',
+      name: 'Maya Patel',
+      username: '@mayap_music',
+      avatar: 'https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
+      isFollowing: true,
+      verified: true
+    },
+    action: 'just dropped a fire music video! 🔥🎵',
+    target: 'studio_session_beats.mp4',
+    space: 'Beat Makers United',
+    details: 'Been working on this track for weeks - finally ready to share! Turn up the volume 🎧',
+    timestamp: '8 minutes ago',
+    metrics: { likes: 127, comments: 34, shares: 28, hasLiked: false, hasBookmarked: false },
+    media: {
+      type: 'video',
+      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      thumbnail: 'https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&cs=tinysrgb&w=800'
     }
   },
   {
@@ -357,6 +381,17 @@ export function PublicActivityStream() {
                       src={activity.media.url}
                       alt="Shared content"
                       className="w-full max-h-96 object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                )}
+
+                {activity.media && activity.media.type === 'video' && (
+                  <div className="mb-4">
+                    <VideoPlayer
+                      src={activity.media.url}
+                      thumbnail={activity.media.thumbnail}
+                      title={activity.target}
+                      className="w-full"
                     />
                   </div>
                 )}
