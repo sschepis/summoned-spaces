@@ -4,9 +4,10 @@ import { Dashboard } from './components/Dashboard';
 import { SpaceView } from './components/SpaceView';
 import { SemanticSearch } from './components/SemanticSearch';
 import { AnalyticsBoard } from './components/AnalyticsBoard';
+import { DirectMessages } from './components/DirectMessages';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 
-export type View = 'dashboard' | 'space' | 'search' | 'analytics';
+export type View = 'dashboard' | 'space' | 'search' | 'analytics' | 'messages';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -22,6 +23,8 @@ function App() {
     switch (currentView) {
       case 'space':
         return <SpaceView spaceId={selectedSpaceId} onBack={() => setCurrentView('dashboard')} />;
+      case 'messages':
+        return <DirectMessages onBack={() => setCurrentView('dashboard')} />;
       case 'search':
         return <SemanticSearch onBack={() => setCurrentView('dashboard')} />;
       case 'analytics':

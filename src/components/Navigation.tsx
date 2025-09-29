@@ -1,4 +1,4 @@
-import { Search, Home, Zap, Settings, BarChart3 } from 'lucide-react';
+import { Search, Home, Zap, Settings, BarChart3, MessageCircle } from 'lucide-react';
 import { Users, Database, Clock } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 import { View } from '../App';
@@ -11,6 +11,7 @@ interface NavigationProps {
 export function Navigation({ currentView, onViewChange }: NavigationProps) {
   const navItems = [
     { id: 'dashboard' as View, icon: Home, label: 'Spaces' },
+    { id: 'messages' as View, icon: MessageCircle, label: 'Messages' },
     { id: 'search' as View, icon: Search, label: 'Semantic Search' },
     { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },
   ];
