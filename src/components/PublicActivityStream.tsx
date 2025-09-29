@@ -493,7 +493,6 @@ export function PublicActivityStream() {
           Load More Posts
         </button>
       </div>
-    </div>
         </div>
 
         {/* Sidebar Column */}
