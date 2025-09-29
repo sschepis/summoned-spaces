@@ -180,10 +180,14 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
             <div className="flex flex-wrap gap-2 mb-2">
               {tags.map((tag, index) => (
                 <span
-                   className="flex items-center space-x-1 px-2 py-1 bg-blue-500/20 text-blue-300 
-                   className="flex items-center space-x-1 px-2 py-1 bg-blue-500/20 text-blue-300 
+                  key={index}
+                  className="flex items-center space-x-1 px-2 py-1 bg-blue-500/20 text-blue-300 
                            text-sm rounded-full border border-blue-500/30"
                 >
+                  <span>#{tag}</span>
+                  <button
+                    onClick={() => removeTag(tag)}
+                    className="text-blue-300 hover:text-red-400 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
