@@ -5,6 +5,7 @@ import { FileUploadZone } from './FileUploadZone';
 import { FileExplorer } from './FileExplorer';
 import { MemberList } from './MemberList';
 import { ResonanceLockingVisualizer } from './ResonanceLockingVisualizer';
+import { SpaceChat } from './SpaceChat';
 import { SpaceSettings } from './SpaceSettings';
 import { FileDetailsModal } from './FileDetailsModal';
 
@@ -47,7 +48,7 @@ const mockVolumes = [
 ];
 
 export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
-  const [activeTab, setActiveTab] = useState<'files' | 'volumes' | 'upload' | 'members' | 'resonance'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'volumes' | 'upload' | 'members' | 'chat' | 'resonance'>('files');
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -58,6 +59,7 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
     { id: 'volumes', label: 'Volumes', icon: Zap },
     { id: 'upload', label: 'Upload', icon: Upload },
     { id: 'members', label: 'Members', icon: Users },
+    { id: 'chat', label: 'Chat', icon: Users },
     { id: 'resonance', label: 'Resonance', icon: Zap }
   ];
 
@@ -146,6 +148,12 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
       )}
 
       {activeTab === 'members' && <MemberList />}
+
+      {activeTab === 'chat' && (
+        <div className="h-[600px]">
+          <SpaceChat spaceId={spaceId || ''} currentUserId="current-user" />
+        </div>
+      )}
 
       {activeTab === 'resonance' && <ResonanceLockingVisualizer />}
 
