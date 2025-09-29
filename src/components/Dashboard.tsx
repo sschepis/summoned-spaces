@@ -92,8 +92,8 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-3xl font-bold text-white mb-2">Your Spaces</h2>
-                <p className="text-gray-400">Manage your collaborative quantum spaces</p>
+                <h2 className="text-3xl font-bold text-white mb-2">My Spaces</h2>
+                <p className="text-gray-400">Your personal spaces for sharing and collaboration</p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(true)}

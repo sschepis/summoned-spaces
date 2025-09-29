@@ -199,8 +199,8 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Social Network</h1>
-          <p className="text-gray-400">Manage your connections and discover collaborators</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Friends & Followers</h1>
+          <p className="text-gray-400">Manage your connections and discover interesting people</p>
         </div>
       </div>
 

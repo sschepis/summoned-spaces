@@ -10,7 +10,8 @@ interface NavigationProps {
 
 export function Navigation({ currentView, onViewChange }: NavigationProps) {
   const navItems = [
-    { id: 'dashboard' as View, icon: Home, label: 'Spaces' },
+    { id: 'feed' as View, icon: Home, label: 'Home' },
+    { id: 'dashboard' as View, icon: Database, label: 'Spaces' },
     { id: 'friends' as View, icon: Users, label: 'Friends' },
     { id: 'messages' as View, icon: MessageCircle, label: 'Messages' },
     { id: 'search' as View, icon: Search, label: 'Semantic Search' },
@@ -62,7 +63,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">summoned.spaces</h1>
-              <p className="text-xs text-cyan-300 opacity-80">Quantum-Inspired Collaboration</p>
+              <p className="text-xs text-cyan-300 opacity-80">Social File Sharing Network</p>
             </div>
           </div>
 

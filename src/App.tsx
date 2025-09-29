@@ -8,10 +8,10 @@ import { DirectMessages } from './components/DirectMessages';
 import { SocialNetwork } from './components/SocialNetwork';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 
-export type View = 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends';
+export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends';
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [currentView, setCurrentView] = useState<View>('feed');
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const { notifications, dismissNotification, showSuccess, showResonance } = useNotifications();
 
@@ -22,6 +22,8 @@ function App() {
 
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'feed':
+        return <PublicActivityStream />;
       case 'space':
         return <SpaceView spaceId={selectedSpaceId} onBack={() => setCurrentView('dashboard')} />;
       case 'friends':
@@ -32,6 +34,8 @@ function App() {
         return <SemanticSearch onBack={() => setCurrentView('dashboard')} />;
       case 'analytics':
         return <AnalyticsBoard />;
+      case 'dashboard':
+        return <Dashboard onViewSpace={handleViewSpace} />;
       default:
         return <Dashboard onViewSpace={handleViewSpace} />;
     }

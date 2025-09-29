@@ -209,8 +209,8 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Private Messages</h1>
-          <p className="text-gray-400">Quantum-encrypted direct messages with mutual followers</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Direct Messages</h1>
+          <p className="text-gray-400">Private messages with people you mutually follow</p>
         </div>
       </div>
 
