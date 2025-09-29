@@ -345,187 +345,355 @@ export function PublicActivityStream() {
           const ActivityIcon = activityIcons[activity.type];
           const iconColor = activityColors[activity.type];
 
-          return (
-            <div
-              key={activity.id}
-              className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/8 
-                       transition-all duration-200 overflow-hidden"
-            >
-              {/* Post Header */}
-              <div className="p-6 pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    {/* User Avatar with Activity Icon */}
-                    <div className="relative">
-                      <img
-                        src={activity.user.avatar}
-                        alt={activity.user.name}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
-                      />
-                      <div className={`absolute -bottom-1 -right-1 p-1 rounded-full bg-slate-800 border border-white/10 ${iconColor}`}>
-                        <ActivityIcon className="w-3 h-3" />
+          // Card View (Default)
+          if (viewMode === 'card') {
+            return (
+              <div
+                key={activity.id}
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/8 
+                         transition-all duration-200 overflow-hidden"
+              >
+                {/* Post Header */}
+                <div className="p-6 pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      {/* User Avatar with Activity Icon */}
+                      <div className="relative">
+                        <img
+                          src={activity.user.avatar}
+                          alt={activity.user.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
+                        />
+                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-full bg-slate-800 border border-white/10 ${iconColor}`}>
+                          <ActivityIcon className="w-3 h-3" />
+                        </div>
+                      </div>
+
+                      {/* User Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-white">{activity.user.name}</span>
+                          <span className="text-sm text-gray-400">{activity.user.username}</span>
+                          {activity.user.verified && (
+                            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                              <div className="w-2 h-2 bg-white rounded-full" />
+                            </div>
+                          )}
+                          <span className="text-sm text-gray-500">•</span>
+                          <span className="text-sm text-gray-500">{activity.timestamp}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* User Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-white">{activity.user.name}</span>
-                        <span className="text-sm text-gray-400">{activity.user.username}</span>
-                        {activity.user.verified && (
-                          <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full" />
-                          </div>
+                    {/* Follow Button & More Menu */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleFollow(activity.user.id)}
+                        className={`px-3 py-1.5 text-xs rounded-full transition-colors font-medium ${
+                          activity.user.isFollowing
+                            ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                            : 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30'
+                        }`}
+                      >
+                        {activity.user.isFollowing ? (
+                          <><UserCheck className="w-3 h-3 inline mr-1" />Following</>
+                        ) : (
+                          <><UserPlus className="w-3 h-3 inline mr-1" />Follow</>
                         )}
-                        <span className="text-sm text-gray-500">•</span>
-                        <span className="text-sm text-gray-500">{activity.timestamp}</span>
-                      </div>
+                      </button>
+                      
+                      <button className="p-1.5 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Follow Button & More Menu */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleFollow(activity.user.id)}
-                      className={`px-3 py-1.5 text-xs rounded-full transition-colors font-medium ${
-                        activity.user.isFollowing
-                          ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                          : 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30'
-                      }`}
-                    >
-                      {activity.user.isFollowing ? (
-                        <><UserCheck className="w-3 h-3 inline mr-1" />Following</>
-                      ) : (
-                        <><UserPlus className="w-3 h-3 inline mr-1" />Follow</>
-                      )}
-                    </button>
-                    
-                    <button className="p-1.5 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Post Content */}
-              <div className="px-6 pb-4">
-                <div className="text-white mb-3 leading-relaxed">
-                  <span>{activity.action}</span>
-                  {activity.target && (
-                    <>
-                      {activity.space && (
-                        <>
-                          <span className="text-gray-400 mx-1">in</span>
-                          <span className="text-purple-300 font-medium">{activity.space}</span>
-                        </>
-                      )}
-                    </>
+                {/* Post Content */}
+                <div className="px-6 pb-4">
+                  <div className="text-white mb-3 leading-relaxed">
+                    <span>{activity.action}</span>
+                    {activity.target && (
+                      <>
+                        {activity.space && (
+                          <>
+                            <span className="text-gray-400 mx-1">in</span>
+                            <span className="text-purple-300 font-medium">{activity.space}</span>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {activity.details && (
+                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">{activity.details}</p>
+                  )}
+
+                  {/* Media Content */}
+                  {activity.media && activity.media.type === 'image' && (
+                    <div className="mb-4 rounded-xl overflow-hidden">
+                      <img
+                        src={activity.media.url}
+                        alt="Shared content"
+                        className="w-full max-h-96 object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+
+                  {activity.media && activity.media.type === 'video' && (
+                    <div className="mb-4">
+                      <VideoPlayer
+                        src={activity.media.url}
+                        thumbnail={activity.media.thumbnail}
+                        title={activity.target}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+
+                  {activity.media && activity.media.type === 'audio' && (
+                    <div className="mb-4">
+                      <AudioPlayer
+                        src={activity.media.url}
+                        title={activity.target || 'Audio Track'}
+                        artist={activity.media.artist || activity.user.name}
+                        artwork={activity.user.avatar}
+                        duration={activity.media.duration}
+                        showDownload={true}
+                        onLike={() => handleLike(activity.id)}
+                        onShare={() => console.log('Share audio:', activity.id)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Resonance Data */}
+                  {activity.resonanceData && (
+                    <div className="flex items-center space-x-4 mb-4 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 
+                                  rounded-lg border border-cyan-500/20">
+                      <div className="flex items-center space-x-2">
+                        <Zap className="w-4 h-4 text-cyan-400" />
+                        <span className="text-sm text-gray-300">Resonance Lock:</span>
+                        <span className="text-sm font-mono text-cyan-400">
+                          {(activity.resonanceData.strength * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-300">Time:</span>
+                        <span className="text-sm font-mono text-green-400">
+                          {activity.resonanceData.timeToLock}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {activity.details && (
-                  <p className="text-gray-300 text-sm mb-4 leading-relaxed">{activity.details}</p>
-                )}
+                {/* Post Actions */}
+                {activity.metrics && (
+                  <div className="px-6 py-4 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      {/* Engagement Actions */}
+                      <div className="flex items-center space-x-6">
+                        <button
+                          onClick={() => handleLike(activity.id)}
+                          className={`flex items-center space-x-2 transition-colors group ${
+                            activity.metrics.hasLiked ? 'text-pink-400' : 'text-gray-400 hover:text-pink-400'
+                          }`}
+                        >
+                          <Heart className={`w-5 h-5 ${activity.metrics.hasLiked ? 'fill-current' : 'group-hover:fill-current'}`} />
+                          <span className="text-sm font-medium">{formatNumber(activity.metrics.likes)}</span>
+                        </button>
+                        
+                        <button className="flex items-center space-x-2 text-gray-400 hover:text-blue-400 transition-colors">
+                          <MessageCircle className="w-5 h-5" />
+                          <span className="text-sm font-medium">{formatNumber(activity.metrics.comments)}</span>
+                        </button>
+                        
+                        <button className="flex items-center space-x-2 text-gray-400 hover:text-green-400 transition-colors">
+                          <Share className="w-5 h-5" />
+                          <span className="text-sm font-medium">{formatNumber(activity.metrics.shares)}</span>
+                        </button>
+                      </div>
 
-                {/* Media Content */}
-                {activity.media && activity.media.type === 'image' && (
-                  <div className="mb-4 rounded-xl overflow-hidden">
-                    <img
-                      src={activity.media.url}
-                      alt="Shared content"
-                      className="w-full max-h-96 object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                )}
-
-                {activity.media && activity.media.type === 'video' && (
-                  <div className="mb-4">
-                    <VideoPlayer
-                      src={activity.media.url}
-                      thumbnail={activity.media.thumbnail}
-                      title={activity.target}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-
-                {activity.media && activity.media.type === 'audio' && (
-                  <div className="mb-4">
-                    <AudioPlayer
-                      src={activity.media.url}
-                      title={activity.target || 'Audio Track'}
-                      artist={activity.media.artist || activity.user.name}
-                      artwork={activity.user.avatar}
-                      duration={activity.media.duration}
-                      showDownload={true}
-                      onLike={() => handleLike(activity.id)}
-                      onShare={() => console.log('Share audio:', activity.id)}
-                    />
-                  </div>
-                )}
-
-                {/* Resonance Data */}
-                {activity.resonanceData && (
-                  <div className="flex items-center space-x-4 mb-4 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 
-                                rounded-lg border border-cyan-500/20">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm text-gray-300">Resonance Lock:</span>
-                      <span className="text-sm font-mono text-cyan-400">
-                        {(activity.resonanceData.strength * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-300">Time:</span>
-                      <span className="text-sm font-mono text-green-400">
-                        {activity.resonanceData.timeToLock}
-                      </span>
+                      {/* Save/Bookmark */}
+                      <button
+                        onClick={() => handleBookmark(activity.id)}
+                        className={`p-2 rounded-full transition-colors ${
+                          activity.metrics.hasBookmarked 
+                            ? 'text-yellow-400 bg-yellow-400/10' 
+                            : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10'
+                        }`}
+                      >
+                        <Bookmark className={`w-4 h-4 ${activity.metrics.hasBookmarked ? 'fill-current' : ''}`} />
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Post Actions */}
-              {activity.metrics && (
-                <div className="px-6 py-4 border-t border-white/10">
-                  <div className="flex items-center justify-between">
-                    {/* Engagement Actions */}
-                    <div className="flex items-center space-x-6">
-                      <button
-                        onClick={() => handleLike(activity.id)}
-                        className={`flex items-center space-x-2 transition-colors group ${
-                          activity.metrics.hasLiked ? 'text-pink-400' : 'text-gray-400 hover:text-pink-400'
-                        }`}
-                      >
-                        <Heart className={`w-5 h-5 ${activity.metrics.hasLiked ? 'fill-current' : 'group-hover:fill-current'}`} />
-                        <span className="text-sm font-medium">{formatNumber(activity.metrics.likes)}</span>
-                      </button>
-                      
-                      <button className="flex items-center space-x-2 text-gray-400 hover:text-blue-400 transition-colors">
-                        <MessageCircle className="w-5 h-5" />
-                        <span className="text-sm font-medium">{formatNumber(activity.metrics.comments)}</span>
-                      </button>
-                      
-                      <button className="flex items-center space-x-2 text-gray-400 hover:text-green-400 transition-colors">
-                        <Share className="w-5 h-5" />
-                        <span className="text-sm font-medium">{formatNumber(activity.metrics.shares)}</span>
-                      </button>
+            );
+          }
+          
+          // Thumbnail View
+          if (viewMode === 'thumbnail') {
+            return (
+              <div
+                key={activity.id}
+                className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/8 
+                         transition-all duration-200 overflow-hidden"
+              >
+                <div className="p-4">
+                  <div className="flex items-start space-x-3">
+                    {/* User Avatar */}
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={activity.user.avatar}
+                        alt={activity.user.name}
+                        className="w-8 h-8 rounded-full object-cover border border-white/10"
+                      />
+                      <div className={`absolute -bottom-1 -right-1 p-0.5 rounded-full bg-slate-800 border border-white/10 ${iconColor}`}>
+                        <ActivityIcon className="w-2 h-2" />
+                      </div>
                     </div>
-
-                    {/* Save/Bookmark */}
-                    <button
-                      onClick={() => handleBookmark(activity.id)}
-                      className={`p-2 rounded-full transition-colors ${
-                        activity.metrics.hasBookmarked 
-                          ? 'text-yellow-400 bg-yellow-400/10' 
-                          : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10'
-                      }`}
-                    >
-                      <Bookmark className={`w-4 h-4 ${activity.metrics.hasBookmarked ? 'fill-current' : ''}`} />
-                    </button>
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Header */}
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="font-medium text-white text-sm">{activity.user.name}</span>
+                        <span className="text-xs text-gray-400">{activity.user.username}</span>
+                        <span className="text-xs text-gray-500">•</span>
+                        <span className="text-xs text-gray-500">{activity.timestamp}</span>
+                      </div>
+                      
+                      {/* Action and Details */}
+                      <div className="text-sm text-gray-300 mb-2">
+                        {activity.action}
+                        {activity.space && (
+                          <>
+                            <span className="text-gray-400 mx-1">in</span>
+                            <span className="text-purple-300 font-medium">{activity.space}</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Media Thumbnail */}
+                      {activity.media && (
+                        <div className="mb-2 rounded-lg overflow-hidden">
+                          {activity.media.type === 'image' && (
+                            <img
+                              src={activity.media.url}
+                              alt="Content"
+                              className="w-full h-24 object-cover"
+                            />
+                          )}
+                          {activity.media.type === 'video' && (
+                            <div className="relative">
+                              <img
+                                src={activity.media.thumbnail}
+                                alt="Video thumbnail"
+                                className="w-full h-24 object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center">
+                                  <div className="w-4 h-4 border-l-4 border-white border-y-2 border-y-transparent border-r-0 ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Actions */}
+                      {activity.metrics && (
+                        <div className="flex items-center space-x-4 text-xs text-gray-400">
+                          <button
+                            onClick={() => handleLike(activity.id)}
+                            className={`flex items-center space-x-1 transition-colors ${
+                              activity.metrics.hasLiked ? 'text-pink-400' : 'hover:text-pink-400'
+                            }`}
+                          >
+                            <Heart className={`w-3 h-3 ${activity.metrics.hasLiked ? 'fill-current' : ''}`} />
+                            <span>{formatNumber(activity.metrics.likes)}</span>
+                          </button>
+                          <button className="flex items-center space-x-1 hover:text-blue-400 transition-colors">
+                            <MessageCircle className="w-3 h-3" />
+                            <span>{formatNumber(activity.metrics.comments)}</span>
+                          </button>
+                          <button className="flex items-center space-x-1 hover:text-green-400 transition-colors">
+                            <Share className="w-3 h-3" />
+                            <span>{formatNumber(activity.metrics.shares)}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
+            );
+          }
+          
+          // Compact View
+          return (
+            <div
+              key={activity.id}
+              className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 hover:bg-white/8 
+                       transition-all duration-200 p-3"
+            >
+              <div className="flex items-center space-x-2">
+                {/* Compact Avatar */}
+                <div className="relative flex-shrink-0">
+                  <img
+                    src={activity.user.avatar}
+                    alt={activity.user.name}
+                    className="w-6 h-6 rounded-full object-cover border border-white/10"
+                  />
+                  <div className={`absolute -bottom-0.5 -right-0.5 p-0.5 rounded-full bg-slate-800 ${iconColor}`}>
+                    <ActivityIcon className="w-1.5 h-1.5" />
+                  </div>
+                </div>
+
+                {/* Compact Content */}
+                <div className="flex-1 min-w-0 flex items-center space-x-2">
+                  <span className="font-medium text-white text-sm">{activity.user.name}</span>
+                  <span className="text-xs text-gray-300 truncate flex-1">
+                    {activity.action}
+                    {activity.space && (
+                      <>
+                        <span className="text-gray-400 mx-1">in</span>
+                        <span className="text-purple-300">{activity.space}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                
+                {/* Media Preview */}
+                {activity.media && (
+                  <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                    <img
+                      src={activity.media.thumbnail || activity.media.url}
+                      alt="Media"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Compact Actions */}
+                {activity.metrics && (
+                  <div className="flex items-center space-x-2 text-xs text-gray-400">
+                    <button
+                      onClick={() => handleLike(activity.id)}
+                      className={`flex items-center space-x-1 transition-colors ${
+                        activity.metrics.hasLiked ? 'text-pink-400' : 'hover:text-pink-400'
+                      }`}
+                    >
+                      <Heart className={`w-3 h-3 ${activity.metrics.hasLiked ? 'fill-current' : ''}`} />
+                      <span>{formatNumber(activity.metrics.likes)}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Timestamp */}
+                <span className="text-xs text-gray-500 whitespace-nowrap">{activity.timestamp}</span>
+              </div>
             </div>
           );
         })}
