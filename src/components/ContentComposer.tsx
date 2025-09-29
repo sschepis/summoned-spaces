@@ -275,8 +275,8 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
                     <button
                       onClick={handlePost}
                       disabled={!content.trim() && attachedFiles.length === 0}
-                      className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                               rounded-l-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
+                      className="px-6 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
+                               rounded-l-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                                duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
                                disabled:cursor-not-allowed flex items-center space-x-2"
                     >

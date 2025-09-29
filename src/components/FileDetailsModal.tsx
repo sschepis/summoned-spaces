@@ -182,8 +182,7 @@ export function FileDetailsModal({ isOpen, onClose, file }: FileDetailsModalProp
                     <h3 className="text-sm font-medium text-gray-400 mb-2">Tags</h3>
                     <div className="flex flex-wrap gap-2">
                       {file.tags.map((tag, index) => (
-                        <span key={index} className="px-2 py-1 bg-purple-500/20 text-purple-300 
-                       <span key={index} className="px-2 py-1 bg-blue-500/20 text-blue-300 
+                        <span key={index} className="px-2 py-1 bg-blue-500/20 text-blue-300 
                                                    text-xs rounded-full border border-blue-500/30">
                           {tag}
                         </span>
