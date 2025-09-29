@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark, Grid3X3, List, Minimize2 } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
@@ -201,8 +201,11 @@ const activityColors = {
   space_joined: 'text-indigo-400'
 };
 
+type ViewMode = 'card' | 'thumbnail' | 'compact';
+
 export function PublicActivityStream() {
   const [activities, setActivities] = useState(mockActivityStream);
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
   
   const handleNewPost = (content: any) => {
     // Create new activity from the post content
@@ -285,8 +288,51 @@ export function PublicActivityStream() {
         <div className="lg:col-span-2">
       {/* Feed Header */}
           <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
-        <h1 className="text-2xl font-bold text-white">Feed</h1>
-        <p className="text-gray-400 text-sm">See what's happening in your network</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Feed</h1>
+            <p className="text-gray-400 text-sm">See what's happening in your network</p>
+          </div>
+          
+          {/* View Mode Toolbar */}
+          <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('card')}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === 'card'
+                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
+                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
+              }`}
+              title="Card View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={() => setViewMode('thumbnail')}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === 'thumbnail'
+                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
+                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
+              }`}
+              title="Thumbnail View"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={() => setViewMode('compact')}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === 'compact'
+                  ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
+                  : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
+              }`}
+              title="Compact View"
+            >
+              <Minimize2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Content Composer */}
