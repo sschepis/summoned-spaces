@@ -4,6 +4,7 @@ import { SpaceCard } from './SpaceCard';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { PublicActivityStream } from './PublicActivityStream';
 import { UserDiscovery } from './UserDiscovery';
+import { SpaceDiscovery } from './SpaceDiscovery';
 import { ActivityFeed } from './ActivityFeed';
 
 interface DashboardProps {
@@ -61,6 +62,7 @@ const mockSpaces = [
 export function Dashboard({ onViewSpace }: DashboardProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'spaces' | 'activity' | 'discover'>('spaces');
+  const [discoverTab, setDiscoverTab] = useState<'people' | 'spaces'>('people');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -69,8 +71,8 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
         <nav className="flex space-x-8 border-b border-white/10">
           {[
             { id: 'spaces', label: 'Your Spaces' },
-            { id: 'activity', label: 'Network Activity' },
-            { id: 'discover', label: 'Discover People' }
+            { id: 'activity', label: 'Network Activity' },  
+            { id: 'discover', label: 'Discover' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -123,9 +125,42 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
         </div>
       )}
 
-      {activeTab === 'activity' && <PublicActivityStream />}
+      {activeTab === 'activity' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <PublicActivityStream />
+          </div>
+        </div>
+      )}
       
-      {activeTab === 'discover' && <UserDiscovery />}
+      {activeTab === 'discover' && (
+        <div className="space-y-8">
+          {/* Toggle between People and Spaces */}
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-2 bg-white/10 rounded-lg p-1">
+              {[
+                { id: 'people', label: 'Discover People' },
+                { id: 'spaces', label: 'Discover Spaces' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setDiscoverTab(tab.id as any)}
+                  className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
+                    discoverTab === tab.id
+                      ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
+                      : 'text-gray-400 hover:text-cyan-300 hover:bg-white/10'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {discoverTab === 'people' && <UserDiscovery />}
+          {discoverTab === 'spaces' && <SpaceDiscovery />}
+        </div>
+      )}
 
       <CreateSpaceModal
         isOpen={isCreateModalOpen}
