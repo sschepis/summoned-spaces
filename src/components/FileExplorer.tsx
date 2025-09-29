@@ -1,27 +1,5 @@
 import { useState, useRef } from 'react';
-import { 
-  Search, 
-  Grid3X3, 
-  List, 
-  Filter, 
-  SortAsc, 
-  MoreHorizontal, 
-  Download, 
-  Eye, 
-  Trash2,
-  Star,
-  Clock,
-  User,
-  FileText,
-  Image,
-  Video,
-  Music,
-  Archive,
-  Code,
-  Database,
-  Zap,
-  ChevronDown
-} from 'lucide-react';
+import { Search, Grid3x3 as Grid3X3, List, Filter, Import as SortAsc, MoreHorizontal, Download, Eye, Trash2, Star, Clock, User, FileText, Image, Video, Music, Archive, Code, Database, Zap, ChevronDown } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 
 interface FileItem {

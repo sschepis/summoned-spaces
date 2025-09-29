@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, Plus, Upload, Settings, Users, Zap } from 'lucide-react';
 import { VolumeCard } from './VolumeCard';
 import { FileUploadZone } from './FileUploadZone';
+import { FileExplorer } from './FileExplorer';
 import { MemberList } from './MemberList';
 import { ResonanceLockingVisualizer } from './ResonanceLockingVisualizer';
 import { SpaceSettings } from './SpaceSettings';
@@ -46,18 +47,29 @@ const mockVolumes = [
 ];
 
 export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
-  const [activeTab, setActiveTab] = useState<'volumes' | 'upload' | 'members' | 'resonance'>('volumes');
+  const [activeTab, setActiveTab] = useState<'files' | 'volumes' | 'upload' | 'members' | 'resonance'>('files');
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFileDetails, setShowFileDetails] = useState(false);
 
   const tabs = [
+    { id: 'files', label: 'Files', icon: Zap },
     { id: 'volumes', label: 'Volumes', icon: Zap },
     { id: 'upload', label: 'Upload', icon: Upload },
     { id: 'members', label: 'Members', icon: Users },
     { id: 'resonance', label: 'Resonance', icon: Zap }
   ];
+
+  const handleFileSelect = (file: any) => {
+    setSelectedFile(file);
+    setShowFileDetails(true);
+  };
+
+  const handleFileAction = (action: string, fileIds: string[]) => {
+    console.log('File action:', action, fileIds);
+    // Handle file actions like summon, delete, etc.
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,6 +110,14 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
           ))}
         </nav>
       </div>
+
+      {activeTab === 'files' && (
+        <FileExplorer
+          spaceId={spaceId || ''}
+          onFileSelect={handleFileSelect}
+          onFileAction={handleFileAction}
+        />
+      )}
 
       {activeTab === 'volumes' && (
         <div>
