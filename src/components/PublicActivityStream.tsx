@@ -233,9 +233,6 @@ export function PublicActivityStream() {
       {/* View Mode Controls */}
       <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
         <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-full 
           <h2 className="text-lg font-semibold text-white">Activity Feed</h2>
           
           {/* View Mode Toolbar */}
