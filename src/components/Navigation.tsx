@@ -88,24 +88,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
         {/* Stats Row */}
         <div className="py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              {stats.map((stat, index) => (
-                <div key={stat.label} className="flex items-center space-x-2">
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                  <div className="flex items-baseline space-x-2">
-                    <span className="text-sm font-bold text-white">{stat.value}</span>
-                    <span className="text-xs text-gray-400">{stat.label}</span>
-                  </div>
-                  <span className="text-xs text-green-400">{stat.change}</span>
-                </div>
-              ))}
+            <div className="text-sm text-gray-300">
+              <span className="text-white font-medium">12</span> spaces, <span className="text-white font-medium">247</span> members, <span className="text-white font-medium">1.2k</span> resonance events, <span className="text-white font-medium">12ms</span> response, health:
             </div>
-            
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-xs font-medium text-white">Global Resonance Health</div>
-                <div className="text-xs text-gray-400">Network-wide quantum coherence</div>
-              </div>
               <div className="text-sm font-bold text-cyan-400">94.7%</div>
               <div className="w-32">
                 <ResonanceIndicator strength={0.947} size="small" animated />
