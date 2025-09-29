@@ -32,15 +32,16 @@ const analyticsData = {
 
 export function AnalyticsBoard() {
   return (
-    <div className="space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Analytics Dashboard</h2>
-        <p className="text-gray-400">Comprehensive insights into your quantum collaboration network</p>
-      </div>
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Analytics Dashboard</h2>
+          <p className="text-gray-400">Comprehensive insights into your quantum collaboration network</p>
+        </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { label: 'Total Spaces', value: analyticsData.overview.totalSpaces, icon: Database, color: 'text-cyan-400' },
           { label: 'Files Managed', value: analyticsData.overview.totalFiles.toLocaleString(), icon: BarChart3, color: 'text-purple-400' },
@@ -140,6 +141,7 @@ export function AnalyticsBoard() {
           <button className="w-full text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
             View full activity log
           </button>
+        </div>
         </div>
       </div>
     </div>
