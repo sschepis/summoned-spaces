@@ -3,7 +3,7 @@ import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
-import { SpaceInfoSidebar } from './SpaceInfoSidebar';
+import { UserNetworkSidebar } from './UserNetworkSidebar';
 
 interface ActivityItem {
   id: string;
@@ -290,8 +290,16 @@ export function PublicActivityStream() {
           <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Feed</h1>
-            <p className="text-gray-400 text-sm">See what's happening in your network</p>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-full 
+                            flex items-center justify-center">
+                <span className="text-white font-bold text-lg">You</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Your Network</h1>
+                <p className="text-gray-400 text-sm">Posts from people you follow and spaces you're in</p>
+              </div>
+            </div>
           </div>
           
           {/* View Mode Toolbar */}
@@ -746,7 +754,7 @@ export function PublicActivityStream() {
         {/* Sidebar Column */}
         <div className="lg:col-span-1">
           <div className="sticky top-8">
-            <SpaceInfoSidebar />
+            <UserNetworkSidebar />
           </div>
         </div>
       </div>
