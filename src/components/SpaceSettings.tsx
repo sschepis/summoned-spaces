@@ -394,9 +394,8 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-               className="px-6 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
-                     rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
+              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
+                       rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                        duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
             >
               <Save className="w-4 h-4" />

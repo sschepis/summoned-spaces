@@ -182,7 +182,6 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
                 <span
                    className="flex items-center space-x-1 px-2 py-1 bg-blue-500/20 text-blue-300 
                            text-sm rounded-full border border-blue-500/30">
-                >
                   <span>#{tag}</span>
                   <button
                     onClick={() => removeTag(tag)}
