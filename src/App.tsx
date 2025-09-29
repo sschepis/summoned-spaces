@@ -9,8 +9,10 @@ import { SocialNetwork } from './components/SocialNetwork';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 import { PublicActivityStream } from './components/PublicActivityStream';
 import { UserSettings } from './components/UserSettings';
+import { SystemAdmin } from './components/SystemAdmin';
+import { ContentAdmin } from './components/ContentAdmin';
 
-export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends' | 'settings';
+export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends' | 'settings' | 'system-admin' | 'content-admin';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('feed');
@@ -40,6 +42,10 @@ function App() {
         return <Dashboard onViewSpace={handleViewSpace} />;
       case 'settings':
         return <UserSettings onBack={() => setCurrentView('dashboard')} />;
+      case 'system-admin':
+        return <SystemAdmin onBack={() => setCurrentView('dashboard')} />;
+      case 'content-admin':
+        return <ContentAdmin onBack={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onViewSpace={handleViewSpace} />;
     }

@@ -1,0 +1,424 @@
+import { useState } from 'react';
+import { ArrowLeft, Users, Flag, Shield, Eye, Trash2, CheckCircle, XCircle, MessageCircle, Globe, Lock, Star, TrendingUp, AlertTriangle, Settings, Megaphone, FileText, Zap } from 'lucide-react';
+
+interface ContentAdminProps {
+  onBack: () => void;
+}
+
+const reportedContent = [
+  {
+    id: '1',
+    type: 'post',
+    content: 'This is some controversial content that has been reported by multiple users...',
+    author: 'user_12345',
+    reporter: 'concerned_user',
+    reason: 'Inappropriate content',
+    timestamp: '2 hours ago',
+    status: 'pending',
+    reportCount: 3
+  },
+  {
+    id: '2',
+    type: 'space',
+    content: 'Quantum Conspiracy Theories Hub',
+    author: 'conspiracy_theorist',
+    reporter: 'quantum_researcher',
+    reason: 'Misinformation',
+    timestamp: '5 hours ago',
+    status: 'reviewing',
+    reportCount: 7
+  },
+  {
+    id: '3',
+    type: 'user',
+    content: '@spammer_account',
+    author: 'spammer_account',
+    reporter: 'multiple_users',
+    reason: 'Spam and harassment',
+    timestamp: '1 day ago',
+    status: 'pending',
+    reportCount: 12
+  }
+];
+
+const userStats = [
+  { id: '1', name: 'Dr. Sarah Chen', username: '@sarahchen_quantum', status: 'verified', joinDate: '2023-01-15', posts: 245, followers: 2847, reports: 0, lastActive: '2 hours ago' },
+  { id: '2', name: 'Marcus Rodriguez', username: '@marcustech', status: 'active', joinDate: '2023-03-22', posts: 189, followers: 892, reports: 1, lastActive: '1 hour ago' },
+  { id: '3', name: 'Suspicious User', username: '@fake_account_123', status: 'flagged', joinDate: '2024-01-10', posts: 2, followers: 5, reports: 8, lastActive: '3 days ago' }
+];
+
+const spaceStats = [
+  { id: '1', name: 'Quantum Computing Research', creator: 'Dr. Sarah Chen', members: 2847, posts: 1249, status: 'active', created: '6 months ago', reports: 0 },
+  { id: '2', name: 'Crypto Speculation Hub', creator: 'crypto_whale', members: 156, posts: 89, status: 'under_review', created: '2 weeks ago', reports: 4 },
+  { id: '3', name: 'Academic Papers', creator: 'university_admin', members: 892, posts: 567, status: 'active', created: '1 year ago', reports: 0 }
+];
+
+const announcements = [
+  { id: '1', title: 'Platform Maintenance Scheduled', content: 'Scheduled maintenance window this weekend...', status: 'active', created: '2 days ago', views: 1247 },
+  { id: '2', title: 'New Resonance Features', content: 'Exciting new quantum features coming soon...', status: 'draft', created: '1 week ago', views: 0 },
+  { id: '3', title: 'Community Guidelines Update', content: 'Updated community guidelines now in effect...', status: 'active', created: '1 month ago', views: 5689 }
+];
+
+export function ContentAdmin({ onBack }: ContentAdminProps) {
+  const [activeTab, setActiveTab] = useState<'reports' | 'users' | 'spaces' | 'posts' | 'analytics' | 'announcements' | 'policies'>('reports');
+
+  const tabs = [
+    { id: 'reports', label: 'Content Reports', icon: Flag },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'spaces', label: 'Space Management', icon: Globe },
+    { id: 'posts', label: 'Post Moderation', icon: MessageCircle },
+    { id: 'analytics', label: 'Content Analytics', icon: TrendingUp },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'policies', label: 'Policies', icon: FileText }
+  ];
+
+  const handleContentAction = (contentId: string, action: 'approve' | 'remove' | 'flag') => {
+    console.log(`${action} content ${contentId}`);
+  };
+
+  const handleUserAction = (userId: string, action: 'verify' | 'suspend' | 'ban') => {
+    console.log(`${action} user ${userId}`);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': case 'verified': return 'text-green-400';
+      case 'pending': case 'reviewing': return 'text-yellow-400';
+      case 'flagged': case 'under_review': return 'text-red-400';
+      case 'suspended': return 'text-orange-400';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': case 'verified': return CheckCircle;
+      case 'pending': case 'reviewing': return AlertTriangle;
+      case 'flagged': case 'under_review': return Flag;
+      case 'suspended': return XCircle;
+      default: return Eye;
+    }
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    return num.toString();
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex items-center space-x-4 mb-8">
+        <button
+          onClick={onBack}
+          className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Content Management</h1>
+          <p className="text-gray-400">Moderate content, manage users, and maintain community standards</p>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-white/10 mb-8">
+        <nav className="flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab.id
+                  ? 'border-cyan-400 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {activeTab === 'reports' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Reported Content</h2>
+            <div className="flex items-center space-x-2 text-sm text-gray-400">
+              <Flag className="w-4 h-4" />
+              <span>{reportedContent.length} pending reports</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {reportedContent.map((report) => (
+              <div key={report.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                        report.type === 'post' ? 'bg-blue-500/20 text-blue-300' :
+                        report.type === 'space' ? 'bg-purple-500/20 text-purple-300' :
+                        'bg-orange-500/20 text-orange-300'
+                      }`}>
+                        {report.type.toUpperCase()}
+                      </span>
+                      <span className="text-gray-400 text-sm">{report.timestamp}</span>
+                      <span className="text-red-400 text-sm">{report.reportCount} reports</span>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <h3 className="text-white font-medium mb-2">Reported Content:</h3>
+                      <p className="text-gray-300 bg-white/5 p-3 rounded-lg">{report.content}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-400">Author:</span>
+                        <span className="text-white ml-2">{report.author}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Reported by:</span>
+                        <span className="text-white ml-2">{report.reporter}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Reason:</span>
+                        <span className="text-yellow-300 ml-2">{report.reason}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-2 ml-6">
+                    <button
+                      onClick={() => handleContentAction(report.id, 'approve')}
+                      className="px-4 py-2 bg-green-500/20 text-green-300 text-sm rounded-lg 
+                               hover:bg-green-500/30 transition-colors flex items-center space-x-2"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      onClick={() => handleContentAction(report.id, 'remove')}
+                      className="px-4 py-2 bg-red-500/20 text-red-300 text-sm rounded-lg 
+                               hover:bg-red-500/30 transition-colors flex items-center space-x-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove</span>
+                    </button>
+                    <button
+                      onClick={() => handleContentAction(report.id, 'flag')}
+                      className="px-4 py-2 bg-yellow-500/20 text-yellow-300 text-sm rounded-lg 
+                               hover:bg-yellow-500/30 transition-colors flex items-center space-x-2"
+                    >
+                      <Flag className="w-4 h-4" />
+                      <span>Flag</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">User Management</h2>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search users..."
+                className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white 
+                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <button className="px-4 py-2 bg-cyan-500/20 text-cyan-300 text-sm rounded-lg hover:bg-cyan-500/30 transition-colors">
+                Export Data
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10">
+              <div className="grid grid-cols-8 gap-4 text-sm font-medium text-gray-400">
+                <div>User</div>
+                <div>Status</div>
+                <div>Join Date</div>
+                <div>Posts</div>
+                <div>Followers</div>
+                <div>Reports</div>
+                <div>Last Active</div>
+                <div>Actions</div>
+              </div>
+            </div>
+            
+            <div className="divide-y divide-white/10">
+              {userStats.map((user) => {
+                const StatusIcon = getStatusIcon(user.status);
+                return (
+                  <div key={user.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
+                    <div className="grid grid-cols-8 gap-4 items-center">
+                      <div>
+                        <div className="font-medium text-white">{user.name}</div>
+                        <div className="text-sm text-gray-400">{user.username}</div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <StatusIcon className={`w-4 h-4 ${getStatusColor(user.status)}`} />
+                        <span className={`text-sm capitalize ${getStatusColor(user.status)}`}>
+                          {user.status}
+                        </span>
+                      </div>
+                      
+                      <div className="text-sm text-gray-300">{user.joinDate}</div>
+                      <div className="text-sm text-white">{user.posts}</div>
+                      <div className="text-sm text-white">{formatNumber(user.followers)}</div>
+                      <div className={`text-sm ${user.reports > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                        {user.reports}
+                      </div>
+                      <div className="text-sm text-gray-400">{user.lastActive}</div>
+                      
+                      <div className="flex items-center space-x-1">
+                        {user.status !== 'verified' && (
+                          <button
+                            onClick={() => handleUserAction(user.id, 'verify')}
+                            className="p-1 text-green-400 hover:text-green-300 transition-colors"
+                            title="Verify user"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleUserAction(user.id, 'suspend')}
+                          className="p-1 text-yellow-400 hover:text-yellow-300 transition-colors"
+                          title="Suspend user"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleUserAction(user.id, 'ban')}
+                          className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                          title="Ban user"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'spaces' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Space Management</h2>
+            <button className="px-4 py-2 bg-purple-500/20 text-purple-300 text-sm rounded-lg hover:bg-purple-500/30 transition-colors">
+              Create Featured Space
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {spaceStats.map((space) => {
+              const StatusIcon = getStatusIcon(space.status);
+              return (
+                <div key={space.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-500 
+                                    rounded-xl flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">
+                          {space.name.split(' ').map(word => word[0]).join('')}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{space.name}</h3>
+                        <p className="text-sm text-gray-400">Created by {space.creator} • {space.created}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-8">
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-white">{formatNumber(space.members)}</div>
+                        <div className="text-xs text-gray-400">Members</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-white">{formatNumber(space.posts)}</div>
+                        <div className="text-xs text-gray-400">Posts</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`text-sm font-bold ${space.reports > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {space.reports}
+                        </div>
+                        <div className="text-xs text-gray-400">Reports</div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <StatusIcon className={`w-4 h-4 ${getStatusColor(space.status)}`} />
+                        <span className={`text-sm capitalize ${getStatusColor(space.status)}`}>
+                          {space.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'announcements' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Platform Announcements</h2>
+            <button className="px-4 py-2 bg-cyan-500/20 text-cyan-300 text-sm rounded-lg hover:bg-cyan-500/30 transition-colors flex items-center space-x-2">
+              <Megaphone className="w-4 h-4" />
+              <span>New Announcement</span>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {announcements.map((announcement) => (
+              <div key={announcement.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-lg font-semibold text-white">{announcement.title}</h3>
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                        announcement.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {announcement.status}
+                      </span>
+                    </div>
+                    <p className="text-gray-300 mb-3">{announcement.content}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-400">
+                      <span>Created {announcement.created}</span>
+                      <span>•</span>
+                      <span>{formatNumber(announcement.views)} views</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button className="px-3 py-1.5 bg-blue-500/20 text-blue-300 text-sm rounded-lg hover:bg-blue-500/30 transition-colors">
+                      Edit
+                    </button>
+                    {announcement.status === 'draft' && (
+                      <button className="px-3 py-1.5 bg-green-500/20 text-green-300 text-sm rounded-lg hover:bg-green-500/30 transition-colors">
+                        Publish
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -151,6 +151,31 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </button>
+                  
+                  <div className="my-1 border-t border-white/10"></div>
+                  
+                  <button
+                    onClick={() => {
+                      onViewChange('system-admin');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-gray-300 hover:text-white 
+                             hover:bg-white/10 transition-colors flex items-center space-x-3"
+                  >
+                    <Database className="w-4 h-4" />
+                    <span>System Admin</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      onViewChange('content-admin');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-gray-300 hover:text-white 
+                             hover:bg-white/10 transition-colors flex items-center space-x-3"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Content Admin</span>
+                  </button>
                   <button
                     onClick={() => {
                       // TODO: Navigate to user profile
