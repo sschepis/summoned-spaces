@@ -1,0 +1,98 @@
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { SpaceCard } from './SpaceCard';
+import { CreateSpaceModal } from './CreateSpaceModal';
+import { QuickStats } from './QuickStats';
+
+interface DashboardProps {
+  onViewSpace: (spaceId: string) => void;
+}
+
+const mockSpaces = [
+  {
+    id: '1',
+    name: 'Project Quantum',
+    description: 'Research collaboration space for quantum computing papers',
+    memberCount: 12,
+    volumeCount: 8,
+    resonanceStrength: 0.87,
+    lastActivity: '2 hours ago',
+    role: 'owner' as const,
+    color: 'from-purple-500 to-pink-500'
+  },
+  {
+    id: '2',
+    name: 'Design System',
+    description: 'Shared design assets and component library',
+    memberCount: 25,
+    volumeCount: 15,
+    resonanceStrength: 0.92,
+    lastActivity: '1 hour ago',
+    role: 'admin' as const,
+    color: 'from-blue-500 to-cyan-500'
+  },
+  {
+    id: '3',
+    name: 'Research Papers',
+    description: 'Academic collaboration and paper sharing',
+    memberCount: 8,
+    volumeCount: 23,
+    resonanceStrength: 0.73,
+    lastActivity: '5 minutes ago',
+    role: 'contributor' as const,
+    color: 'from-green-500 to-emerald-500'
+  },
+  {
+    id: '4',
+    name: 'Temporal Archive',
+    description: 'Time-limited document exchange',
+    memberCount: 6,
+    volumeCount: 4,
+    resonanceStrength: 0.68,
+    lastActivity: '12 hours ago',
+    role: 'viewer' as const,
+    color: 'from-orange-500 to-red-500',
+    isTemporary: true
+  }
+];
+
+export function Dashboard({ onViewSpace }: DashboardProps) {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <QuickStats />
+      
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Your Spaces</h2>
+          <p className="text-gray-400">Manage your collaborative quantum spaces</p>
+        </div>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg 
+                   hover:from-cyan-400 hover:to-purple-400 transition-all duration-200 
+                   shadow-lg hover:shadow-xl flex items-center space-x-2 group"
+        >
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
+          <span className="font-medium">Create Space</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {mockSpaces.map((space) => (
+          <SpaceCard
+            key={space.id}
+            space={space}
+            onSelect={() => onViewSpace(space.id)}
+          />
+        ))}
+      </div>
+
+      <CreateSpaceModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
+    </div>
+  );
+}
