@@ -4,6 +4,7 @@ import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
 import { UserNetworkSidebar } from './UserNetworkSidebar';
+import { SpaceInfoSidebar } from './SpaceInfoSidebar';
 
 interface ActivityItem {
   id: string;
