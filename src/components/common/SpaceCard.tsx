@@ -153,7 +153,7 @@ export function SpaceCard({
           {/* Tags */}
           <div className="flex flex-wrap gap-1">
             {space.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="purple" size="sm">
+              <Badge key={tag} variant="blue" size="sm">
                 {tag}
               </Badge>
             ))}

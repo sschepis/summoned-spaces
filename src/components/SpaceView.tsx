@@ -128,7 +128,8 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
             <button
               onClick={() => setShowUploadZone(true)}
               className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                       rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
+               className="px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
+                       rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                        duration-200 flex items-center space-x-2 text-sm"
             >
               <Plus className="w-4 h-4" />

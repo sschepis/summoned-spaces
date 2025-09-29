@@ -185,7 +185,7 @@ export function ResonanceLockingVisualizer() {
                   <div className="text-xs text-gray-400 mb-1">Resonance Strength</div>
                   <div className="bg-gray-700 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-purple-400 to-pink-500 h-2 rounded-full 
+                      className="bg-gradient-to-r from-blue-400 to-cyan-500 h-2 rounded-full 
                                transition-all duration-1000"
                       style={{ width: `${file.resonanceStrength * 100}%` }}
                     />

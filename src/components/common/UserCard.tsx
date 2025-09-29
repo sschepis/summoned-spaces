@@ -96,7 +96,7 @@ export function UserCard({
           {showTags && user.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {user.tags.map((tag) => (
-                <Badge key={tag} variant="purple" size="sm">
+                <Badge key={tag} variant="blue" size="sm">
                   {tag}
                 </Badge>
               ))}
