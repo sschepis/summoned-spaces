@@ -110,7 +110,6 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
               />
             ))}
           </Grid>
-          </div>
         </div>
       )}
 
