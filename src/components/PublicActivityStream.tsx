@@ -7,7 +7,40 @@ import { UserNetworkSidebar } from './UserNetworkSidebar';
 import { ActivityCard } from './common/ActivityCard';
 import { FeedLayout } from './layouts/FeedLayout';
 import { Tabs } from './ui/Tabs';
-import { ActivityItem } from '../types/common';
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+    isFollowing: boolean;
+    verified?: boolean;
+  };
+  action: string;
+  target?: string;
+  space?: string;
+  details?: string;
+  timestamp: string;
+  metrics?: {
+    likes: number;
+    comments: number;
+    shares: number;
+    hasLiked: boolean;
+    hasBookmarked?: boolean;
+  };
+  media?: {
+    type: string;
+    url: string;
+    thumbnail?: string;
+  };
+  resonanceData?: {
+    strength: number;
+    timeToLock: string;
+  };
+}
 
 const mockActivityStream: ActivityItem[] = [
   {
@@ -226,19 +259,19 @@ export function PublicActivityStream() {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'file_contributed':
-        return Globe;
+        return Share;
       case 'resonance_locked':
-        return Globe;
+        return Heart;
       case 'space_created':
         return Globe;
       case 'user_followed':
-        return Globe;
+        return Heart;
       case 'file_summoned':
-        return Globe;
+        return Share;
       case 'collaboration_started':
         return Globe;
       default:
-        return Globe;
+        return Share;
     }
   };
 
@@ -247,15 +280,15 @@ export function PublicActivityStream() {
       case 'file_contributed':
         return 'text-cyan-400';
       case 'resonance_locked':
-        return 'text-purple-400';
-      case 'space_created':
-        return 'text-green-400';
-      case 'user_followed':
-        return 'text-blue-400';
-      case 'file_summoned':
-        return 'text-orange-400';
-      case 'collaboration_started':
         return 'text-pink-400';
+      case 'space_created':
+        return 'text-purple-400';
+      case 'user_followed':
+        return 'text-green-400';
+      case 'file_summoned':
+        return 'text-yellow-400';
+      case 'collaboration_started':
+        return 'text-orange-400';
       default:
         return 'text-gray-400';
     }
