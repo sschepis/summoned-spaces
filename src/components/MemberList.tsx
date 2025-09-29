@@ -70,7 +70,6 @@ export function MemberList() {
           <h2 className="text-2xl font-semibold text-white mb-2">Space Members</h2>
           <p className="text-gray-400">Manage access and permissions</p>
         </div>
-        <button className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
         <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
                          rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                          duration-200 flex items-center space-x-2">
