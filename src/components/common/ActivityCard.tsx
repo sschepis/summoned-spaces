@@ -3,40 +3,10 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-
-interface Activity {
-  id: string;
-  type: string;
-  user: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-    isFollowing: boolean;
-    verified?: boolean;
-  };
-  action: string;
-  target?: string;
-  space?: string;
-  details?: string;
-  timestamp: string;
-  metrics?: {
-    likes: number;
-    comments: number;
-    shares: number;
-    hasLiked?: boolean;
-    hasBookmarked?: boolean;
-  };
-  media?: {
-    type: 'image' | 'video' | 'audio' | 'file';
-    url: string;
-    thumbnail?: string;
-  };
-  isPinned?: boolean;
-}
+import { ActivityItem } from '../../types/common';
 
 interface ActivityCardProps {
-  activity: Activity;
+  activity: ActivityItem;
   onLike?: (activityId: string) => void;
   onBookmark?: (activityId: string) => void;
   onFollow?: (userId: string) => void;

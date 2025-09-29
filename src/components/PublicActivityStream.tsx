@@ -7,6 +7,7 @@ import { UserNetworkSidebar } from './UserNetworkSidebar';
 import { ActivityCard } from './common/ActivityCard';
 import { FeedLayout } from './layouts/FeedLayout';
 import { Tabs } from './ui/Tabs';
+import { ActivityItem } from '../types/common';
 const mockActivityStream: ActivityItem[] = [
   {
     id: '1',

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SpaceCard } from './common/SpaceCard';
 import { Grid } from './ui/Grid';
 import { Tabs } from './ui/Tabs';
+import { Space } from '../types/common';
 
 const suggestedSpaces: Space[] = [
   {

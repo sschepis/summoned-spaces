@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { UserCard } from './common/UserCard';
 import { Grid } from './ui/Grid';
+import { User } from '../types/common';
 
 const suggestedUsers: User[] = [
   {

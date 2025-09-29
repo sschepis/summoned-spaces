@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, Server, Database, Users, Zap, AlertTriangle, CheckCircle, Activity, Clock, Shield, Settings, Trash2, RefreshCw, Download, Upload, Globe, Lock, Eye, TrendingUp, BarChart3 } from 'lucide-react';
+import { Server, Database, Users, Zap, AlertTriangle, CheckCircle, Activity, Clock, Shield, Settings, RefreshCw, Globe, TrendingUp, BarChart3 } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
+import { PageHeader } from './ui/PageHeader';
+import { Tabs } from './ui/Tabs';
+import { StatsGrid } from './common/StatsGrid';
+import { Card } from './ui/Card';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 interface SystemAdminProps {
   onBack: () => void;
@@ -53,92 +59,38 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
     { id: 'security', label: 'Security', icon: Shield }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'text-green-400';
-      case 'warning': return 'text-yellow-400';
-      case 'error': return 'text-red-400';
-      case 'maintenance': return 'text-blue-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy': return CheckCircle;
-      case 'warning': return AlertTriangle;
-      case 'error': return AlertTriangle;
-      case 'maintenance': return Settings;
-      default: return Activity;
-    }
-  };
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
-    return num.toString();
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center space-x-4 mb-8">
-        <button
-          onClick={onBack}
-          className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">System Administration</h1>
-          <p className="text-gray-400">Monitor and manage quantum-inspired infrastructure</p>
-        </div>
-      </div>
+      <PageHeader
+        title="System Administration"
+        subtitle="Monitor and manage quantum-inspired infrastructure"
+        onBack={onBack}
+      />
 
       {/* Tab Navigation */}
-      <div className="border-b border-white/10 mb-8">
-        <nav className="flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-cyan-400 text-cyan-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
+      <Tabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as any)}
+        className="mb-8"
+      />
 
       {activeTab === 'overview' && (
         <div className="space-y-8">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { label: 'Total Users', value: formatNumber(systemMetrics.totalUsers), icon: Users, color: 'text-cyan-400' },
-              { label: 'Active Spaces', value: formatNumber(systemMetrics.totalSpaces), icon: Globe, color: 'text-purple-400' },
-              { label: 'Files Managed', value: formatNumber(systemMetrics.totalFiles), icon: Database, color: 'text-green-400' },
+          <StatsGrid
+            stats={[
+              { label: 'Total Users', value: systemMetrics.totalUsers, icon: Users, color: 'text-cyan-400' },
+              { label: 'Active Spaces', value: systemMetrics.totalSpaces, icon: Globe, color: 'text-purple-400' },
+              { label: 'Files Managed', value: systemMetrics.totalFiles, icon: Database, color: 'text-green-400' },
               { label: 'System Uptime', value: systemMetrics.uptime, icon: Clock, color: 'text-orange-400' }
-            ].map((metric) => (
-              <div key={metric.label} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                <div className="flex items-center justify-between mb-4">
-                  <metric.icon className={`w-8 h-8 ${metric.color}`} />
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-white">{metric.value}</div>
-                    <div className="text-sm text-gray-400">{metric.label}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+            ]}
+            cols={4}
+          />
 
-          {/* System Health */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            {/* System Health */}
+            <Card>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                 <Zap className="w-5 h-5 text-cyan-400" />
                 <span>Resonance System Health</span>
@@ -163,42 +115,36 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <Card>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                 <Activity className="w-5 h-5 text-green-400" />
                 <span>Live Activity</span>
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Active Users</span>
-                  <span className="text-green-400 font-medium">{formatNumber(systemMetrics.activeUsers)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Active Resonance Locks</span>
-                  <span className="text-cyan-400 font-medium">{formatNumber(systemMetrics.activeResonanceLocks)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Pending Summons</span>
-                  <span className="text-yellow-400 font-medium">{systemMetrics.pendingSummons}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Network Throughput</span>
-                  <span className="text-purple-400 font-medium">{systemMetrics.networkThroughput}</span>
-                </div>
+                {[
+                  { label: 'Active Users', value: systemMetrics.activeUsers, color: 'text-green-400' },
+                  { label: 'Active Resonance Locks', value: systemMetrics.activeResonanceLocks, color: 'text-cyan-400' },
+                  { label: 'Pending Summons', value: systemMetrics.pendingSummons, color: 'text-yellow-400' },
+                  { label: 'Network Throughput', value: systemMetrics.networkThroughput, color: 'text-purple-400' }
+                ].map((metric) => (
+                  <div key={metric.label} className="flex items-center justify-between">
+                    <span className="text-gray-400 text-sm">{metric.label}</span>
+                    <span className={`font-medium ${metric.color}`}>{metric.value}</span>
+                  </div>
+                ))}
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* Recent System Events */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+          <Card>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-white">Recent System Events</h3>
-              <button className="px-3 py-1.5 bg-cyan-500/20 text-cyan-300 text-sm rounded-lg hover:bg-cyan-500/30 transition-colors">
-                <RefreshCw className="w-4 h-4 inline mr-1" />
+              <Button variant="secondary" size="sm" icon={RefreshCw}>
                 Refresh
-              </button>
+              </Button>
             </div>
             <div className="space-y-3">
               {recentEvents.map((event, index) => (
@@ -225,44 +171,53 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {activeTab === 'nodes' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-white">Network Nodes</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Network Nodes</h2>
+              <p className="text-gray-400">Monitor global infrastructure status</p>
+            </div>
             <div className="flex items-center space-x-3">
-              <button className="px-4 py-2 bg-green-500/20 text-green-300 text-sm rounded-lg hover:bg-green-500/30 transition-colors">
-                <Server className="w-4 h-4 inline mr-1" />
+              <Button variant="success" size="sm" icon={Server}>
                 Deploy Node
-              </button>
-              <button className="px-4 py-2 bg-cyan-500/20 text-cyan-300 text-sm rounded-lg hover:bg-cyan-500/30 transition-colors">
-                <RefreshCw className="w-4 h-4 inline mr-1" />
+              </Button>
+              <Button variant="secondary" size="sm" icon={RefreshCw}>
                 Refresh All
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {nodeStatus.map((node) => {
-              const StatusIcon = getStatusIcon(node.status);
+              const getStatusColor = (status: string) => {
+                switch (status) {
+                  case 'healthy': return 'success';
+                  case 'warning': return 'warning';
+                  case 'error': return 'error';
+                  case 'maintenance': return 'info';
+                  default: return 'default';
+                }
+              };
+
               return (
-                <div key={node.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                <Card key={node.id}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className={`p-3 rounded-lg ${
-                        node.status === 'healthy' ? 'bg-green-500/20' :
-                        node.status === 'warning' ? 'bg-yellow-500/20' :
-                        node.status === 'error' ? 'bg-red-500/20' : 'bg-blue-500/20'
-                      }`}>
-                        <StatusIcon className={`w-6 h-6 ${getStatusColor(node.status)}`} />
+                      <div className="p-3 rounded-lg bg-white/10">
+                        <Server className="w-6 h-6 text-cyan-400" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">{node.id}</h3>
                         <p className="text-sm text-gray-400">{node.region}</p>
                       </div>
+                      <Badge variant={getStatusColor(node.status) as any}>
+                        {node.status}
+                      </Badge>
                     </div>
 
                     <div className="grid grid-cols-4 gap-8 text-center">
@@ -277,12 +232,6 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                       <div>
                         <div className="text-sm font-bold text-white">{node.uptime}</div>
                         <div className="text-xs text-gray-400">Uptime</div>
-                      </div>
-                      <div>
-                        <div className={`text-sm font-bold capitalize ${getStatusColor(node.status)}`}>
-                          {node.status}
-                        </div>
-                        <div className="text-xs text-gray-400">Status</div>
                       </div>
                     </div>
                   </div>
@@ -303,7 +252,7 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                       />
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -312,10 +261,10 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
 
       {activeTab === 'resonance' && (
         <div className="space-y-6">
-          <h2 className="text-2xl font-semibold text-white">Resonance Engine Status</h2>
+          <h2 className="text-2xl font-semibold text-white mb-6">Resonance Engine Status</h2>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <Card>
               <h3 className="text-lg font-semibold text-white mb-4">Prime Generation</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -331,9 +280,9 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                   <span className="text-purple-400 font-mono">982,451,653</span>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <Card>
               <h3 className="text-lg font-semibold text-white mb-4">Quantum Processing</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -349,9 +298,9 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                   <span className="text-orange-400">1.2s</span>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <Card>
               <h3 className="text-lg font-semibold text-white mb-4">System Load</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -367,7 +316,7 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                   <span className="text-blue-400">12</span>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}

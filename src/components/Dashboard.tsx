@@ -10,6 +10,7 @@ import { PageLayout } from './layouts/PageLayout';
 import { Tabs } from './ui/Tabs';
 import { Button } from './ui/Button';
 import { Grid } from './ui/Grid';
+import { Space } from '../types/common';
 
 interface DashboardProps {
   onViewSpace: (spaceId: string) => void;

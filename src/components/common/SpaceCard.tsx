@@ -3,25 +3,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { ResonanceIndicator } from '../ResonanceIndicator';
-
-interface Space {
-  id: string;
-  name: string;
-  description: string;
-  isPublic: boolean;
-  isJoined?: boolean;
-  memberCount: number;
-  fileCount?: number;
-  resonanceStrength?: number;
-  recentActivity?: string;
-  creator?: string;
-  createdAt?: string;
-  tags: string[];
-  role?: 'owner' | 'admin' | 'contributor' | 'viewer';
-  color?: string;
-  cover?: string;
-  growthRate?: number;
-}
+import { Space } from '../../types/common';
 
 interface SpaceCardProps {
   space: Space;

@@ -4,8 +4,9 @@ import { ContentComposer } from './ContentComposer';
 import { ActivityCard } from './common/ActivityCard';
 import { FeedLayout } from './layouts/FeedLayout';
 import { UserNetworkSidebar } from './UserNetworkSidebar';
+import { ActivityItem } from '../types/common';
 
-const mockPersonalPosts: PersonalPost[] = [
+const mockPersonalPosts: ActivityItem[] = [
   {
     id: '1',
     type: 'file_contributed',

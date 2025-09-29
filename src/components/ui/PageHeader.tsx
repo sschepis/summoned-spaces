@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ArrowLeft, LucideIcon } from 'lucide-react';
+import { ArrowLeft, Video as LucideIcon } from 'lucide-react';
 import { Button } from './Button';
 
 interface PageHeaderProps {

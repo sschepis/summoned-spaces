@@ -3,24 +3,7 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-
-interface User {
-  id: string;
-  name: string;
-  username: string;
-  avatar: string;
-  bio: string;
-  isFollowing: boolean;
-  isVerified?: boolean;
-  stats: {
-    followers: number;
-    following: number;
-    spaces: number;
-    resonanceScore: number;
-  };
-  recentActivity: string;
-  tags: string[];
-}
+import { User } from '../../types/common';
 
 interface UserCardProps {
   user: User;
