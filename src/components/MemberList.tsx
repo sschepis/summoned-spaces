@@ -151,5 +151,3 @@ export function MemberList() {
     </div>
   );
 }
-  )
-}
