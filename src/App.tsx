@@ -7,7 +7,7 @@ import { AnalyticsBoard } from './components/AnalyticsBoard';
 import { DirectMessages } from './components/DirectMessages';
 import { SocialNetwork } from './components/SocialNetwork';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
-import { PublicActivityStream } from './components/PublicActivityStream';
+import { PersonalHomeFeed } from './components/PersonalHomeFeed';
 
 export type View = 'feed' | 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends';
 
@@ -24,7 +24,7 @@ function App() {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'feed':
-        return <PublicActivityStream />;
+        return <PersonalHomeFeed />;
       case 'space':
         return <SpaceView spaceId={selectedSpaceId} onBack={() => setCurrentView('dashboard')} />;
       case 'friends':
