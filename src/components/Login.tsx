@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Zap, Mail, Lock, ArrowRight, Github, Google } from 'lucide-react';
+import { Eye, EyeOff, Zap, Mail, Lock, ArrowRight, Github, ToggleLeft as Google } from 'lucide-react';
 
 interface LoginProps {
   onSwitchToRegister: () => void;
