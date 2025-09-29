@@ -28,8 +28,6 @@ const notificationIcons = {
 const notificationStyles = {
   success: 'bg-green-500/10 border-green-500/20 text-green-300',
   error: 'bg-red-500/10 border-red-500/20 text-red-300',
-  info: 'bg-blue-500/10 border-blue-500/20 text-blue-300',
-  resonance: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300'
   resonance: 'bg-blue-500/10 border-blue-500/20 text-blue-300'
 };
 

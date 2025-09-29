@@ -180,8 +180,6 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
             <div className="flex flex-wrap gap-2 mb-2">
               {tags.map((tag, index) => (
                 <span
-                  key={index}
-                  className="flex items-center space-x-1 px-2 py-1 bg-purple-500/20 text-purple-300 
                    className="flex items-center space-x-1 px-2 py-1 bg-blue-500/20 text-blue-300 
                            text-sm rounded-full border border-blue-500/30">
                 >

@@ -126,8 +126,6 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Virtual Volumes</h2>
             <button
-              onClick={() => setShowUploadZone(true)}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
                        rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                        duration-200 flex items-center space-x-2 text-sm"
