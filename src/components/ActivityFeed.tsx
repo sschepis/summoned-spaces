@@ -1,11 +1,22 @@
-import { Bell, FileText, Users, Zap, Upload, Download, Settings, Trash2 } from 'lucide-react';
+import { Bell, FileText, Users, Zap, Upload, Download, Settings, Trash2, UserPlus, Star, MessageSquare } from 'lucide-react';
 
 const activities = [
   {
     id: '1',
+    type: 'user_followed',
+    icon: UserPlus,
+    user: 'Dr. Sarah Chen',
+    action: 'started following',
+    target: 'Marcus Rodriguez',
+    space: null,
+    timestamp: '1 minute ago',
+    iconColor: 'text-cyan-400'
+  },
+  {
+    id: '2',
     type: 'file_summoned',
     icon: Download,
-    user: 'Dr. Sarah Chen',
+    user: 'You',
     action: 'summoned',
     target: 'quantum_algorithms.pdf',
     space: 'Project Quantum',
@@ -13,59 +24,59 @@ const activities = [
     iconColor: 'text-green-400'
   },
   {
-    id: '2',
+    id: '3',
+    type: 'space_starred',
+    icon: Star,
+    user: 'Elena Kowalski',
+    action: 'starred your space',
+    target: 'Design System Collective',
+    space: null,
+    timestamp: '8 minutes ago',
+    iconColor: 'text-yellow-400'
+  },
+  {
+    id: '4',
     type: 'file_contributed',
     icon: Upload,
     user: 'Marcus Rodriguez',
-    action: 'contributed',
+    action: 'contributed to your space',
     target: 'entanglement_theory.docx',
     space: 'Research Papers',
     timestamp: '15 minutes ago',
     iconColor: 'text-blue-400'
   },
   {
-    id: '3',
+    id: '5',
     type: 'member_joined',
     icon: Users,
-    user: 'Elena Kowalski',
-    action: 'joined space',
-    target: 'Design System',
+    user: 'James Wilson',
+    action: 'joined your space',
+    target: 'Project Quantum',
     space: null,
     timestamp: '1 hour ago',
     iconColor: 'text-purple-400'
   },
   {
-    id: '4',
+    id: '6',
+    type: 'comment_received',
+    icon: MessageSquare,
+    user: 'Dr. Amanda Liu',
+    action: 'commented on',
+    target: 'your quantum research paper',
+    space: 'Research Papers',
+    timestamp: '1.5 hours ago',
+    iconColor: 'text-blue-400'
+  },
+  {
+    id: '7',
     type: 'resonance_locked',
     icon: Zap,
     user: 'System',
-    action: 'achieved resonance lock',
+    action: 'achieved resonance lock for',
     target: 'measurement_data.csv',
-    space: 'Temporal Archive',
+    space: 'Your Space: Temporal Archive',
     timestamp: '2 hours ago',
     iconColor: 'text-cyan-400'
-  },
-  {
-    id: '5',
-    type: 'space_created',
-    icon: Settings,
-    user: 'Dr. Amanda Liu',
-    action: 'created space',
-    target: 'Mathematics Archive',
-    space: null,
-    timestamp: '3 hours ago',
-    iconColor: 'text-yellow-400'
-  },
-  {
-    id: '6',
-    type: 'file_deleted',
-    icon: Trash2,
-    user: 'James Wilson',
-    action: 'removed',
-    target: 'old_research.pdf',
-    space: 'Project Quantum',
-    timestamp: '5 hours ago',
-    iconColor: 'text-red-400'
   }
 ];
 
@@ -75,8 +86,9 @@ export function ActivityFeed() {
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center space-x-3">
           <Bell className="w-5 h-5 text-cyan-400" />
-          <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-white">Your Activity</h3>
         </div>
+        <p className="text-sm text-gray-400 mt-1">Notifications and updates for you</p>
       </div>
       
       <div className="p-6">
