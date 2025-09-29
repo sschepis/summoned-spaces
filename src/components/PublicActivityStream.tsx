@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
+import { AudioPlayer } from './AudioPlayer';
 
 interface ActivityItem {
   id: string;
@@ -31,10 +32,12 @@ interface ActivityItem {
     timeToLock: string;
   };
   media?: {
-    type: 'image' | 'video' | 'file';
+    type: 'image' | 'video' | 'audio' | 'file';
     url: string;
     thumbnail?: string;
     filename?: string;
+    artist?: string;
+    duration?: number;
   };
 }
 
