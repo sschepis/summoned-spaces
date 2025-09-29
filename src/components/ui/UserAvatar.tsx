@@ -58,7 +58,6 @@ export function UserAvatar({
           className={`${sizeClasses[size]} rounded-full object-cover border-2 border-white/10 
                    ${onClick ? 'hover:border-cyan-400/50 transition-colors' : ''}`}
         />
-      ) : (
         <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-blue-500 to-teal-500 
                       border-2 border-white/10 flex items-center justify-center
                       ${onClick ? 'hover:border-cyan-400/50 transition-colors' : ''}`}>
