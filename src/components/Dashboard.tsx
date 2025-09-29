@@ -71,6 +71,7 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
 
   return (
     <PageLayout sidebar={activeTab === 'spaces' ? <ActivityFeed /> : undefined}>
+      <>
       {/* Tab Navigation */}
       <Tabs
         tabs={[
@@ -143,6 +144,7 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
+      </>
     </PageLayout>
   );
 }
