@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Share, UserPlus, UserCheck, Zap, Upload, Download, Users, Settings, Trash2, Star, MoreHorizontal, Bookmark } from 'lucide-react';
+import { ContentComposer } from './ContentComposer';
 
 interface ActivityItem {
   id: string;
@@ -174,6 +175,27 @@ const activityColors = {
 
 export function PublicActivityStream() {
   const [activities, setActivities] = useState(mockActivityStream);
+  
+  const handleNewPost = (content: any) => {
+    // Create new activity from the post content
+    const newActivity = {
+      id: Date.now().toString(),
+      type: 'file_contributed' as const,
+      user: {
+        id: 'current-user',
+        name: 'You',
+        username: '@you',
+        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
+        isFollowing: false
+      },
+      action: content.text || 'shared new content',
+      details: content.text,
+      timestamp: 'now',
+      metrics: { likes: 0, comments: 0, shares: 0, hasLiked: false, hasBookmarked: false }
+    };
+    
+    setActivities(prev => [newActivity, ...prev]);
+  };
 
   const handleFollow = (userId: string) => {
     setActivities(prev => 
@@ -234,6 +256,11 @@ export function PublicActivityStream() {
       <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6">
         <h1 className="text-2xl font-bold text-white">Feed</h1>
         <p className="text-gray-400 text-sm">See what's happening in your network</p>
+      </div>
+
+      {/* Content Composer */}
+      <div className="mb-8">
+        <ContentComposer onPost={handleNewPost} />
       </div>
 
       <div className="space-y-6">
