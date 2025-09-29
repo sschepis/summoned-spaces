@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Image, Video, FileText, Smile, MapPin, Users, Globe, Lock, Zap, X, Plus } from 'lucide-react';
+import { Image, Video, FileText, Smile, MapPin, Users, Globe, Lock, Zap, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
 
 interface ContentComposerProps {
   onPost: (content: PostContent) => void;
@@ -13,35 +13,60 @@ interface PostContent {
     filename?: string;
     size?: string;
   }[];
-  privacy: 'public' | 'followers' | 'space';
-  spaceId?: string;
+  feedId: string;
+  feedName: string;
   location?: string;
   tags: string[];
 }
 
-const privacyOptions = [
-  { id: 'public', icon: Globe, label: 'Public', description: 'Anyone can see this post' },
-  { id: 'followers', icon: Users, label: 'Followers', description: 'Only people who follow you' },
-  { id: 'space', icon: Lock, label: 'Space Members', description: 'Members of selected space only' }
+const feedOptions = [
+  { 
+    id: 'personal-feed', 
+    name: 'Your Feed', 
+    icon: User, 
+    description: 'Share to your personal timeline',
+    type: 'personal' as const
+  },
+  { 
+    id: 'global-feed', 
+    name: 'Global Feed', 
+    icon: Globe, 
+    description: 'Share publicly to everyone',
+    type: 'global' as const
+  },
+  { 
+    id: 'photography-space', 
+    name: 'Photography Collective', 
+    icon: Hash, 
+    description: 'Space • 2.4k members',
+    type: 'space' as const
+  },
+  { 
+    id: 'music-space', 
+    name: 'Beat Makers United', 
+    icon: Hash, 
+    description: 'Space • 892 members',
+    type: 'space' as const
+  },
+  { 
+    id: 'design-space', 
+    name: 'Digital Art Hub', 
+    icon: Hash, 
+    description: 'Space • 1.2k members',
+    type: 'space' as const
+  }
 ];
 
 export function ContentComposer({ onPost }: ContentComposerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [content, setContent] = useState('');
-  const [privacy, setPrivacy] = useState<'public' | 'followers' | 'space'>('public');
-  const [selectedSpace, setSelectedSpace] = useState<string>('');
+  const [selectedFeed, setSelectedFeed] = useState(feedOptions[0]);
   const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
-  const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
+  const [showFeedSelector, setShowFeedSelector] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const mockSpaces = [
-    { id: '1', name: 'Photography Collective' },
-    { id: '2', name: 'Digital Art Hub' },
-    { id: '3', name: 'Music Producers' }
-  ];
 
   const handlePost = () => {
     if (!content.trim() && attachedFiles.length === 0) return;
@@ -49,8 +74,8 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
     const postContent: PostContent = {
       text: content,
       media: attachedFiles,
-      privacy,
-      spaceId: privacy === 'space' ? selectedSpace : undefined,
+      feedId: selectedFeed.id,
+      feedName: selectedFeed.name,
       tags
     };
 
@@ -61,7 +86,7 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
     setAttachedFiles([]);
     setTags([]);
     setIsExpanded(false);
-    setPrivacy('public');
+    setSelectedFeed(feedOptions[0]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +117,6 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
     setTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
-  const currentPrivacy = privacyOptions.find(p => p.id === privacy);
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden 
@@ -196,59 +220,6 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
         {/* Expanded Options */}
         {isExpanded && (
           <div className="mt-6 pt-4 border-t border-white/10">
-            {/* Privacy Selection */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="relative">
-                <button
-                  onClick={() => setShowPrivacyMenu(!showPrivacyMenu)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 
-                           rounded-lg text-white hover:bg-white/10 transition-colors"
-                >
-                  <currentPrivacy.icon className="w-4 h-4" />
-                  <span>{currentPrivacy?.label}</span>
-                </button>
-
-                {showPrivacyMenu && (
-                  <div className="absolute top-12 left-0 z-50 bg-slate-800 rounded-lg shadow-2xl 
-                                border border-white/10 py-2 min-w-64">
-                    {privacyOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => {
-                          setPrivacy(option.id as any);
-                          setShowPrivacyMenu(false);
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors 
-                                 flex items-start space-x-3"
-                      >
-                        <option.icon className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="text-white text-sm font-medium">{option.label}</div>
-                          <div className="text-gray-400 text-xs">{option.description}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {privacy === 'space' && (
-                <select
-                  value={selectedSpace}
-                  onChange={(e) => setSelectedSpace(e.target.value)}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white 
-                           focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                >
-                  <option value="" className="bg-slate-800">Select space...</option>
-                  {mockSpaces.map((space) => (
-                    <option key={space.id} value={space.id} className="bg-slate-800">
-                      {space.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -299,17 +270,62 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
                   Cancel
                 </button>
                 
-                <button
-                  onClick={handlePost}
-                  disabled={!content.trim() && attachedFiles.length === 0}
-                  className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                           rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
-                           duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
-                           disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>Share to Feed</span>
-                </button>
+                <div className="relative">
+                  <div className="flex items-center">
+                    <button
+                      onClick={handlePost}
+                      disabled={!content.trim() && attachedFiles.length === 0}
+                      className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
+                               rounded-l-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
+                               duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
+                               disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      <selectedFeed.icon className="w-4 h-4" />
+                      <span>Share to {selectedFeed.name}</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowFeedSelector(!showFeedSelector)}
+                      className="px-3 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
+                               rounded-r-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
+                               duration-200 shadow-lg hover:shadow-xl border-l border-white/20"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Feed Selection Dropdown */}
+                  {showFeedSelector && (
+                    <div className="absolute bottom-12 right-0 z-50 bg-slate-800 rounded-lg shadow-2xl 
+                                  border border-white/10 py-2 min-w-72">
+                      <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-white/10">
+                        Choose destination
+                      </div>
+                      {feedOptions.map((feed) => (
+                        <button
+                          key={feed.id}
+                          onClick={() => {
+                            setSelectedFeed(feed);
+                            setShowFeedSelector(false);
+                          }}
+                          className={`w-full px-4 py-3 text-left hover:bg-white/10 transition-colors 
+                                   flex items-start space-x-3 ${
+                            selectedFeed.id === feed.id ? 'bg-cyan-500/10 border-l-2 border-cyan-400' : ''
+                          }`}
+                        >
+                          <feed.icon className="w-4 h-4 text-gray-400 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="text-white text-sm font-medium">{feed.name}</div>
+                            <div className="text-gray-400 text-xs">{feed.description}</div>
+                          </div>
+                          {selectedFeed.id === feed.id && (
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -338,8 +354,8 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
           </div>
           
           <div className="text-xs text-gray-500 flex items-center space-x-1">
-            <currentPrivacy.icon className="w-3 h-3" />
-            <span>{currentPrivacy?.label}</span>
+            <selectedFeed.icon className="w-3 h-3" />
+            <span>Sharing to {selectedFeed.name}</span>
           </div>
         </div>
       )}
