@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, List, Grid3x3 as Grid3X3, Minimize2 } from 'lucide-react';
+import { Globe, List, Grid3x3 as Grid3X3, Minimize2, Heart, MessageCircle, Share } from 'lucide-react';
 import { ContentComposer } from './ContentComposer';
 import { VideoPlayer } from './VideoPlayer';
 import { AudioPlayer } from './AudioPlayer';
@@ -8,6 +8,7 @@ import { ActivityCard } from './common/ActivityCard';
 import { FeedLayout } from './layouts/FeedLayout';
 import { Tabs } from './ui/Tabs';
 import { ActivityItem } from '../types/common';
+
 const mockActivityStream: ActivityItem[] = [
   {
     id: '1',
@@ -193,7 +194,7 @@ export function PublicActivityStream() {
                       : activity.metrics.likes + 1,
                     hasLiked: !activity.metrics.hasLiked
                   }
-                : { likes: 1, comments: 0, shares: 0, hasLiked: true }
+                : { likes: 1, comments: 0, shares: 0, hasLiked: true, hasBookmarked: false }
             }
           : activity
       )
@@ -208,7 +209,7 @@ export function PublicActivityStream() {
               ...activity,
               metrics: activity.metrics
                 ? { ...activity.metrics, hasBookmarked: !activity.metrics.hasBookmarked }
-                : { likes: 0, comments: 0, shares: 0, hasBookmarked: true }
+                : { likes: 0, comments: 0, shares: 0, hasLiked: false, hasBookmarked: true }
             }
           : activity
       )
@@ -222,6 +223,44 @@ export function PublicActivityStream() {
     return num.toString();
   };
 
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'file_contributed':
+        return Globe;
+      case 'resonance_locked':
+        return Globe;
+      case 'space_created':
+        return Globe;
+      case 'user_followed':
+        return Globe;
+      case 'file_summoned':
+        return Globe;
+      case 'collaboration_started':
+        return Globe;
+      default:
+        return Globe;
+    }
+  };
+
+  const getActivityIconColor = (type: string) => {
+    switch (type) {
+      case 'file_contributed':
+        return 'text-cyan-400';
+      case 'resonance_locked':
+        return 'text-purple-400';
+      case 'space_created':
+        return 'text-green-400';
+      case 'user_followed':
+        return 'text-blue-400';
+      case 'file_summoned':
+        return 'text-orange-400';
+      case 'collaboration_started':
+        return 'text-pink-400';
+      default:
+        return 'text-gray-400';
+    }
+  };
+
   return (
     <FeedLayout
       title="Your Network"
@@ -233,7 +272,14 @@ export function PublicActivityStream() {
       {/* View Mode Controls */}
       <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-b border-white/10 p-4 mb-6 rounded-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Activity Feed</h2>
+          <div>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-full flex items-center justify-center">
+                <Globe className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Activity Feed</h2>
+            </div>
+          </div>
           
           {/* View Mode Toolbar */}
           <Tabs
@@ -251,6 +297,9 @@ export function PublicActivityStream() {
 
       <div className="space-y-6">
         {activities.map((activity) => {
+          const ActivityIcon = getActivityIcon(activity.type);
+          const iconColor = getActivityIconColor(activity.type);
+
           if (viewMode === 'card') {
             return (
               <ActivityCard
