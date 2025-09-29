@@ -127,8 +127,7 @@ export function FileUploadZone({ onClose }: FileUploadZoneProps) {
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                   className="px-6 py-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
                      rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
                      duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
                      flex items-center space-x-2"
