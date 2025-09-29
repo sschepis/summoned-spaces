@@ -11,6 +11,7 @@ interface NavigationProps {
 export function Navigation({ currentView, onViewChange }: NavigationProps) {
   const navItems = [
     { id: 'dashboard' as View, icon: Home, label: 'Spaces' },
+    { id: 'friends' as View, icon: Users, label: 'Friends' },
     { id: 'messages' as View, icon: MessageCircle, label: 'Messages' },
     { id: 'search' as View, icon: Search, label: 'Semantic Search' },
     { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },

@@ -5,9 +5,10 @@ import { SpaceView } from './components/SpaceView';
 import { SemanticSearch } from './components/SemanticSearch';
 import { AnalyticsBoard } from './components/AnalyticsBoard';
 import { DirectMessages } from './components/DirectMessages';
+import { SocialNetwork } from './components/SocialNetwork';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 
-export type View = 'dashboard' | 'space' | 'search' | 'analytics' | 'messages';
+export type View = 'dashboard' | 'space' | 'search' | 'analytics' | 'messages' | 'friends';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -23,6 +24,8 @@ function App() {
     switch (currentView) {
       case 'space':
         return <SpaceView spaceId={selectedSpaceId} onBack={() => setCurrentView('dashboard')} />;
+      case 'friends':
+        return <SocialNetwork onBack={() => setCurrentView('dashboard')} />;
       case 'messages':
         return <DirectMessages onBack={() => setCurrentView('dashboard')} />;
       case 'search':
