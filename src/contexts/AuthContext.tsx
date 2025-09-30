@@ -82,6 +82,44 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
+  // Load session from localStorage on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('holographic_session');
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        const user: User = session.user;
+        const pri: PrimeResonanceIdentity = session.pri;
+        
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: { user, token: session.token, pri },
+        });
+        
+        // Re-initialize the HolographicMemoryManager
+        holographicMemoryManager.setCurrentUser(pri);
+        console.log('Session restored for user:', user.username);
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        localStorage.removeItem('holographic_session');
+      }
+    }
+  }, []);
+
+  // Save session to localStorage whenever auth state changes
+  useEffect(() => {
+    if (state.isAuthenticated && state.user && state.token && state.pri) {
+      const session = {
+        user: state.user,
+        token: state.token,
+        pri: state.pri,
+      };
+      localStorage.setItem('holographic_session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('holographic_session');
+    }
+  }, [state.isAuthenticated, state.user, state.token, state.pri]);
+
   const login = async (username: string, password: string): Promise<void> => {
     dispatch({ type: 'AUTH_START' });
     return new Promise((resolve, reject) => {

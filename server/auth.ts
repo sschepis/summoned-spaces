@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getDatabase } from './database';
 import { generateNodeIdentity, PrimeResonanceIdentity } from './identity';
 

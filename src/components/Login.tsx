@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
 import { AuthFormLayout } from './common/forms/AuthFormLayout';
 import { FormField } from './ui/forms/FormField';
 import { FormGroup } from './ui/forms/FormGroup';
@@ -18,7 +18,7 @@ export function Login({
 }: LoginProps) {
   const { login } = useAuth();
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -37,10 +37,8 @@ export function Login({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+    if (!formData.username) {
+      newErrors.username = 'Username is required';
     }
     
     if (!formData.password) {
@@ -63,7 +61,7 @@ export function Login({
     
     try {
       // Use AuthContext login method
-      await login(formData.email, formData.password);
+      await login(formData.username, formData.password);
       onLoginSuccess();
     } catch (error) {
       setGeneralError(error instanceof Error ? error.message : 'Invalid email or password. Please try again.');
@@ -104,14 +102,14 @@ export function Login({
     >
       <FormGroup>
         <FormField
-          name="email"
-          label="Email"
-          type="email"
-          value={formData.email}
+          name="username"
+          label="Username"
+          type="text"
+          value={formData.username}
           onChange={handleChange}
-          error={errors.email}
-          icon={Mail}
-          placeholder="your@email.com"
+          error={errors.username}
+          icon={User}
+          placeholder="your_username"
           required
         />
         

@@ -54,7 +54,7 @@ export function RegisterRefactored({
       
       try {
         // Use AuthContext register method
-        await register(values.email, values.password, values.name);
+        await register(values.name, values.email, values.password);
         onRegisterSuccess();
       } catch (error) {
         setGeneralError(error instanceof Error ? error.message : 'Registration failed. Please try again.');

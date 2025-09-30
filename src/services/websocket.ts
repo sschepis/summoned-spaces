@@ -1,6 +1,8 @@
 import { ClientMessage, ServerMessage } from '../../server/protocol';
 
-const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+const WS_URL = typeof window !== 'undefined'
+    ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'
+    : 'ws://localhost:5173/ws';
 
 class WebSocketService {
     private ws: WebSocket | null = null;
@@ -22,8 +24,8 @@ class WebSocketService {
                 const message: ServerMessage = JSON.parse(event.data);
                 console.log('Received message from server:', message);
                 this.messageListeners.forEach(listener => listener(message));
-            } catch (error) {
-                console.error('Failed to parse server message:', event.data);
+            } catch (e) {
+                console.error('Failed to parse server message:', event.data, e);
             }
         };
 

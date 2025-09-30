@@ -7,11 +7,12 @@ import { PublicResonance } from '../services/holographic-memory';
 interface NetworkNode {
     userId: string;
     publicResonance: PublicResonance;
+    connectionId: string;
 }
 
-interface PostBeaconInfo {
+export interface PostBeaconInfo {
     authorId: string;
-    beacon: any; // Using 'any' for now, as the Beacon type is complex
+    beacon: unknown;
     receivedAt: number;
 }
 
@@ -26,9 +27,7 @@ type NetworkAction =
   | { type: 'ADD_BEACON'; payload: PostBeaconInfo };
 
 // Context Type
-interface NetworkContextType extends NetworkState {
-  // No actions needed from components for now
-}
+type NetworkContextType = NetworkState;
 
 // Initial State
 const initialState: NetworkState = {
@@ -41,10 +40,11 @@ const networkReducer = (state: NetworkState, action: NetworkAction): NetworkStat
   switch (action.type) {
     case 'SET_NETWORK_STATE':
       return { ...state, nodes: action.payload };
-    case 'ADD_BEACON':
+    case 'ADD_BEACON': {
       // Keep the last 20 beacons for the feed
       const updatedBeacons = [action.payload, ...state.recentBeacons].slice(0, 20);
       return { ...state, recentBeacons: updatedBeacons };
+    }
     default:
       return state;
   }

@@ -1,75 +1,32 @@
-import { useState } from 'react';
 import { UserCard } from './common/UserCard';
 import { Grid } from './ui/Grid';
-import { User } from '../types/common';
-
-const suggestedUsers: User[] = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Chen',
-    username: '@sarahchen_quantum',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Quantum computing researcher at MIT. Pioneering work in prime-resonant algorithms.',
-    isFollowing: false,
-    isVerified: true,
-    stats: { followers: 2847, following: 342, spaces: 12, resonanceScore: 0.94 },
-    recentActivity: 'Published breakthrough paper on quantum entanglement',
-    tags: ['quantum-computing', 'research', 'algorithms']
-  },
-  {
-    id: '2',
-    name: 'Elena Kowalski',
-    username: '@elenakdesign',
-    avatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Senior UX Designer creating quantum-inspired interfaces. Design systems enthusiast.',
-    isFollowing: false,
-    stats: { followers: 1203, following: 89, spaces: 8, resonanceScore: 0.87 },
-    recentActivity: 'Created new design system for quantum interfaces',
-    tags: ['design', 'ux', 'quantum-ui']
-  },
-  {
-    id: '3',
-    name: 'Marcus Rodriguez',
-    username: '@marcustech',
-    avatar: 'https://images.pexels.com/photos/2381069/pexels-photo-2381069.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Full-stack developer building the next generation of collaborative platforms.',
-    isFollowing: true,
-    stats: { followers: 892, following: 156, spaces: 15, resonanceScore: 0.91 },
-    recentActivity: 'Achieved perfect resonance lock on complex dataset',
-    tags: ['development', 'collaboration', 'full-stack']
-  },
-  {
-    id: '4',
-    name: 'Dr. James Wilson',
-    username: '@jwilson_research',
-    avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Physics researcher exploring quantum measurement theory and practical applications.',
-    isFollowing: false,
-    isVerified: true,
-    stats: { followers: 1567, following: 203, spaces: 6, resonanceScore: 0.89 },
-    recentActivity: 'Shared breakthrough measurement data',
-    tags: ['physics', 'quantum-theory', 'measurements']
-  }
-];
+import { useNetworkState } from '../contexts/NetworkContext';
+import { useAuth } from '../contexts/AuthContext';
+import { webSocketService } from '../services/websocket';
 
 export function UserDiscovery() {
-  const [users, setUsers] = useState(suggestedUsers);
+  const { nodes } = useNetworkState();
+  const { user: currentUser } = useAuth();
+
+  const users = nodes
+    .filter(node => node.userId !== currentUser?.id)
+    .map(node => ({
+      id: node.userId,
+      name: node.userId.substring(0, 8),
+      username: `@${node.userId.substring(0, 8)}`,
+      avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
+      bio: 'A resonant being in the quantum network.',
+      isFollowing: false,
+      stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
+      recentActivity: 'Active on network',
+      tags: ['live-node', 'holographic'],
+    }));
 
   const handleFollow = (userId: string) => {
-    setUsers(prev =>
-      prev.map(user =>
-        user.id === userId
-          ? { 
-              ...user, 
-              isFollowing: !user.isFollowing,
-              stats: {
-                ...user.stats,
-                followers: user.isFollowing ? user.stats.followers - 1 : user.stats.followers + 1
-              }
-            }
-          : user
-      )
-    );
+    webSocketService.sendMessage({
+      kind: 'follow',
+      payload: { userIdToFollow: userId }
+    });
   };
 
   return (

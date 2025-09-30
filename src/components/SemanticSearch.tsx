@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, ArrowLeft, Sparkles, User, Users, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Sparkles, User, Users, FileText } from 'lucide-react';
 import { PageLayout } from './layouts/PageLayout';
 import { SearchInput } from './ui/SearchInput';
 import { Tabs } from './ui/Tabs';
@@ -10,6 +10,8 @@ import { SpaceCard } from './common/SpaceCard';
 import { SearchResultsSection, PostCard } from './common/search';
 import type { PostResult } from './common/search';
 import { User as UserType, Space as SpaceType } from '../types/common';
+import { webSocketService } from '../services/websocket';
+import { ServerMessage } from '../../server/protocol';
 
 interface SemanticSearchProps {
   onBack: () => void;
@@ -17,62 +19,6 @@ interface SemanticSearchProps {
 
 type SearchCategory = 'all' | 'people' | 'spaces' | 'posts';
 type SortOption = 'relevance' | 'recent' | 'popular' | 'trending';
-
-const mockPeople: UserType[] = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Chen',
-    username: '@sarahchen_quantum',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Quantum computing researcher at MIT. Pioneering work in prime-resonant algorithms and quantum file systems.',
-    isFollowing: false,
-    isVerified: true,
-    stats: { followers: 2847, following: 342, spaces: 12, resonanceScore: 0.94 },
-    recentActivity: 'Published breakthrough paper on quantum entanglement',
-    tags: ['quantum-computing', 'research', 'algorithms', 'physics']
-  },
-];
-
-const mockSpaces: SpaceType[] = [
-  {
-    id: '1',
-    name: 'Quantum Computing Research Hub',
-    description: 'Advanced quantum computing discussions, research papers, and collaborative breakthrough projects.',
-    isPublic: true,
-    isJoined: false,
-    memberCount: 2847,
-    fileCount: 1249,
-    resonanceStrength: 0.94,
-    recentActivity: 'New breakthrough paper on quantum supremacy shared',
-    creator: 'Dr. Sarah Chen',
-    tags: ['quantum', 'computing', 'research', 'physics'],
-    growthRate: 23.5
-  },
-];
-
-const mockPosts: PostResult[] = [
-  {
-    id: '1',
-    author: {
-      name: 'Dr. Sarah Chen',
-      username: '@sarahchen_quantum',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-      verified: true
-    },
-    content: 'Just achieved a breakthrough in quantum resonance algorithms! Our new approach reduces file summoning time by 73%. The implications for collaborative platforms are incredible 🚀⚡',
-    timestamp: '2 hours ago',
-    likes: 247,
-    comments: 68,
-    shares: 43,
-    hasLiked: false,
-    space: 'Quantum Computing Research Hub',
-    tags: ['quantum', 'breakthrough', 'algorithms'],
-    media: {
-      type: 'image',
-      url: 'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=800'
-    }
-  },
-];
 
 const trendingSearches = [
   'quantum algorithms',
@@ -88,6 +34,55 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<{ people: UserType[], spaces: SpaceType[], posts: PostResult[] }>({ people: [], spaces: [], posts: [] });
 
+  useEffect(() => {
+    const handleMessage = (message: ServerMessage) => {
+      if (message.kind === 'searchResponse') {
+        setResults({
+          people: message.payload.users.map(u => ({
+            id: u.user_id,
+            name: u.username,
+            username: `@${u.username}`,
+            avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${u.user_id}`,
+            bio: 'Network user',
+            isFollowing: false,
+            stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
+            recentActivity: 'Active',
+            tags: [],
+          })),
+          spaces: message.payload.spaces.map(s => ({
+            id: s.space_id,
+            name: s.name,
+            description: s.description,
+            isPublic: true,
+            isJoined: false,
+            memberCount: 0,
+            tags: [],
+          })),
+          posts: message.payload.beacons.map((b) => ({
+            id: b.beacon_id,
+            author: {
+              name: b.author_id.substring(0, 8),
+              username: `@${b.author_id.substring(0, 8)}`,
+              avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${b.author_id}`,
+              verified: false,
+            },
+            content: '[Holographic Memory - Click to Summon]',
+            timestamp: 'Recent',
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            hasLiked: false,
+            tags: ['memory'],
+          })),
+        });
+        setIsSearching(false);
+      }
+    };
+
+    webSocketService.addMessageListener(handleMessage);
+    return () => webSocketService.removeMessageListener(handleMessage);
+  }, []);
+
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults({ people: [], spaces: [], posts: [] });
@@ -95,14 +90,10 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
     }
 
     setIsSearching(true);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    setResults({
-      people: mockPeople,
-      spaces: mockSpaces,
-      posts: mockPosts,
+    webSocketService.sendMessage({
+      kind: 'search',
+      payload: { query: searchQuery, category }
     });
-    setIsSearching(false);
   };
 
   const handleFollow = (personId: string) => {

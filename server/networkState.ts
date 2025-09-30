@@ -1,9 +1,9 @@
-import type { WebSocket } from 'ws';
 import type { PublicResonance } from './identity';
 
 interface NetworkNode {
     userId: string; // This is the nodeAddress from the PRI
     publicResonance: PublicResonance;
+    connectionId: string;
 }
 
 export class NetworkStateManager {
@@ -21,7 +21,7 @@ export class NetworkStateManager {
      * @param publicResonance The public part of the user's PRI.
      */
     addNode(connectionId: string, userId: string, publicResonance: PublicResonance): void {
-        const newNode: NetworkNode = { userId, publicResonance };
+        const newNode: NetworkNode = { userId, publicResonance, connectionId };
         this.nodes.set(connectionId, newNode);
         console.log(`Node ${userId} added to network state.`);
         this.broadcastNetworkUpdate();

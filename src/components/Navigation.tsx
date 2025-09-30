@@ -3,6 +3,7 @@ import { Search, Home, Zap, Settings, BarChart3, MessageCircle } from 'lucide-re
 import { Users, Database, Clock, User, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 import { View } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavigationProps {
   currentView: View;
@@ -11,6 +12,7 @@ interface NavigationProps {
 }
 
 export function Navigation({ currentView, onViewChange, onLogout }: NavigationProps) {
+  const { user } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -34,36 +36,6 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
     { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },
   ];
 
-  const stats = [
-    {
-      label: 'Total Spaces',
-      value: '12',
-      icon: Database,
-      change: '+2 this week',
-      color: 'text-cyan-400'
-    },
-    {
-      label: 'Active Members',
-      value: '247',
-      icon: Users,
-      change: '+18 today',
-      color: 'text-green-400'
-    },
-    {
-      label: 'Resonance Events',
-      value: '1.2k',
-      icon: Zap,
-      change: '+156 today',
-      color: 'text-purple-400'
-    },
-    {
-      label: 'Avg Response Time',
-      value: '12ms',
-      icon: Clock,
-      change: '-5ms improved',
-      color: 'text-orange-400'
-    }
-  ];
 
   return (
     <nav className="relative z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
@@ -133,8 +105,8 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                       className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
                     />
                     <div>
-                      <div className="font-semibold text-white">Your Name</div>
-                      <div className="text-sm text-gray-400">@yourhandle</div>
+                      <div className="font-semibold text-white">{user?.name || 'Your Name'}</div>
+                      <div className="text-sm text-gray-400">{user?.username || '@yourhandle'}</div>
                     </div>
                   </div>
                 </div>

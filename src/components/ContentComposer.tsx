@@ -1,12 +1,8 @@
 import { useState, useRef } from 'react';
-import { Image, Video, FileText, Smile, MapPin, Users, Globe, Lock, Zap, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
+import { Image, Video, FileText, Smile, MapPin, Globe, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
 import { holographicMemoryManager } from '../services/holographic-memory';
 import { webSocketService } from '../services/websocket';
 import { useAuth } from '../contexts/AuthContext';
-
-interface ContentComposerProps {
-  // onPost is no longer needed as we will handle submission internally
-}
 
 const spaceOptions = [
   { 
@@ -46,12 +42,12 @@ const spaceOptions = [
   }
 ];
 
-export function ContentComposer({}: ContentComposerProps) {
+export function ContentComposer() {
   const { isAuthenticated } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true); // Start expanded
   const [content, setContent] = useState('Hello, holographic world!'); // Default content
   const [selectedSpace, setSelectedSpace] = useState(spaceOptions[0]);
-  const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<{type: string, url: string, filename: string, size: string}[]>([]);
   const [showSpaceSelector, setShowSpaceSelector] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
@@ -71,7 +67,7 @@ export function ContentComposer({}: ContentComposerProps) {
       webSocketService.sendMessage({
         kind: 'submitPostBeacon',
         payload: {
-          // @ts-ignore - In a real scenario, the fragment would be converted to a Beacon type
+          // @ts-expect-error - In a real scenario, the fragment would be converted to a Beacon type
           beacon: fragment
         }
       });
@@ -276,8 +272,8 @@ export function ContentComposer({}: ContentComposerProps) {
                                duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
                                disabled:cursor-not-allowed flex items-center space-x-2"
                     >
-                      <selectedSpace.icon className="w-4 h-4" />
-                      <span>Share to {selectedSpace.name}</span>
+                      <selectedSpace.icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="whitespace-nowrap">Share...</span>
                     </button>
                     
                     <button

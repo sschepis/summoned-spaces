@@ -37,7 +37,51 @@ export function initializeDatabase(): Promise<void> {
                 return reject(err);
             }
             console.log('Users table is ready.');
-            resolve();
+
+            const createBeaconsTableSql = `
+                CREATE TABLE IF NOT EXISTS beacons (
+                    beacon_id TEXT PRIMARY KEY,
+                    beacon_type TEXT NOT NULL,
+                    author_id TEXT NOT NULL,
+                    prime_indices TEXT NOT NULL,
+                    epoch INTEGER NOT NULL,
+                    fingerprint BLOB NOT NULL,
+                    signature BLOB NOT NULL,
+                    metadata TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (author_id) REFERENCES users (user_id)
+                );
+            `;
+
+            db.run(createBeaconsTableSql, (err) => {
+                if (err) {
+                    console.error('Error creating beacons table', err.message);
+                    return reject(err);
+                }
+                console.log('Beacons table is ready.');
+
+                // Spaces table - minimal metadata for discovery only
+                // Membership, roles, etc. are stored as holographic beacons
+                const createSpacesTableSql = `
+                    CREATE TABLE IF NOT EXISTS spaces (
+                        space_id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        is_public INTEGER NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                `;
+
+                db.run(createSpacesTableSql, (err) => {
+                    if (err) {
+                        console.error('Error creating spaces table', err.message);
+                        return reject(err);
+                    }
+                    console.log('Spaces table is ready.');
+                    console.log('HOLOGRAPHIC ARCHITECTURE: User data (follows, memberships, likes, comments) stored as beacons only.');
+                    resolve();
+                });
+            });
         });
     });
 }

@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { PageLayout } from './layouts/PageLayout';
 import { SpaceCard } from './common/SpaceCard';
+import { Space } from '../types/common';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { PublicActivityStream as PublicActivityStream } from './PublicActivityStream';
 import { UserDiscovery } from './UserDiscovery';
 import { SpaceDiscovery } from './SpaceDiscovery';
+import { ContentComposer } from './ContentComposer';
+import { NetworkTopology } from './NetworkTopology';
 import { ActivityFeed } from './ActivityFeed';
 import { Tabs } from './ui/Tabs';
 import { Button } from './ui/Button';
 import { Grid } from './ui/Grid';
 import { EmptyState } from './ui/EmptyState';
-import { componentHelpers } from '../utils/componentHelpers';
 
 interface DashboardProps {
   onViewSpace: (spaceId: string) => void;
@@ -23,7 +25,7 @@ const SpacesTab = ({
   onViewSpace, 
   onCreateSpace 
 }: {
-  spaces: any[];
+  spaces: Space[];
   onViewSpace: (spaceId: string) => void;
   onCreateSpace: () => void;
 }) => (
@@ -90,7 +92,7 @@ const DiscoverTab = ({
           { id: 'spaces', label: 'Discover Spaces' }
         ]}
         activeTab={discoverTab}
-        onTabChange={(tab) => setDiscoverTab(tab as any)}
+        onTabChange={(tab) => setDiscoverTab(tab as 'people' | 'spaces')}
       />
     </div>
     
@@ -101,35 +103,10 @@ const DiscoverTab = ({
 
 export function Dashboard({ onViewSpace }: DashboardProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'spaces' | 'activity' | 'discover'>('spaces');
+  const [activeTab, setActiveTab] = useState<'holographic' | 'spaces' | 'activity' | 'discover'>('holographic');
   const [discoverTab, setDiscoverTab] = useState<'people' | 'spaces'>('people');
   
-  // Use component helpers for mock data
-  const mockSpaces = componentHelpers.generateMockSpaces(4).map((space, index) => ({
-    ...space,
-    name: ['Project Quantum', 'Design System', 'Research Papers', 'Temporal Archive'][index],
-    description: [
-      'Research collaboration space for quantum computing papers',
-      'Shared design assets and component library', 
-      'Academic collaboration and paper sharing',
-      'Time-limited document exchange'
-    ][index],
-    role: (['owner', 'admin', 'contributor', 'viewer'] as const)[index],
-    color: [
-      'from-purple-500 to-pink-500',
-      'from-blue-500 to-cyan-500', 
-      'from-green-500 to-emerald-500',
-      'from-orange-500 to-red-500'
-    ][index],
-    isTemporary: index === 3,
-    volumeCount: [8, 15, 23, 4][index],
-    lastActivity: ['2 hours ago', '1 hour ago', '5 minutes ago', '12 hours ago'][index]
-  }));
-
-  const breadcrumbs = [
-    { label: 'Home', href: '/' },
-    { label: 'Dashboard' }
-  ];
+  const mockSpaces: Space[] = []; // Remove mock data
 
   const tabContent = {
     spaces: (
@@ -140,6 +117,21 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
       />
     ),
     activity: <ActivityTab />,
+    holographic: (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-4 text-purple-300">1. Create a Memory</h2>
+          <ContentComposer />
+          <div className="mt-8">
+            <NetworkTopology />
+          </div>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold mb-4 text-purple-300">2. Observe Network Activity</h2>
+          <ActivityFeed />
+        </div>
+      </div>
+    ),
     discover: (
       <DiscoverTab
         discoverTab={discoverTab}
@@ -158,12 +150,13 @@ export function Dashboard({ onViewSpace }: DashboardProps) {
       {/* Tab Navigation */}
       <Tabs
         tabs={[
+          { id: 'holographic', label: 'Holographic Network' },
           { id: 'spaces', label: 'Your Spaces' },
-          { id: 'activity', label: 'Network Activity' },  
+          { id: 'activity', label: 'Network Activity' },
           { id: 'discover', label: 'Discover' }
         ]}
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as any)}
+        onTabChange={(tab) => setActiveTab(tab as 'holographic' | 'spaces' | 'activity' | 'discover')}
         className="mb-8"
       />
 

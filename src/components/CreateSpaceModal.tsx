@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Zap, Clock, Users, Globe } from 'lucide-react';
+import { webSocketService } from '../services/websocket';
 
 interface CreateSpaceModalProps {
   isOpen: boolean;
@@ -19,8 +20,16 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle space creation
-    console.log('Creating space:', formData);
+    
+    webSocketService.sendMessage({
+      kind: 'createSpace',
+      payload: {
+        name: formData.name,
+        description: formData.description,
+        isPublic: formData.privacy === 'public'
+      }
+    });
+    
     onClose();
   };
 

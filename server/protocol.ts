@@ -29,6 +29,7 @@ export interface SubmitPostBeaconMessage {
     kind: 'submitPostBeacon';
     payload: {
         beacon: Beacon;
+        beaconType?: string; // 'post', 'user_following_list', 'user_spaces_list', etc.
     };
 }
 
@@ -48,7 +49,50 @@ export interface AcceptTeleportMessage {
     };
 }
 
-export type ClientMessage = RegisterMessage | LoginMessage | SubmitPostBeaconMessage | RequestTeleportMessage | AcceptTeleportMessage;
+export interface FollowMessage {
+    kind: 'follow';
+    payload: {
+        userIdToFollow: string;
+    };
+}
+
+export interface CreateSpaceMessage {
+    kind: 'createSpace';
+    payload: {
+        name: string;
+        description: string;
+        isPublic: boolean;
+    };
+}
+
+export interface SubmitCommentBeaconMessage {
+    kind: 'submitCommentBeacon';
+    payload: {
+        postBeaconId: string;
+        beacon: Beacon;
+    };
+}
+
+export interface LikePostMessage {
+    kind: 'likePost';
+    payload: {
+        postBeaconId: string;
+    };
+}
+
+export interface GetPublicSpacesMessage {
+    kind: 'getPublicSpaces';
+}
+
+export interface SearchMessage {
+    kind: 'search';
+    payload: {
+        query: string;
+        category: 'all' | 'people' | 'spaces' | 'posts';
+    };
+}
+
+export type ClientMessage = RegisterMessage | LoginMessage | SubmitPostBeaconMessage | RequestTeleportMessage | AcceptTeleportMessage | FollowMessage | CreateSpaceMessage | SubmitCommentBeaconMessage | LikePostMessage | GetPublicSpacesMessage | SearchMessage;
 
 
 // Server -> Client Message Types
@@ -101,6 +145,7 @@ export interface NetworkStateUpdateMessage {
         nodes: {
             userId: string;
             publicResonance: PublicResonance;
+            connectionId: string;
         }[];
     };
 }
@@ -121,6 +166,53 @@ export interface TeleportAcceptedMessage {
     };
 }
 
+export interface CreateSpaceSuccessMessage {
+    kind: 'createSpaceSuccess';
+    payload: {
+        spaceId: string;
+        name: string;
+    };
+}
+
+export interface SubmitCommentSuccessMessage {
+    kind: 'submitCommentSuccess';
+    payload: {
+        commentId: string;
+        postBeaconId: string;
+    };
+}
+
+export interface LikePostSuccessMessage {
+    kind: 'likePostSuccess';
+    payload: {
+        postBeaconId: string;
+        liked: boolean;
+    };
+}
+
+export interface PublicSpacesResponseMessage {
+    kind: 'publicSpacesResponse';
+    payload: {
+        spaces: Array<{
+            space_id: string;
+            name: string;
+            description: string;
+            is_public: number;
+            owner_id: string;
+            created_at: string;
+        }>;
+    };
+}
+
+export interface SearchResponseMessage {
+    kind: 'searchResponse';
+    payload: {
+        users: Array<{ user_id: string; username: string }>;
+        spaces: Array<{ space_id: string; name: string; description: string }>;
+        beacons: Array<{ beacon_id: string; author_id: string }>;
+    };
+}
+
 export type ServerMessage =
     | RegisterSuccessMessage
     | LoginSuccessMessage
@@ -129,4 +221,9 @@ export type ServerMessage =
     | NewPostBeaconMessage
     | NetworkStateUpdateMessage
     | TeleportRequestMessage
-    | TeleportAcceptedMessage;
+    | TeleportAcceptedMessage
+    | CreateSpaceSuccessMessage
+    | SubmitCommentSuccessMessage
+    | LikePostSuccessMessage
+    | PublicSpacesResponseMessage
+    | SearchResponseMessage;

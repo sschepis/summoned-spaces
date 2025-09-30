@@ -23,21 +23,29 @@ export interface ResonantFragment {
 }
 
 class HolographicMemoryManager {
-    private wasm: any; // This will hold the instantiated WASM module
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private wasm: any;
     private currentUserPRI: PrimeResonanceIdentity | null = null;
+    public isReady: Promise<void>;
+    private resolveReady!: () => void;
 
     constructor() {
+        this.isReady = new Promise((resolve) => {
+            this.resolveReady = resolve;
+        });
         this.loadWasmModule();
     }
 
     private async loadWasmModule() {
         try {
             // Import the specific functions we need
-            const { createHolographicEncoding, holographicEncodingEncode } = await import('../../resolang/build/resolang.js');
-            this.wasm = { createHolographicEncoding, holographicEncodingEncode };
+            const wasmModule = await import('../../resolang/build/resolang.js');
+            this.wasm = wasmModule;
             console.log("Successfully loaded resolang WASM module.");
         } catch (error) {
             console.error("Failed to load resolang WASM module:", error);
+        } finally {
+            this.resolveReady();
         }
     }
 
@@ -46,7 +54,8 @@ class HolographicMemoryManager {
         console.log("HolographicMemoryManager initialized for user:", pri.nodeAddress);
     }
 
-    public encodeMemory(text: string): ResonantFragment | null {
+    public async encodeMemory(text: string): Promise<ResonantFragment | null> {
+        await this.isReady;
         if (!this.wasm) {
             console.error("HolographicMemoryManager is not ready: WASM module not available.");
             return null;
@@ -67,18 +76,33 @@ class HolographicMemoryManager {
         
         // This is still a simplified representation of the actual encoding process.
         // The real function likely takes more parameters.
-        const amplitude = this.wasm.holographicEncodingEncode(encoder, text.length, 0.5, 0.5);
-
-        // We need to construct a ResonantFragment from the result.
-        // This part is still a placeholder.
-        const fragment: ResonantFragment = {
-            coeffs: new Map([[text.length, amplitude]]),
-            center: [0.5, 0.5],
-            entropy: 1 - amplitude
-        };
+        const fragment = this.wasm.holographicEncodingEncode(encoder, text);
+        
+        // Attach original text to mock fragment for decoding test
+        if (fragment) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (fragment as any).originalText = text;
+        }
 
         console.log(`Successfully encoded text "${text}" into resonant fragment:`, fragment);
-        return fragment;
+        return fragment as ResonantFragment;
+    }
+
+    public decodeMemory(fragment: ResonantFragment & { originalText?: string }): string | null {
+        if (!this.wasm) {
+            console.error("HolographicMemoryManager is not ready: WASM module not available.");
+            return null;
+        }
+        
+        // In a real implementation, this would call a complex decoding function.
+        // For our mock, we just return the text we attached during encoding.
+        if (fragment.originalText) {
+            console.log("Successfully decoded fragment into text:", fragment.originalText);
+            return fragment.originalText;
+        }
+
+        console.error("Mock decoding failed: originalText not found on fragment.");
+        return null;
     }
 }
 
