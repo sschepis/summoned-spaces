@@ -1,0 +1,12 @@
+/** Exported memory */
+export declare const memory: WebAssembly.Memory;
+// Exported runtime interface
+export declare function __new(size: number, id: number): number;
+export declare function __pin(ptr: number): number;
+export declare function __unpin(ptr: number): void;
+export declare function __collect(): void;
+export declare const __rtti_base: number;
+/**
+ * assembly/network/test-topology-simple/runTests
+ */
+export declare function runTests(): void;

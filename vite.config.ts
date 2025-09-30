@@ -1,10 +1,40 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
+import { createWebSocketServer } from './server/main' // Import the new function
 
-// https://vitejs.dev/config/
+function customWsPlugin(): Plugin {
+  return {
+    name: 'custom-ws',
+    configureServer(server) {
+      // The WebSocket server logic is now handled by the imported function
+      server.httpServer?.once('listening', () => {
+        const wss = createWebSocketServer(server.httpServer!);
+
+        server.httpServer?.once('close', () => {
+          wss?.close();
+        });
+      });
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
-});
+  plugins: [customWsPlugin()],
+})
+
+
+// Example client code to connect to the custom WS endpoint
+// const ws = new WebSocket(
+//   (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+//   location.host +
+//   '/ws'
+// )
+
+// ws.addEventListener('open', () => {
+//   ws.send('ping')
+// })
+
+// ws.addEventListener('message', (e) => {
+//   const msg = typeof e.data === 'string' ? e.data : ''
+//   console.log('WS message:', msg)
+// })

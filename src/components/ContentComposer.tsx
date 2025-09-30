@@ -1,22 +1,11 @@
 import { useState, useRef } from 'react';
 import { Image, Video, FileText, Smile, MapPin, Users, Globe, Lock, Zap, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
+import { holographicMemoryManager } from '../services/holographic-memory';
+import { webSocketService } from '../services/websocket';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ContentComposerProps {
-  onPost: (content: PostContent) => void;
-}
-
-interface PostContent {
-  text: string;
-  media?: {
-    type: 'image' | 'video' | 'file';
-    url: string;
-    filename?: string;
-    size?: string;
-  }[];
-  feedId: string;
-  feedName: string;
-  location?: string;
-  tags: string[];
+  // onPost is no longer needed as we will handle submission internally
 }
 
 const spaceOptions = [
@@ -57,9 +46,10 @@ const spaceOptions = [
   }
 ];
 
-export function ContentComposer({ onPost }: ContentComposerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [content, setContent] = useState('');
+export function ContentComposer({}: ContentComposerProps) {
+  const { isAuthenticated } = useAuth();
+  const [isExpanded, setIsExpanded] = useState(true); // Start expanded
+  const [content, setContent] = useState('Hello, holographic world!'); // Default content
   const [selectedSpace, setSelectedSpace] = useState(spaceOptions[0]);
   const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
   const [showSpaceSelector, setShowSpaceSelector] = useState(false);
@@ -69,17 +59,23 @@ export function ContentComposer({ onPost }: ContentComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePost = () => {
-    if (!content.trim() && attachedFiles.length === 0) return;
+    if (!content.trim() || !isAuthenticated) return;
 
-    const postContent: PostContent = {
-      text: content,
-      media: attachedFiles,
-      feedId: selectedSpace.id,
-      feedName: selectedSpace.name,
-      tags
-    };
+    // 1. Encode the memory using the holographic manager
+    const fragment = holographicMemoryManager.encodeMemory(content);
 
-    onPost(postContent);
+    if (fragment) {
+      // 2. Send the resulting beacon to the server
+      // Note: The fragment itself is the basis state, but we send a "beacon"
+      // which is a pointer to it. For now, we send the fragment itself as the beacon.
+      webSocketService.sendMessage({
+        kind: 'submitPostBeacon',
+        payload: {
+          // @ts-ignore - In a real scenario, the fragment would be converted to a Beacon type
+          beacon: fragment
+        }
+      });
+    }
     
     // Reset form
     setContent('');
