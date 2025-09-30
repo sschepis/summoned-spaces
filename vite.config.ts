@@ -20,6 +20,9 @@ function customWsPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [customWsPlugin()],
+  esbuild: {
+    target: 'es2022'
+  },
 })
 
 
