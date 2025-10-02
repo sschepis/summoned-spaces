@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { HolographicMemoryManager } from './holographic-memory';
 import type { WebSocketService } from './websocket';
 import { beaconCacheManager } from './beacon-cache';
 import { BEACON_TYPES } from '../constants/beaconTypes';
+import { communicationManager } from './communication-manager';
+import type { CommunicationMessage } from './communication-manager';
 
 /**
  * UserDataManager - Manages user data as holographic beacons
@@ -12,8 +15,6 @@ export class UserDataManager {
     private followingList: string[] = [];
     private spacesList: Array<{ spaceId: string; role: string; joinedAt: string }> = [];
     private currentUserId: string | null = null;
-    private followingBeaconId: string | null = null;
-    private spacesBeaconId: string | null = null;
     private webSocketService: WebSocketService;
     private holographicMemoryManager: HolographicMemoryManager;
 
@@ -66,7 +67,6 @@ export class UserDataManager {
             );
 
             if (followingBeacon) {
-                this.followingBeaconId = followingBeacon.beacon_id;
                 const decoded = this.holographicMemoryManager.decodeMemory(followingBeacon as any);
                 if (decoded) {
                     const payload = typeof decoded === 'string'
@@ -94,7 +94,6 @@ export class UserDataManager {
             );
 
             if (spacesBeacon) {
-                this.spacesBeaconId = spacesBeacon.beacon_id;
                 const decoded = this.holographicMemoryManager.decodeMemory(spacesBeacon as any);
                 if (decoded) {
                     const payload = typeof decoded === 'string'
@@ -139,7 +138,22 @@ export class UserDataManager {
         console.log(`[UserDataManager] Updated following list:`, this.followingList);
         
         // Send follow message to server for social graph and notifications
-        this.webSocketService.sendFollowMessage(userIdToFollow);
+        // Use communication manager to support both WebSocket and REST/SSE
+        try {
+            if (this.webSocketService.isReady()) {
+                // Use WebSocket service directly if available (development)
+                this.webSocketService.sendFollowMessage(userIdToFollow);
+            } else {
+                // Use communication manager for production/SSE
+                const followMessage: CommunicationMessage = {
+                    kind: 'follow',
+                    payload: { userIdToFollow }
+                };
+                await communicationManager.send(followMessage);
+            }
+        } catch (error) {
+            console.error('[UserDataManager] Error sending follow message:', error);
+        }
         
         await this.submitFollowingListBeacon();
     }
@@ -155,7 +169,22 @@ export class UserDataManager {
         this.followingList = this.followingList.filter(id => id !== userId);
         
         // Send unfollow message to server for social graph and notifications
-        this.webSocketService.sendUnfollowMessage(userId);
+        // Use communication manager to support both WebSocket and REST/SSE
+        try {
+            if (this.webSocketService.isReady()) {
+                // Use WebSocket service directly if available (development)
+                this.webSocketService.sendUnfollowMessage(userId);
+            } else {
+                // Use communication manager for production/SSE
+                const unfollowMessage: CommunicationMessage = {
+                    kind: 'unfollow',
+                    payload: { userIdToUnfollow: userId }
+                };
+                await communicationManager.send(unfollowMessage);
+            }
+        } catch (error) {
+            console.error('[UserDataManager] Error sending unfollow message:', error);
+        }
         
         await this.submitFollowingListBeacon();
     }
@@ -281,7 +310,6 @@ export class UserDataManager {
                 this.webSocketService.sendMessage({
                     kind: 'submitPostBeacon',
                     payload: {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         beacon: serializableBeacon as any,
                         beaconType: BEACON_TYPES.USER_SPACES_LIST
                     }
@@ -306,7 +334,9 @@ export class UserDataManager {
     }
 
     private extractJsonPayload(raw: string): Record<string, unknown> | null {
-        const sanitized = raw.replace(/\u0000/g, '').trim();
+        // Remove null characters from the string
+        const nullChar = String.fromCharCode(0);
+        const sanitized = raw.replace(new RegExp(nullChar, 'g'), '').trim();
         if (!sanitized) {
             return null;
         }

@@ -19,91 +19,21 @@ export function SpacePosts({ spaceId, spaceName, isUserMember }: SpacePostsProps
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading space posts
+    // Load space posts - currently no posts are stored as beacons
+    // Posts would need to be implemented as a separate beacon type
     const loadSpacePosts = async () => {
       setIsLoading(true);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate sample space posts
-      const spacePosts: Post[] = [
-        {
-          id: `space-post-1`,
-          type: PostType.RICH_TEXT,
-          author: {
-            id: 'space-user-1',
-            name: 'Alice Quantum',
-            username: 'alice_q',
-            avatar: 'https://api.dicebear.com/8.x/bottts/svg?seed=alice_space'
-          },
-          spaceId: spaceId,
-          spaceName: spaceName,
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-          likes: 8,
-          comments: 3,
-          shares: 1,
-          isLiked: false,
-          content: `Welcome to ${spaceName}! 🚀 Excited to collaborate and share knowledge here. Looking forward to seeing what amazing projects we build together! #collaboration #innovation`,
-          mentions: [],
-          hashtags: [
-            {
-              id: 'tag-collab',
-              tag: 'collaboration',
-              position: 140,
-              length: 13
-            },
-            {
-              id: 'tag-innovation',
-              tag: 'innovation',
-              position: 155,
-              length: 10
-            }
-          ],
-          formatting: {
-            bold: [],
-            italic: [],
-            code: [],
-            links: []
-          }
-        } as RichTextPost,
-        {
-          id: `space-post-2`,
-          type: PostType.BINARY_FILE,
-          author: {
-            id: 'space-user-2',
-            name: 'Bob Engineer',
-            username: 'bob_eng',
-            avatar: 'https://api.dicebear.com/8.x/bottts/svg?seed=bob_space'
-          },
-          spaceId: spaceId,
-          spaceName: spaceName,
-          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-          likes: 12,
-          comments: 5,
-          shares: 3,
-          isLiked: true,
-          caption: 'Sharing the latest project documentation and specs. Please review and let me know your thoughts!',
-          files: [
-            {
-              id: 'space-file-1',
-              name: 'project-specs.pdf',
-              type: 'application/pdf',
-              size: 1536000, // 1.5MB
-              url: '/space-docs/project-specs.pdf',
-              mimeType: 'application/pdf',
-              previewUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400',
-              metadata: {
-                pages: 18,
-                title: 'Project Specifications Document'
-              }
-            }
-          ]
-        } as BinaryFilePost
-      ];
-      
-      setPosts(spacePosts);
-      setIsLoading(false);
+      try {
+        // TODO: Implement space post loading from beacon system
+        // For now, just set empty posts array
+        setPosts([]);
+      } catch (error) {
+        console.error('Failed to load space posts:', error);
+        setPosts([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadSpacePosts();

@@ -3,7 +3,7 @@ import { ClientMessage, ServerMessage, FollowNotificationMessage } from '../../s
 // Environment-aware URL detection - avoid WebSocket in production
 function getWebSocketUrl(): string | null {
     if (typeof window === 'undefined') {
-        return 'ws://localhost:5173/ws';
+        return 'ws://localhost:8080/ws';
     }
     
     // Check if we're on Vercel (production)
@@ -26,7 +26,8 @@ function getWebSocketUrl(): string | null {
     }
     
     console.log('[WS] 🔧 Development environment detected - WebSocket enabled');
-    return (protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    // Connect to backend server on port 8080
+    return (protocol === 'https:' ? 'wss://' : 'ws://') + hostname + ':8080/ws';
 }
 
 const WS_URL = getWebSocketUrl();

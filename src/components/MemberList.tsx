@@ -1,6 +1,8 @@
 import { Crown, Shield, Users, MoreVertical, Plus } from 'lucide-react';
 import { SpaceMember, SpaceRole } from '../services/space-manager';
 import { useAuth } from '../contexts/AuthContext';
+import { userInfoCache } from '../services/user-info-cache';
+import { useState, useEffect } from 'react';
 
 interface MemberListProps {
   members: SpaceMember[];
@@ -21,10 +23,42 @@ const roleColors = {
   member: 'text-blue-400 bg-blue-400/10'
 };
 
-export function MemberList({ members, spaceId, isUserMember, userRole }: MemberListProps) {
+export function MemberList({ members, userRole }: MemberListProps) {
   const { user } = useAuth();
+  const [memberInfoCache, setMemberInfoCache] = useState<Map<string, { username: string }>>(new Map());
   
   const canManageMembers = userRole === 'owner' || userRole === 'admin';
+
+  // Load member information
+  useEffect(() => {
+    const loadMemberInfo = async () => {
+      const newCache = new Map(memberInfoCache);
+      let hasUpdates = false;
+
+      for (const member of members) {
+        if (!newCache.has(member.userId)) {
+          try {
+            const info = await userInfoCache.getUserInfo(member.userId);
+            newCache.set(member.userId, info);
+            hasUpdates = true;
+          } catch (error) {
+            console.warn(`Failed to load info for member ${member.userId}:`, error);
+            // Use fallback
+            newCache.set(member.userId, { username: member.userId.substring(0, 8) });
+            hasUpdates = true;
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        setMemberInfoCache(newCache);
+      }
+    };
+
+    if (members.length > 0) {
+      loadMemberInfo();
+    }
+  }, [members, memberInfoCache]);
   
   const formatJoinedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -43,14 +77,17 @@ export function MemberList({ members, spaceId, isUserMember, userRole }: MemberL
     if (user && userId === user.id) {
       return user.name || user.username || 'You';
     }
-    return userId.substring(0, 8); // Placeholder until we have user info
+    const cachedInfo = memberInfoCache.get(userId);
+    return cachedInfo?.username || userId.substring(0, 8);
   };
   
   const getMemberEmail = (userId: string) => {
     if (user && userId === user.id) {
       return 'you@summoned.space';
     }
-    return `${userId.substring(0, 8)}@summoned.space`;
+    const cachedInfo = memberInfoCache.get(userId);
+    const username = cachedInfo?.username || userId.substring(0, 8);
+    return `${username}@summoned.space`;
   };
   return (
     <div className="space-y-6">

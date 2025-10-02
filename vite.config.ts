@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 
 function customWsPlugin(): Plugin {
@@ -8,6 +9,7 @@ function customWsPlugin(): Plugin {
       // Only run WebSocket server in development
       if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
         // Dynamic import to avoid bundling server code in production
+        console.log('Starting custom WebSocket server...');
         import('./server/main').then(({ createWebSocketServer }) => {
           server.httpServer?.once('listening', () => {
             const wss = createWebSocketServer(server.httpServer!);
@@ -25,7 +27,7 @@ function customWsPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [customWsPlugin()],
+  plugins: [react(), customWsPlugin()],
   esbuild: {
     target: 'es2022'
   },

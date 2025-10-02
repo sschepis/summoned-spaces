@@ -47,10 +47,10 @@ export function ArticleLinkComposer({ onChange }: ArticleLinkComposerProps) {
       // In real implementation, this would call your backend service
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
       
-      // Mock preview data based on URL
-      const mockPreview = generateMockPreview(urlToFetch);
-      setPreview(mockPreview);
-    } catch (err) {
+      // Generate basic preview data - TODO: implement real link scraping
+      const basicPreview = generateBasicPreview(urlToFetch);
+      setPreview(basicPreview);
+    } catch {
       setError('Failed to fetch link preview. Please check the URL and try again.');
       setPreview(null);
     } finally {
@@ -58,60 +58,21 @@ export function ArticleLinkComposer({ onChange }: ArticleLinkComposerProps) {
     }
   };
 
-  const generateMockPreview = (urlString: string): LinkPreview => {
+  const generateBasicPreview = (urlString: string): LinkPreview => {
     const url = new URL(urlString);
     const domain = url.hostname.replace('www.', '');
     
-    // Generate mock data based on domain
-    const mockPreviews: Record<string, Partial<LinkPreview>> = {
-      'medium.com': {
-        title: 'Understanding Quantum Computing in the Modern Era',
-        description: 'A comprehensive guide to quantum computing principles, applications, and the future of quantum technology in various industries.',
-        siteName: 'Medium',
-        author: 'Dr. Quantum Smith',
-        imageUrl: 'https://via.placeholder.com/400x200/4f46e5/ffffff?text=Quantum+Computing',
-        readTime: 8
-      },
-      'arxiv.org': {
-        title: 'Holographic Memory Structures in Distributed Networks',
-        description: 'This paper presents novel approaches to implementing holographic memory patterns in distributed computing environments.',
-        siteName: 'arXiv',
-        author: 'Research Team',
-        imageUrl: 'https://via.placeholder.com/400x200/059669/ffffff?text=Research+Paper',
-        readTime: 15
-      },
-      'github.com': {
-        title: 'quantum-network-simulator',
-        description: 'A sophisticated quantum network simulation framework for researchers and developers working on quantum communication protocols.',
-        siteName: 'GitHub',
-        author: 'quantum-dev',
-        imageUrl: 'https://via.placeholder.com/400x200/1f2937/ffffff?text=GitHub+Repository'
-      },
-      'youtube.com': {
-        title: 'Quantum Entanglement Explained',
-        description: 'An in-depth explanation of quantum entanglement and its implications for quantum computing and communication.',
-        siteName: 'YouTube',
-        author: 'Science Channel',
-        imageUrl: 'https://via.placeholder.com/400x200/dc2626/ffffff?text=YouTube+Video'
-      }
-    };
-
-    const mockData = mockPreviews[domain] || {
-      title: 'Interesting Article',
-      description: 'This article contains valuable information worth sharing.',
-      siteName: domain,
-      imageUrl: 'https://via.placeholder.com/400x200/6366f1/ffffff?text=Article'
-    };
-
+    // TODO: In a real implementation, this would scrape the URL for Open Graph tags
+    // or use a service like Microlink or similar to get real metadata
     return {
       url: urlString,
-      title: mockData.title || 'Untitled',
-      description: mockData.description || 'No description available',
-      siteName: mockData.siteName || domain,
-      author: mockData.author,
-      imageUrl: mockData.imageUrl,
-      publishedAt: mockData.publishedAt || new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-      readTime: mockData.readTime
+      title: `Article from ${domain}`,
+      description: 'Article description would be fetched from Open Graph meta tags',
+      siteName: domain,
+      author: undefined,
+      imageUrl: undefined,
+      publishedAt: new Date(),
+      readTime: undefined
     };
   };
 

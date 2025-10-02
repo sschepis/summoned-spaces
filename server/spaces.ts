@@ -37,45 +37,39 @@ export class SpaceManager {
         }
         
         // Check for name uniqueness
-        const existingSpace = await new Promise<any>((resolve, reject) => {
-            db.get('SELECT space_id FROM spaces WHERE LOWER(name) = LOWER(?)', [name.trim()], (err, row) => {
-                if (err) return reject(err);
-                resolve(row);
-            });
-        });
-        
-        if (existingSpace) {
-            throw new Error('A space with this name already exists');
+        try {
+            const existingSpaces = await db.query('SELECT space_id FROM spaces WHERE LOWER(name) = LOWER($1)', [name.trim()]);
+            if (existingSpaces.length > 0) {
+                throw new Error('A space with this name already exists');
+            }
+        } catch (err) {
+            if (err instanceof Error && err.message !== 'A space with this name already exists') {
+                console.error('Error checking space uniqueness:', err.message);
+                throw err;
+            }
+            throw err;
         }
         
         const spaceId = `space_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Store space metadata in the database
-        const sql = `
-            INSERT INTO spaces (space_id, name, description, is_public, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        `;
-        
-        const params = [
-            spaceId,
-            name.trim(),
-            description.trim(),
-            isPublic ? 1 : 0,
-            new Date().toISOString()
-        ];
-
-        return new Promise((resolve, reject) => {
-            db.run(sql, params, (err: Error | null) => {
-                if (err) {
-                    console.error('Error creating space', err.message);
-                    return reject(err);
-                }
-                console.log(`Space created: ${name} (${spaceId}) by ${ownerId}`);
-                
-                // Ownership is handled by the client-side SpaceManager via beacons
-                resolve({ spaceId });
-            });
-        });
+        try {
+            // Use the NeonAdapter's createSpace method
+            const spaceData = {
+                space_id: spaceId,
+                name: name.trim(),
+                description: description.trim(),
+                is_public: isPublic,
+                owner_id: ownerId,
+                metadata: undefined
+            };
+            
+            await db.createSpace(spaceData);
+            console.log(`Space created: ${name} (${spaceId}) by ${ownerId}`);
+            return { spaceId };
+        } catch (err) {
+            console.error('Error creating space', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     // Join/leave operations - validate space exists and log activity
@@ -84,12 +78,7 @@ export class SpaceManager {
         
         // Validate space exists
         const db = getDatabase();
-        const space = await new Promise<any>((resolve, reject) => {
-            db.get('SELECT space_id, name FROM spaces WHERE space_id = ?', [spaceId], (err, row) => {
-                if (err) return reject(err);
-                resolve(row);
-            });
-        });
+        const space = await db.getSpaceById(spaceId);
         
         if (!space) {
             throw new Error('Space not found');
@@ -105,12 +94,7 @@ export class SpaceManager {
         
         // Validate space exists
         const db = getDatabase();
-        const space = await new Promise<any>((resolve, reject) => {
-            db.get('SELECT space_id, name FROM spaces WHERE space_id = ?', [spaceId], (err, row) => {
-                if (err) return reject(err);
-                resolve(row);
-            });
-        });
+        const space = await db.getSpaceById(spaceId);
         
         if (!space) {
             throw new Error('Space not found');
@@ -136,22 +120,20 @@ export class SpaceManager {
         const db = getDatabase();
         const sql = `SELECT * FROM spaces ORDER BY created_at DESC`;
 
-        return new Promise((resolve, reject) => {
-            db.all(sql, [], (err, rows: Array<{
-                space_id: string;
-                name: string;
-                description: string;
-                is_public: number;
-                created_at: string;
-            }>) => {
-                if (err) {
-                    console.error('Error getting user spaces', err.message);
-                    return reject(err);
-                }
-                console.log(`Found ${rows.length} total spaces for client-side filtering`);
-                resolve(rows);
-            });
-        });
+        try {
+            const rows = await db.query(sql, []);
+            console.log(`Found ${rows.length} total spaces for client-side filtering`);
+            return rows.map((row: any) => ({
+                space_id: row.space_id,
+                name: row.name,
+                description: row.description,
+                is_public: row.is_public ? 1 : 0,
+                created_at: row.created_at
+            }));
+        } catch (err) {
+            console.error('Error getting user spaces', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     async getPublicSpaces(): Promise<Array<{
@@ -162,23 +144,20 @@ export class SpaceManager {
         created_at: string;
     }>> {
         const db = getDatabase();
-        const sql = `SELECT * FROM spaces WHERE is_public = 1 ORDER BY created_at DESC`;
 
-        return new Promise((resolve, reject) => {
-            db.all(sql, [], (err, rows: Array<{
-                space_id: string;
-                name: string;
-                description: string;
-                is_public: number;
-                created_at: string;
-            }>) => {
-                if (err) {
-                    console.error('Error getting public spaces', err.message);
-                    return reject(err);
-                }
-                resolve(rows);
-            });
-        });
+        try {
+            const spaces = await db.getPublicSpaces();
+            return spaces.map((space: any) => ({
+                space_id: space.space_id,
+                name: space.name,
+                description: space.description || '',
+                is_public: 1,
+                created_at: space.created_at
+            }));
+        } catch (err) {
+            console.error('Error getting public spaces', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     async getAllSpaces(): Promise<Array<{
@@ -191,21 +170,19 @@ export class SpaceManager {
         const db = getDatabase();
         const sql = `SELECT * FROM spaces ORDER BY created_at DESC`;
 
-        return new Promise((resolve, reject) => {
-            db.all(sql, [], (err, rows: Array<{
-                space_id: string;
-                name: string;
-                description: string;
-                is_public: number;
-                created_at: string;
-            }>) => {
-                if (err) {
-                    console.error('Error getting all spaces', err.message);
-                    return reject(err);
-                }
-                resolve(rows);
-            });
-        });
+        try {
+            const rows = await db.query(sql, []);
+            return rows.map((row: any) => ({
+                space_id: row.space_id,
+                name: row.name,
+                description: row.description,
+                is_public: row.is_public ? 1 : 0,
+                created_at: row.created_at
+            }));
+        } catch (err) {
+            console.error('Error getting all spaces', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     async addFileToSpace(spaceId: string, uploaderId: string, fileInfo: { fileName: string, fileType: string, fileSize: number, fingerprint: string, fileContent?: string }): Promise<void> {
@@ -468,15 +445,7 @@ export class SpaceManager {
                 LIMIT 50
             `;
 
-            const contentBeacons = await new Promise<any[]>((resolve, reject) => {
-                db.all(sql, [], (err, rows: any[]) => {
-                    if (err) {
-                        console.error('Error getting file content beacons', err.message);
-                        return reject(err);
-                    }
-                    resolve(rows || []);
-                });
-            });
+            const contentBeacons = await db.query(sql, []);
 
             console.log(`[SpaceManager] Found ${contentBeacons.length} file content beacons to search`);
 
@@ -513,20 +482,18 @@ export class SpaceManager {
         const db = getDatabase();
         const sql = `
             SELECT * FROM beacons
-            WHERE author_id = ? AND beacon_type = 'space_file_index'
+            WHERE author_id = $1 AND beacon_type = 'space_file_index'
             ORDER BY epoch DESC
             LIMIT 1
         `;
 
-        return new Promise((resolve, reject) => {
-            db.get(sql, [spaceId], (err, row) => {
-                if (err) {
-                    console.error('Error getting space file index beacon', err.message);
-                    return reject(err);
-                }
-                resolve(row);
-            });
-        });
+        try {
+            const result = await db.query(sql, [spaceId]);
+            return result.length > 0 ? result[0] : null;
+        } catch (err) {
+            console.error('Error getting space file index beacon', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     // Adapted from prdb.ts

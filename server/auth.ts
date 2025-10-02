@@ -1,7 +1,55 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomBytes } from 'crypto';
 import { getDatabase } from './database';
-import { generateNodeIdentity, PrimeResonanceIdentity } from './identity';
+import { generateNodeIdentity, PrimeResonanceIdentity, PublicResonance, PrivateResonance } from './identity';
+import type { CreateUserData, QuantumPrimeIndices } from '../lib/database/types.js';
+
+// Converter functions between identity types and database types
+function convertToQuantumPrimeIndices(
+  resonance: PublicResonance | PrivateResonance,
+  isPublic: boolean
+): QuantumPrimeIndices {
+  if (isPublic) {
+    const pub = resonance as PublicResonance;
+    return {
+      base_resonance: (pub.primaryPrimes[0] || 0) / 1000,
+      amplification_factor: (pub.primaryPrimes[1] || 0) / 1000,
+      phase_alignment: (pub.primaryPrimes[2] || 0) / 1000,
+      entropy_level: (pub.harmonicPrimes[0] || 0) / 1000,
+      prime_sequence: [...pub.primaryPrimes, ...pub.harmonicPrimes],
+      resonance_signature: pub.primaryPrimes.join('-')
+    };
+  } else {
+    const priv = resonance as PrivateResonance;
+    return {
+      base_resonance: Math.sin(priv.eigenPhase),
+      amplification_factor: Math.cos(priv.eigenPhase),
+      phase_alignment: priv.eigenPhase / (2 * Math.PI),
+      entropy_level: (priv.authenticationSeed % 1000) / 1000,
+      prime_sequence: priv.secretPrimes,
+      resonance_signature: priv.secretPrimes.join('-')
+    };
+  }
+}
+
+function convertFromQuantumPrimeIndices(
+  quantum: QuantumPrimeIndices,
+  isPublic: boolean
+): PublicResonance | PrivateResonance {
+  if (isPublic) {
+    const primeSeq = quantum.prime_sequence || [];
+    return {
+      primaryPrimes: primeSeq.slice(0, 3),
+      harmonicPrimes: primeSeq.slice(3, 5)
+    } as PublicResonance;
+  } else {
+    return {
+      secretPrimes: quantum.prime_sequence || [],
+      eigenPhase: quantum.phase_alignment * 2 * Math.PI,
+      authenticationSeed: Math.floor(quantum.entropy_level * 1000)
+    } as PrivateResonance;
+  }
+}
 
 // Extend Session to include the full PRI
 export interface Session {
@@ -27,34 +75,29 @@ export class AuthenticationManager {
     const salt = randomBytes(32);
     const passwordHash = await hashPassword(password + salt.toString());
 
-    // Step 3: Store user and PRI in the database
-    const sql = `
-      INSERT INTO users (user_id, username, email, password_hash, salt,
-                         node_public_key, node_private_key_encrypted, master_phase_key_encrypted,
-                         pri_public_resonance, pri_private_resonance, pri_fingerprint, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    // Initialize proper buffer for legacy compatibility
-    const emptyBuffer = new Uint8Array(0);
+    // Step 3: Create user data for the Neon adapter
+    const userData: CreateUserData = {
+      user_id: userId,
+      username,
+      email,
+      password_hash: passwordHash,
+      salt,
+      node_public_key: Buffer.from('dummy_public_key', 'utf8'), // Dummy data for legacy compatibility
+      node_private_key_encrypted: Buffer.from('dummy_private_key', 'utf8'),
+      master_phase_key_encrypted: Buffer.from('dummy_master_key', 'utf8'),
+      pri_public_resonance: convertToQuantumPrimeIndices(pri.publicResonance, true),
+      pri_private_resonance: convertToQuantumPrimeIndices(pri.privateResonance, false), // Note: In a real system, this MUST be encrypted
+      pri_fingerprint: pri.fingerprint
+    };
 
-    await new Promise<void>((resolve, reject) => {
-        db.run(sql, [
-            userId, username, email, passwordHash, salt,
-            emptyBuffer, emptyBuffer, emptyBuffer, // Old fields
-            JSON.stringify(pri.publicResonance),
-            JSON.stringify(pri.privateResonance), // Note: In a real system, this MUST be encrypted
-            pri.fingerprint,
-            new Date().toISOString()
-        ], (err) => {
-            if (err) {
-                console.error('Error registering user', err.message);
-                return reject(err);
-            }
-            console.log(`User registered: ${username} with PRI Node Address: ${userId}`);
-            resolve();
-        });
-    });
+    // Step 4: Use the database adapter to create the user
+    try {
+      await db.createUser(userData);
+      console.log(`User registered: ${username} with PRI Node Address: ${userId}`);
+    } catch (err) {
+      console.error('Error registering user', err instanceof Error ? err.message : 'Unknown error');
+      throw err;
+    }
 
     return { userId, pri };
   }
@@ -65,14 +108,8 @@ export class AuthenticationManager {
   ): Promise<Session> {
     const db = getDatabase();
 
-    // Step 1: Retrieve user from DB
-    const sql = `SELECT * FROM users WHERE username = ?`;
-    const user = await new Promise<any>((resolve, reject) => {
-        db.get(sql, [username], (err, row) => {
-            if (err) return reject(err);
-            resolve(row);
-        });
-    });
+    // Step 1: Retrieve user from DB using the adapter
+    const user = await db.getUserByUsername(username);
 
     if (!user) {
         throw new Error('User not found');
@@ -89,8 +126,8 @@ export class AuthenticationManager {
 
     // Step 3: Reconstruct PRI from stored data
     const pri: PrimeResonanceIdentity = {
-        publicResonance: JSON.parse(user.pri_public_resonance),
-        privateResonance: JSON.parse(user.pri_private_resonance), // Note: Should be decrypted
+        publicResonance: convertFromQuantumPrimeIndices(user.pri_public_resonance, true) as PublicResonance,
+        privateResonance: convertFromQuantumPrimeIndices(user.pri_private_resonance, false) as PrivateResonance, // Note: Should be decrypted
         fingerprint: user.pri_fingerprint,
         nodeAddress: user.user_id
     };
@@ -116,15 +153,9 @@ export class AuthenticationManager {
       throw new Error('Invalid session token');
     }
 
-    // Retrieve user from database to reconstruct session
+    // Retrieve user from database using the adapter
     const db = getDatabase();
-    const sql = `SELECT * FROM users WHERE user_id = ?`;
-    const user = await new Promise<any>((resolve, reject) => {
-        db.get(sql, [userId], (err, row) => {
-            if (err) return reject(err);
-            resolve(row);
-        });
-    });
+    const user = await db.getUserById(userId);
 
     if (!user) {
         throw new Error('User not found');
@@ -132,8 +163,8 @@ export class AuthenticationManager {
 
     // Reconstruct PRI from stored data
     const pri: PrimeResonanceIdentity = {
-        publicResonance: JSON.parse(user.pri_public_resonance),
-        privateResonance: JSON.parse(user.pri_private_resonance),
+        publicResonance: convertFromQuantumPrimeIndices(user.pri_public_resonance, true) as PublicResonance,
+        privateResonance: convertFromQuantumPrimeIndices(user.pri_private_resonance, false) as PrivateResonance,
         fingerprint: user.pri_fingerprint,
         nodeAddress: user.user_id
     };

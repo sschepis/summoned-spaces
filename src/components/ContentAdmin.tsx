@@ -1,63 +1,60 @@
 import { useState } from 'react';
-import { ArrowLeft, Users, Flag, Shield, Eye, Trash2, CheckCircle, XCircle, MessageCircle, Globe, Lock, Star, TrendingUp, AlertTriangle, Settings, Megaphone, FileText, Zap } from 'lucide-react';
+import { ArrowLeft, Users, Flag, Eye, Trash2, CheckCircle, XCircle, MessageCircle, Globe, TrendingUp, AlertTriangle, Megaphone, FileText } from 'lucide-react';
 
 interface ContentAdminProps {
   onBack: () => void;
 }
 
-const reportedContent = [
-  {
-    id: '1',
-    type: 'post',
-    content: 'This is some controversial content that has been reported by multiple users...',
-    author: 'user_12345',
-    reporter: 'concerned_user',
-    reason: 'Inappropriate content',
-    timestamp: '2 hours ago',
-    status: 'pending',
-    reportCount: 3
-  },
-  {
-    id: '2',
-    type: 'space',
-    content: 'Quantum Conspiracy Theories Hub',
-    author: 'conspiracy_theorist',
-    reporter: 'quantum_researcher',
-    reason: 'Misinformation',
-    timestamp: '5 hours ago',
-    status: 'reviewing',
-    reportCount: 7
-  },
-  {
-    id: '3',
-    type: 'user',
-    content: '@spammer_account',
-    author: 'spammer_account',
-    reporter: 'multiple_users',
-    reason: 'Spam and harassment',
-    timestamp: '1 day ago',
-    status: 'pending',
-    reportCount: 12
-  }
-];
+// TODO: These would be loaded from real moderation systems
+// For now, using empty arrays as these are admin-only features
+interface ReportedContent {
+  id: string;
+  type: string;
+  content: string;
+  author: string;
+  reporter: string;
+  reason: string;
+  timestamp: string;
+  status: string;
+  reportCount: number;
+}
 
-const userStats = [
-  { id: '1', name: 'Dr. Sarah Chen', username: '@sarahchen_quantum', status: 'verified', joinDate: '2023-01-15', posts: 245, followers: 2847, reports: 0, lastActive: '2 hours ago' },
-  { id: '2', name: 'Marcus Rodriguez', username: '@marcustech', status: 'active', joinDate: '2023-03-22', posts: 189, followers: 892, reports: 1, lastActive: '1 hour ago' },
-  { id: '3', name: 'Suspicious User', username: '@fake_account_123', status: 'flagged', joinDate: '2024-01-10', posts: 2, followers: 5, reports: 8, lastActive: '3 days ago' }
-];
+interface UserStat {
+  id: string;
+  name: string;
+  username: string;
+  status: string;
+  joinDate: string;
+  posts: number;
+  followers: number;
+  reports: number;
+  lastActive: string;
+}
 
-const spaceStats = [
-  { id: '1', name: 'Quantum Computing Research', creator: 'Dr. Sarah Chen', members: 2847, posts: 1249, status: 'active', created: '6 months ago', reports: 0 },
-  { id: '2', name: 'Crypto Speculation Hub', creator: 'crypto_whale', members: 156, posts: 89, status: 'under_review', created: '2 weeks ago', reports: 4 },
-  { id: '3', name: 'Academic Papers', creator: 'university_admin', members: 892, posts: 567, status: 'active', created: '1 year ago', reports: 0 }
-];
+interface SpaceStat {
+  id: string;
+  name: string;
+  creator: string;
+  members: number;
+  posts: number;
+  status: string;
+  created: string;
+  reports: number;
+}
 
-const announcements = [
-  { id: '1', title: 'Platform Maintenance Scheduled', content: 'Scheduled maintenance window this weekend...', status: 'active', created: '2 days ago', views: 1247 },
-  { id: '2', title: 'New Resonance Features', content: 'Exciting new quantum features coming soon...', status: 'draft', created: '1 week ago', views: 0 },
-  { id: '3', title: 'Community Guidelines Update', content: 'Updated community guidelines now in effect...', status: 'active', created: '1 month ago', views: 5689 }
-];
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  status: string;
+  created: string;
+  views: number;
+}
+
+const reportedContent: ReportedContent[] = [];
+const userStats: UserStat[] = [];
+const spaceStats: SpaceStat[] = [];
+const announcements: Announcement[] = [];
 
 export function ContentAdmin({ onBack }: ContentAdminProps) {
   const [activeTab, setActiveTab] = useState<'reports' | 'users' | 'spaces' | 'posts' | 'analytics' | 'announcements' | 'policies'>('reports');
@@ -127,7 +124,7 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab.id
                   ? 'border-cyan-400 text-cyan-400'
@@ -332,7 +329,7 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
                       <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-500 
                                     rounded-xl flex items-center justify-center">
                         <span className="text-white font-bold text-sm">
-                          {space.name.split(' ').map(word => word[0]).join('')}
+                          {space.name.split(' ').map((word: string) => word[0]).join('')}
                         </span>
                       </div>
                       <div>

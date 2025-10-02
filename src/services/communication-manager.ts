@@ -242,6 +242,12 @@ class RESTCommunicationManager implements CommunicationManager {
       this.messageCallback(result);
     }
 
+    // Handle follow/unfollow notifications in the response
+    if (result.payload?.notification && this.messageCallback) {
+      console.log('[REST] Processing embedded notification:', result.payload.notification);
+      this.messageCallback(result.payload.notification);
+    }
+
     // Store session info if provided
     if (result.payload?.sessionToken) {
       this.sessionToken = result.payload.sessionToken;

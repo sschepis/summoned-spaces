@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Component testing and development helpers with ResoLang mathematical optimizations
 // Safe imports with fallbacks to prevent blocking
 
@@ -43,87 +44,8 @@ async function safeResolangCall(funcName: string, ...args: any[]) {
 }
 
 export const componentHelpers = {
-  // Generate sample data for development and testing
-  sampleUser: (overrides = {}) => ({
-    id: '1',
-    name: 'Test User',
-    username: '@testuser',
-    email: 'test@example.com',
-    avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    bio: 'Test user bio for development',
-    verified: false,
-    isFollowing: false,
-    stats: {
-      followers: 100,
-      following: 50,
-      spaces: 5,
-      resonanceScore: 0.85
-    },
-    recentActivity: 'Recently active in development',
-    tags: ['developer', 'react', 'typescript'],
-    ...overrides
-  }),
-
-  sampleSpace: (overrides = {}) => ({
-    id: '1',
-    name: 'Test Space',
-    description: 'A development space for testing components',
-    memberCount: 25,
-    fileCount: 100,
-    isPublic: true,
-    color: 'from-blue-500 to-cyan-500',
-    resonanceStrength: 0.92,
-    tags: ['test', 'development', 'react'],
-    creator: 'Test User',
-    createdAt: '2 days ago',
-    ...overrides
-  }),
-
-  sampleActivity: (overrides = {}) => ({
-    id: '1',
-    type: 'file_contributed',
-    user: componentHelpers.sampleUser(),
-    action: 'shared a new file',
-    target: 'test-file.txt',
-    space: 'Development Space',
-    details: 'This is a test activity for component development',
-    timestamp: '2 minutes ago',
-    metrics: {
-      likes: 10,
-      comments: 5,
-      shares: 2,
-      hasLiked: false,
-      hasBookmarked: false
-    },
-    ...overrides
-  }),
-
-  // Generate arrays of sample data
-  generateSampleUsers: (count: number) =>
-    Array.from({ length: count }, (_, i) => 
-      componentHelpers.sampleUser({
-        id: (i + 1).toString(),
-        name: `User ${i + 1}`,
-        username: `@user${i + 1}`
-      })
-    ),
-
-  generateSampleSpaces: (count: number) =>
-    Array.from({ length: count }, (_, i) =>
-      componentHelpers.sampleSpace({
-        id: (i + 1).toString(),
-        name: `Space ${i + 1}`,
-        memberCount: Math.floor(Math.random() * 100) + 1
-      })
-    ),
-
-  generateSampleActivities: (count: number) =>
-    Array.from({ length: count }, (_, i) =>
-      componentHelpers.sampleActivity({
-        id: (i + 1).toString(),
-        timestamp: `${i + 1} minutes ago`
-      })
-    )
+  // Utility functions for component development
+  // Sample data generators removed - components should use real data from services
 };
 
 // Development utilities

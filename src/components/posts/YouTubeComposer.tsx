@@ -55,10 +55,10 @@ export function YouTubeComposer({ onChange }: YouTubeComposerProps) {
       // Simulate API call to YouTube Data API
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Generate mock video data
-      const mockPreview = generateMockVideoPreview(videoId, url);
-      setPreview(mockPreview);
-    } catch (err) {
+      // Generate basic video preview
+      const basicPreview = generateVideoPreview(videoId, url);
+      setPreview(basicPreview);
+    } catch {
       setError('Failed to fetch video information. Please check the URL and try again.');
       setPreview(null);
     } finally {
@@ -66,41 +66,21 @@ export function YouTubeComposer({ onChange }: YouTubeComposerProps) {
     }
   };
 
-  const generateMockVideoPreview = (videoId: string, url: string): VideoPreview => {
-    // Mock video data - in real implementation, this would come from YouTube API
-    const mockVideos: Record<string, Partial<VideoPreview>> = {
-      'dQw4w9WgXcQ': {
-        title: 'Quantum Computing Explained',
-        description: 'A comprehensive introduction to quantum computing principles and their applications in modern technology.',
-        channelName: 'Science Explained',
-        duration: '12:34',
-        viewCount: 1250000,
-        tags: ['quantum', 'computing', 'science', 'technology']
-      },
-      'default': {
-        title: 'Understanding Holographic Networks',
-        description: 'Deep dive into holographic memory structures and their role in distributed computing systems.',
-        channelName: 'Tech Insights',
-        duration: '8:45',
-        viewCount: 875000,
-        tags: ['holographic', 'networks', 'computing']
-      }
-    };
-
-    const videoData = mockVideos[videoId] || mockVideos['default'];
-    
+  const generateVideoPreview = (videoId: string, url: string): VideoPreview => {
+    // TODO: In a real implementation, this would call the YouTube Data API
+    // For now, create a basic preview with the video ID and thumbnail
     return {
       videoId,
       url,
-      title: videoData.title || 'YouTube Video',
-      description: videoData.description || 'No description available',
+      title: 'YouTube Video',
+      description: 'Video description would be fetched from YouTube API',
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      duration: videoData.duration || '0:00',
-      channelName: videoData.channelName || 'Unknown Channel',
-      channelId: 'mock-channel-id',
-      viewCount: videoData.viewCount,
-      publishedAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
-      tags: videoData.tags
+      duration: '0:00',
+      channelName: 'YouTube Channel',
+      channelId: 'unknown',
+      viewCount: undefined,
+      publishedAt: new Date(),
+      tags: []
     };
   };
 

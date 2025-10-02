@@ -309,25 +309,30 @@ GROUP BY u.user_id, u.username, u.pri_public_resonance;
 -- ============================================
 
 -- Row Level Security (RLS) for sensitive data
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE beacons ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quaternionic_messages ENABLE ROW LEVEL SECURITY;
+-- Disabled for now as we handle authentication at application layer
+-- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE beacons ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE quaternionic_messages ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS policies (can be expanded)
+-- Note: In Neon, we'll handle authentication at the application layer
+-- These policies are commented out as Neon doesn't have Supabase's 'authenticated' role
+/*
 CREATE POLICY user_own_data ON users
-    FOR ALL TO authenticated
+    FOR ALL TO neondb_owner
     USING (user_id = current_setting('app.current_user_id', true));
 
 CREATE POLICY beacon_visibility ON beacons
-    FOR SELECT TO authenticated
+    FOR SELECT TO neondb_owner
     USING (true); -- All beacons visible for now
 
 CREATE POLICY quaternionic_message_privacy ON quaternionic_messages
-    FOR ALL TO authenticated
+    FOR ALL TO neondb_owner
     USING (
         sender_id = current_setting('app.current_user_id', true) OR
         receiver_id = current_setting('app.current_user_id', true)
     );
+*/
 
 -- Data validation constraints
 ALTER TABLE beacons ADD CONSTRAINT valid_epoch CHECK (epoch > 0);

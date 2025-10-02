@@ -327,7 +327,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (message.kind === 'loginSuccess') {
           const user: User = {
             id: message.payload.userId,
-            name: username, // Placeholder
+            name: username,
             username: `@${username}`,
             avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
             bio: 'Logged in via PRI',

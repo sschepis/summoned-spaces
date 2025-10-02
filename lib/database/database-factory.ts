@@ -49,31 +49,39 @@ export class DatabaseFactory {
   }
   
   private static getConfigFromEnvironment(): DatabaseConfig {
-    // Development: Use SQLite
-    if (process.env.NODE_ENV !== 'production') {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isVercel = process.env.VERCEL === '1';
+    const hasNeonUrl = !!(process.env.DATABASE_URL || process.env.NEON_DATABASE_URL);
+    
+    if (isProduction || isVercel || hasNeonUrl) {
+      // Use Neon PostgreSQL for production/Vercel or when URL is available
+      if (!hasNeonUrl) {
+        throw new DatabaseError('DATABASE_URL or NEON_DATABASE_URL environment variable is required for production deployment');
+      }
+      
       return {
-        type: 'sqlite',
-        connectionString: process.env.SQLITE_PATH || './summoned-spaces.db',
-        pooling: false
+        type: 'postgresql',
+        connectionString: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL!,
+        pooling: true,
+        ssl: true,
+        maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+        queryTimeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000')
       };
+    } else {
+      // For now, force Neon even in development since SQLite adapter isn't implemented yet
+      if (hasNeonUrl) {
+        return {
+          type: 'postgresql',
+          connectionString: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL!,
+          pooling: true,
+          ssl: true,
+          maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+          queryTimeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000')
+        };
+      }
+      
+      throw new DatabaseError('Please provide DATABASE_URL or NEON_DATABASE_URL. SQLite adapter not yet implemented.');
     }
-    
-    // Production: Use Neon PostgreSQL
-    const neonUrl = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
-    if (!neonUrl) {
-      throw new DatabaseError(
-        'DATABASE_URL or NEON_DATABASE_URL environment variable required for production'
-      );
-    }
-    
-    return {
-      type: 'postgresql',
-      connectionString: neonUrl,
-      pooling: true,
-      ssl: true,
-      maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
-      queryTimeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000')
-    };
   }
   
   static async shutdown(): Promise<void> {

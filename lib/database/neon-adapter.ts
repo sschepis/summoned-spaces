@@ -1,26 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Neon PostgreSQL Database Adapter
  * Optimized for serverless deployment with Vercel
  */
 
-// import { Pool, PoolClient, QueryResult as PgQueryResult } from 'pg';
-// Note: Install pg with: npm install pg @types/pg
-
-interface Pool {
-  connect(): Promise<PoolClient>;
-  query(text: string, params?: unknown[]): Promise<{ rows: unknown[]; rowCount: number }>;
-  end(): Promise<void>;
-  on(event: string, callback: (error: Error) => void): void;
-}
-
-interface PoolClient {
-  query(text: string, params?: unknown[]): Promise<{ rows: unknown[]; rowCount: number }>;
-  release(): void;
-}
-
-interface PgQueryResult {
-  rowCount: number;
-}
+import { Pool, PoolClient, QueryResult as PgQueryResult } from 'pg';
 import { DatabaseAdapter } from './abstract-adapter.js';
 import { 
   DatabaseConfig, DatabaseError, TransactionError,
@@ -36,24 +21,15 @@ export class NeonAdapter extends DatabaseAdapter {
   constructor(private config: DatabaseConfig) {
     super();
     
-    // TODO: Initialize actual Pool when pg is installed
-    // this.pool = new Pool({
-    //   connectionString: config.connectionString,
-    //   ssl: config.ssl !== false ? { rejectUnauthorized: false } : false,
-    //   max: config.maxConnections || 20,
-    //   idleTimeoutMillis: 30000,
-    //   connectionTimeoutMillis: 2000,
-    //   statement_timeout: config.queryTimeout || 30000,
-    //   query_timeout: config.queryTimeout || 30000,
-    // });
-    
-    // Mock pool for now
-    this.pool = {
-      connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => {} }),
-      query: async () => ({ rows: [], rowCount: 0 }),
-      end: async () => {},
-      on: () => {}
-    } as Pool;
+    this.pool = new Pool({
+      connectionString: config.connectionString,
+      ssl: config.ssl !== false ? { rejectUnauthorized: false } : false,
+      max: config.maxConnections || 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+      statement_timeout: config.queryTimeout || 30000,
+      query_timeout: config.queryTimeout || 30000,
+    });
 
     // Handle pool errors
     this.pool.on('error', (err: Error) => {
@@ -188,15 +164,25 @@ export class NeonAdapter extends DatabaseAdapter {
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User> {
-    const setClause = Object.keys(updates)
-      .filter(key => key !== 'user_id')
+    const filteredUpdates = Object.keys(updates).filter(key => key !== 'user_id');
+    
+    if (filteredUpdates.length === 0) {
+      // No fields to update, just return the current user
+      const user = await this.getUserById(userId);
+      if (!user) {
+        throw new DatabaseError(`User not found: ${userId}`);
+      }
+      return user;
+    }
+    
+    const setClause = filteredUpdates
       .map((key, index) => `${key} = $${index + 2}`)
       .join(', ');
     
     const query = `
-      UPDATE users 
+      UPDATE users
       SET ${setClause}, updated_at = NOW()
-      WHERE user_id = $1 
+      WHERE user_id = $1
       RETURNING *
     `;
     
@@ -210,10 +196,10 @@ export class NeonAdapter extends DatabaseAdapter {
     return this.mapUserRow(result[0]);
   }
 
-  async deleteUser(userId: string): Promise<boolean> {
+  async deleteUser(userId: string): Promise<any> {
     const query = 'DELETE FROM users WHERE user_id = $1';
     const result = await this.rawQuery(query, [userId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   async listUsers(limit?: number, offset?: number): Promise<User[]> {
@@ -355,15 +341,25 @@ export class NeonAdapter extends DatabaseAdapter {
   }
 
   async updateBeacon(beaconId: string, updates: Partial<Beacon>): Promise<Beacon> {
-    const setClause = Object.keys(updates)
-      .filter(key => key !== 'beacon_id')
+    const filteredUpdates = Object.keys(updates).filter(key => key !== 'beacon_id');
+    
+    if (filteredUpdates.length === 0) {
+      // No fields to update, just return the current beacon
+      const beacon = await this.getBeaconById(beaconId);
+      if (!beacon) {
+        throw new DatabaseError(`Beacon not found: ${beaconId}`);
+      }
+      return beacon;
+    }
+    
+    const setClause = filteredUpdates
       .map((key, index) => `${key} = $${index + 2}`)
       .join(', ');
     
     const query = `
-      UPDATE beacons 
+      UPDATE beacons
       SET ${setClause}, updated_at = NOW()
-      WHERE beacon_id = $1 
+      WHERE beacon_id = $1
       RETURNING *
     `;
     
@@ -380,7 +376,7 @@ export class NeonAdapter extends DatabaseAdapter {
   async deleteBeacon(beaconId: string): Promise<boolean> {
     const query = 'DELETE FROM beacons WHERE beacon_id = $1';
     const result = await this.rawQuery(query, [beaconId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   // ============================================
@@ -444,15 +440,25 @@ export class NeonAdapter extends DatabaseAdapter {
   }
 
   async updateSpace(spaceId: string, updates: Partial<Space>): Promise<Space> {
-    const setClause = Object.keys(updates)
-      .filter(key => key !== 'space_id')
+    const filteredUpdates = Object.keys(updates).filter(key => key !== 'space_id');
+    
+    if (filteredUpdates.length === 0) {
+      // No fields to update, just return the current space
+      const space = await this.getSpaceById(spaceId);
+      if (!space) {
+        throw new DatabaseError(`Space not found: ${spaceId}`);
+      }
+      return space;
+    }
+    
+    const setClause = filteredUpdates
       .map((key, index) => `${key} = $${index + 2}`)
       .join(', ');
     
     const query = `
-      UPDATE spaces 
+      UPDATE spaces
       SET ${setClause}, updated_at = NOW()
-      WHERE space_id = $1 
+      WHERE space_id = $1
       RETURNING *
     `;
     
@@ -469,7 +475,7 @@ export class NeonAdapter extends DatabaseAdapter {
   async deleteSpace(spaceId: string): Promise<boolean> {
     const query = 'DELETE FROM spaces WHERE space_id = $1';
     const result = await this.rawQuery(query, [spaceId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   // ============================================
@@ -586,13 +592,13 @@ export class NeonAdapter extends DatabaseAdapter {
     `;
     
     const result = await this.rawQuery(query, [followerId, followingId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   async removeFollow(followerId: string, followingId: string): Promise<boolean> {
     const query = 'DELETE FROM follows WHERE follower_id = $1 AND following_id = $2';
     const result = await this.rawQuery(query, [followerId, followingId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   async getFollowers(userId: string): Promise<User[]> {
@@ -635,13 +641,13 @@ export class NeonAdapter extends DatabaseAdapter {
     `;
     
     const result = await this.rawQuery(query, [beaconId, userId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   async unlikeBeacon(userId: string, beaconId: string): Promise<boolean> {
     const query = 'DELETE FROM likes WHERE post_beacon_id = $1 AND user_id = $2';
     const result = await this.rawQuery(query, [beaconId, userId]);
-    return (result as unknown as PgQueryResult).rowCount > 0;
+    return (result as unknown as any).rowCount > 0;
   }
 
   async getBeaconLikes(beaconId: string): Promise<User[]> {
@@ -832,8 +838,152 @@ export class NeonAdapter extends DatabaseAdapter {
   // ============================================
 
   private async initializeSchema(): Promise<void> {
-    console.log('Schema initialization will be implemented separately');
-    // Schema will be created via migration scripts
+    console.log('🏗️ Initializing Neon PostgreSQL schema...');
+    
+    const createUserTableSql = `
+      CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        salt BYTEA NOT NULL,
+        node_public_key BYTEA NOT NULL,
+        node_private_key_encrypted BYTEA NOT NULL,
+        master_phase_key_encrypted BYTEA NOT NULL,
+        pri_public_resonance JSONB NOT NULL,
+        pri_private_resonance JSONB NOT NULL,
+        pri_fingerprint TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+
+    const createBeaconsTableSql = `
+      CREATE TABLE IF NOT EXISTS beacons (
+        beacon_id TEXT PRIMARY KEY,
+        beacon_type TEXT NOT NULL,
+        author_id TEXT NOT NULL,
+        prime_indices JSONB NOT NULL,
+        epoch BIGINT NOT NULL,
+        fingerprint BYTEA NOT NULL,
+        signature BYTEA NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (author_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createSpacesTableSql = `
+      CREATE TABLE IF NOT EXISTS spaces (
+        space_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        is_public BOOLEAN NOT NULL,
+        owner_id TEXT,
+        metadata JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (owner_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createLikesTableSql = `
+      CREATE TABLE IF NOT EXISTS likes (
+        id SERIAL PRIMARY KEY,
+        post_beacon_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(post_beacon_id, user_id),
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createCommentsTableSql = `
+      CREATE TABLE IF NOT EXISTS comments (
+        comment_id TEXT PRIMARY KEY,
+        post_beacon_id TEXT NOT NULL,
+        author_id TEXT NOT NULL,
+        comment_beacon_id TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (author_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createFollowsTableSql = `
+      CREATE TABLE IF NOT EXISTS follows (
+        follower_id TEXT NOT NULL,
+        following_id TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        PRIMARY KEY (follower_id, following_id),
+        FOREIGN KEY (follower_id) REFERENCES users (user_id),
+        FOREIGN KEY (following_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createNotificationsTableSql = `
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        recipient_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        sender_id TEXT,
+        sender_username TEXT,
+        read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (recipient_id) REFERENCES users (user_id),
+        FOREIGN KEY (sender_id) REFERENCES users (user_id)
+      );
+    `;
+
+    const createQuaternionicMessagesTableSql = `
+      CREATE TABLE IF NOT EXISTS quaternionic_messages (
+        message_id TEXT PRIMARY KEY,
+        sender_id TEXT NOT NULL,
+        receiver_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        room_id TEXT,
+        phase_alignment REAL NOT NULL,
+        entropy_level REAL NOT NULL,
+        twist_angle REAL NOT NULL,
+        is_quantum_delivered BOOLEAN NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (sender_id) REFERENCES users (user_id) ON DELETE CASCADE,
+        FOREIGN KEY (receiver_id) REFERENCES users (user_id) ON DELETE CASCADE
+      );
+    `;
+
+    try {
+      await this.rawQuery(createUserTableSql);
+      console.log('  ✅ Users table ready');
+      
+      await this.rawQuery(createBeaconsTableSql);
+      console.log('  ✅ Beacons table ready');
+      
+      await this.rawQuery(createSpacesTableSql);
+      console.log('  ✅ Spaces table ready');
+      
+      await this.rawQuery(createLikesTableSql);
+      console.log('  ✅ Likes table ready');
+      
+      await this.rawQuery(createCommentsTableSql);
+      console.log('  ✅ Comments table ready');
+      
+      await this.rawQuery(createFollowsTableSql);
+      console.log('  ✅ Follows table ready');
+      
+      await this.rawQuery(createNotificationsTableSql);
+      console.log('  ✅ Notifications table ready');
+      
+      await this.rawQuery(createQuaternionicMessagesTableSql);
+      console.log('  ✅ Quaternionic messages table ready');
+      
+      console.log('🎉 Schema initialization complete!');
+    } catch (error) {
+      console.error('❌ Schema initialization failed:', error);
+      throw error;
+    }
   }
 }
 

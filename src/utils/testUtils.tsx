@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactElement } from 'react';
 
@@ -56,7 +56,7 @@ export const formTestUtils = {
     await user.click(submitButton);
   },
 
-  expectFormError(fieldName: string, errorMessage?: string) {
+  expectFormError(_fieldName: string, errorMessage?: string) {
     const errorElement = screen.getByRole('alert') || 
                         screen.getByText(new RegExp(errorMessage || 'error', 'i'));
     expect(errorElement).toBeInTheDocument();
@@ -103,87 +103,8 @@ export const paginationTestUtils = {
   }
 };
 
-// Real data generators using beacon-based system
-export const createTestData = {
-  user: async (overrides = {}) => {
-    // In a real implementation, this would create a user beacon
-    // and return the decoded user data structure
-    const userData = {
-      id: `user_${Math.random().toString(36).substr(2, 9)}`,
-      name: 'Test User',
-      username: '@testuser',
-      email: 'test@example.com',
-      avatar: 'https://example.com/avatar.jpg',
-      bio: 'Test user bio',
-      verified: false,
-      isFollowing: false,
-      stats: {
-        followers: 100,
-        following: 50,
-        spaces: 5,
-        resonanceScore: 0.85
-      },
-      ...overrides
-    };
-    
-    // TODO: Encode as beacon and store
-    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(userData));
-    
-    return userData;
-  },
-
-  space: async (overrides = {}) => {
-    // In a real implementation, this would create a space beacon
-    const spaceData = {
-      id: `space_${Math.random().toString(36).substr(2, 9)}`,
-      name: 'Test Space',
-      description: 'A test space for development',
-      memberCount: 25,
-      fileCount: 100,
-      isPublic: true,
-      color: 'from-blue-500 to-cyan-500',
-      resonanceStrength: 0.92,
-      tags: ['test', 'development'],
-      ...overrides
-    };
-    
-    // TODO: Encode as beacon and store
-    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(spaceData));
-    
-    return spaceData;
-  },
-
-  activity: async (overrides = {}) => {
-    // In a real implementation, this would create an activity beacon
-    const activityData = {
-      id: `activity_${Math.random().toString(36).substr(2, 9)}`,
-      type: 'file_contributed',
-      user: await createTestData.user(),
-      action: 'shared a file',
-      timestamp: '2 minutes ago',
-      metrics: {
-        likes: 10,
-        comments: 5,
-        shares: 2,
-        hasLiked: false,
-        hasBookmarked: false
-      },
-      ...overrides
-    };
-    
-    // TODO: Encode as beacon and store
-    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(activityData));
-    
-    return activityData;
-  }
-};
-
-// Legacy mockData for backwards compatibility - now uses beacon-based generators
-export const mockData = {
-  user: (overrides = {}) => createTestData.user(overrides),
-  space: (overrides = {}) => createTestData.space(overrides),
-  activity: (overrides = {}) => createTestData.activity(overrides)
-};
+// Test data generators removed - tests should use real services or proper mocking
+// For unit tests, use testing libraries like Jest mocks instead of static mock data
 
 // Performance testing utilities
 export const performanceUtils = {

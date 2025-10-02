@@ -11,49 +11,34 @@ export class SocialGraphManager {
 
     async addFollow(userIdToFollow: string, followerId: string): Promise<void> {
         const db = getDatabase();
-        // Use INSERT OR IGNORE to prevent duplicate follow relationships
-        const sql = `INSERT OR IGNORE INTO follows (follower_id, following_id, created_at) VALUES (?, ?, ?)`;
-        const params = [followerId, userIdToFollow, new Date().toISOString()];
-
-        return new Promise((resolve, reject) => {
-            db.run(sql, params, (err: Error | null) => {
-                if (err) {
-                    console.error('Error adding follow relationship', err.message);
-                    return reject(err);
-                }
-                
-                // Check if a new row was actually inserted using lastID or changes
-                // Note: We'll assume it's a new follow since we're using INSERT OR IGNORE
+        
+        try {
+            const success = await db.createFollow(followerId, userIdToFollow);
+            if (success) {
                 console.log(`User ${followerId} is now following ${userIdToFollow}`);
-                
                 // Send notification to the user being followed
                 this.sendFollowNotification(userIdToFollow, followerId, 'follow');
-                
-                resolve();
-            });
-        });
+            }
+        } catch (err) {
+            console.error('Error adding follow relationship', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     async removeFollow(userIdToUnfollow: string, followerId: string): Promise<void> {
         const db = getDatabase();
-        const sql = `DELETE FROM follows WHERE follower_id = ? AND following_id = ?`;
-        const params = [followerId, userIdToUnfollow];
-
-        return new Promise((resolve, reject) => {
-            db.run(sql, params, (err: Error | null) => {
-                if (err) {
-                    console.error('Error removing follow relationship', err.message);
-                    return reject(err);
-                }
-                
+        
+        try {
+            const success = await db.removeFollow(followerId, userIdToUnfollow);
+            if (success) {
                 console.log(`User ${followerId} unfollowed ${userIdToUnfollow}`);
-                
                 // Send notification to the user being unfollowed
                 this.sendFollowNotification(userIdToUnfollow, followerId, 'unfollow');
-                
-                resolve();
-            });
-        });
+            }
+        } catch (err) {
+            console.error('Error removing follow relationship', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     private async sendFollowNotification(targetUserId: string, followerId: string, type: 'follow' | 'unfollow'): Promise<void> {
@@ -99,109 +84,82 @@ export class SocialGraphManager {
         const db = getDatabase();
         const sql = `
             INSERT INTO notifications (recipient_id, type, title, message, sender_id, sender_username, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
         `;
         const params = [recipientId, type, title, message, senderId || null, senderUsername || null, new Date().toISOString()];
 
-        return new Promise((resolve, reject) => {
-            db.run(sql, params, (err) => {
-                if (err) {
-                    console.error('Error storing notification', err.message);
-                    return reject(err);
-                }
-                console.log(`Notification stored for user ${recipientId}`);
-                resolve();
-            });
-        });
+        try {
+            await db.query(sql, params);
+            console.log(`Notification stored for user ${recipientId}`);
+        } catch (err) {
+            console.error('Error storing notification', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
-    async getNotifications(userId: string, limit: number = 50): Promise<any[]> {
+    async getNotifications(userId: string, limit: number = 50): Promise<unknown[]> {
         const db = getDatabase();
         const sql = `
             SELECT * FROM notifications
-            WHERE recipient_id = ?
+            WHERE recipient_id = $1
             ORDER BY created_at DESC
-            LIMIT ?
+            LIMIT $2
         `;
 
-        return new Promise((resolve, reject) => {
-            db.all(sql, [userId, limit], (err, rows: any[]) => {
-                if (err) {
-                    console.error('Error getting notifications', err.message);
-                    return reject(err);
-                }
-                resolve(rows || []);
-            });
-        });
+        try {
+            const result = await db.query(sql, [userId, limit]);
+            return result || [];
+        } catch (err) {
+            console.error('Error getting notifications', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     async markNotificationAsRead(notificationId: number): Promise<void> {
         const db = getDatabase();
-        const sql = `UPDATE notifications SET read = 1 WHERE id = ?`;
+        const sql = `UPDATE notifications SET read = true WHERE id = $1`;
 
-        return new Promise((resolve, reject) => {
-            db.run(sql, [notificationId], (err) => {
-                if (err) {
-                    console.error('Error marking notification as read', err.message);
-                    return reject(err);
-                }
-                resolve();
-            });
-        });
+        try {
+            await db.query(sql, [notificationId]);
+        } catch (err) {
+            console.error('Error marking notification as read', err instanceof Error ? err.message : err);
+            throw err;
+        }
     }
 
     private async getUsernameById(userId: string): Promise<string | null> {
         const db = getDatabase();
-        const sql = `SELECT username FROM users WHERE user_id = ?`;
-
-        return new Promise((resolve, reject) => {
-            db.get(sql, [userId], (err, row: { username: string } | undefined) => {
-                if (err) {
-                    console.error('Error getting username', err.message);
-                    return reject(err);
-                }
-                resolve(row?.username || null);
-            });
-        });
+        
+        try {
+            const user = await db.getUserById(userId);
+            return user?.username || null;
+        } catch (err) {
+            console.error('Error getting username', err instanceof Error ? err.message : err);
+            return null;
+        }
     }
 
     async getFollowers(userId: string): Promise<{ userId: string, username: string }[]> {
         const db = getDatabase();
-        const sql = `
-            SELECT u.user_id, u.username
-            FROM users u
-            JOIN follows f ON u.user_id = f.follower_id
-            WHERE f.following_id = ?
-        `;
         
-        return new Promise((resolve, reject) => {
-            db.all(sql, [userId], (err, rows: { user_id: string, username: string }[]) => {
-                if (err) {
-                    console.error('Error getting followers', err.message);
-                    return reject(err);
-                }
-                resolve(rows.map(row => ({ userId: row.user_id, username: row.username })));
-            });
-        });
+        try {
+            const followers = await db.getFollowers(userId);
+            return followers.map(user => ({ userId: user.user_id, username: user.username }));
+        } catch (err) {
+            console.error('Error getting followers', err instanceof Error ? err.message : err);
+            return [];
+        }
     }
 
     async getFollowing(userId: string): Promise<{ userId: string, username: string }[]> {
         const db = getDatabase();
-        const sql = `
-            SELECT u.user_id, u.username
-            FROM users u
-            JOIN follows f ON u.user_id = f.following_id
-            WHERE f.follower_id = ?
-        `;
         
-        return new Promise((resolve, reject) => {
-            db.all(sql, [userId], (err, rows: { user_id: string, username: string }[]) => {
-                if (err) {
-                    console.error('Error getting following', err.message);
-                    return reject(err);
-                }
-                resolve(rows.map(row => ({ userId: row.user_id, username: row.username })));
-            });
-        });
+        try {
+            const following = await db.getFollowing(userId);
+            return following.map(user => ({ userId: user.user_id, username: user.username }));
+        } catch (err) {
+            console.error('Error getting following', err instanceof Error ? err.message : err);
+            return [];
+        }
     }
 }

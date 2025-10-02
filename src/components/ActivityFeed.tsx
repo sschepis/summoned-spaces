@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNetworkState, PostBeaconInfo } from '../contexts/NetworkContext';
 import { holographicMemoryManager } from '../services/holographic-memory';
 import webSocketService from '../services/websocket';
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/common';
+import { userInfoCache } from '../services/user-info-cache';
 
 export function ActivityFeed() {
   const { recentBeacons } = useNetworkState();
   const { user } = useAuth();
   const [decodedContent, setDecodedContent] = useState<string | null>(null);
   const [selectedBeacon, setSelectedBeacon] = useState<number | null>(null);
+  const [userCache, setUserCache] = useState<Map<string, User>>(new Map());
 
   const handleBeaconClick = (beaconInfo: PostBeaconInfo, index: number) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +43,62 @@ export function ActivityFeed() {
     }
   };
 
+  // Cache user information for beacons
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const newUserCache = new Map(userCache);
+      let hasUpdates = false;
+
+      for (const beaconInfo of recentBeacons) {
+        if (!newUserCache.has(beaconInfo.authorId)) {
+          try {
+            const userInfo = await userInfoCache.getUserInfo(beaconInfo.authorId);
+            if (userInfo) {
+              // Create a proper User object from the cached info
+              const fullUser: User = {
+                id: beaconInfo.authorId,
+                name: userInfo.username,
+                username: `@${userInfo.username}`,
+                avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beaconInfo.authorId}`,
+                bio: '',
+                isFollowing: false,
+                stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0 },
+                recentActivity: '',
+                tags: []
+              };
+              newUserCache.set(beaconInfo.authorId, fullUser);
+              hasUpdates = true;
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch user info for ${beaconInfo.authorId}:`, error);
+            // Create a fallback user object
+            const fallbackUser: User = {
+              id: beaconInfo.authorId,
+              name: beaconInfo.authorId.substring(0, 8),
+              username: `@${beaconInfo.authorId.substring(0, 8)}`,
+              avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beaconInfo.authorId}`,
+              bio: '',
+              isFollowing: false,
+              stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0 },
+              recentActivity: '',
+              tags: []
+            };
+            newUserCache.set(beaconInfo.authorId, fallbackUser);
+            hasUpdates = true;
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        setUserCache(newUserCache);
+      }
+    };
+
+    if (recentBeacons.length > 0) {
+      fetchUserInfo();
+    }
+  }, [recentBeacons, userCache]);
+
   return (
     <div className="panel bg-black/40 backdrop-blur-xl rounded-xl p-6 border border-purple-500/20">
       <h3 className="font-semibold text-lg text-purple-300 mb-4">
@@ -51,13 +109,17 @@ export function ActivityFeed() {
           <p className="text-gray-500 text-center py-4">Awaiting network activity...</p>
         ) : (
           recentBeacons.map((beaconInfo, index) => {
-            // In a real app, we'd fetch user details for each authorId
-            const author: User = {
+            // Get cached user info or use fallback
+            const author: User = userCache.get(beaconInfo.authorId) || {
               id: beaconInfo.authorId,
-              name: beaconInfo.authorId.substring(0, 8), // Placeholder
-              username: `@${beaconInfo.authorId.substring(0, 8)}`, // Placeholder
+              name: beaconInfo.authorId.substring(0, 8),
+              username: `@${beaconInfo.authorId.substring(0, 8)}`,
               avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beaconInfo.authorId}`,
-              bio: '', isFollowing: false, stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0 }, recentActivity: '', tags: []
+              bio: '',
+              isFollowing: false,
+              stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0 },
+              recentActivity: '',
+              tags: []
             };
 
             return (

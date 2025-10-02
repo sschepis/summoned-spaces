@@ -23,43 +23,54 @@ async function safeResolangCall(funcName: string, ...args: any[]) {
   }
 }
 
-const base64ToUint8Array = (value: string | null | undefined): Uint8Array => {
-  if (!value || value.length === 0) {
+const toUint8Array = (value: any): Uint8Array => {
+  if (!value) {
     return new Uint8Array();
   }
 
-  if (typeof globalThis.atob === 'function') {
-    const binary = globalThis.atob(value);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
+  // Handle Uint8Array directly
+  if (value instanceof Uint8Array) {
+    return value;
+  }
+
+  // Handle Buffer-like objects from server ({"type":"Buffer","data":[...]})
+  if (typeof value === 'object' && value.type === 'Buffer' && Array.isArray(value.data)) {
+    return new Uint8Array(value.data);
+  }
+
+  // Handle base64 strings
+  if (typeof value === 'string') {
+    if (value.length === 0) {
+      return new Uint8Array();
     }
-    return bytes;
-  }
 
-  const bufferCtor = (globalThis as typeof globalThis & { Buffer?: { from(input: string, encoding: 'base64'): Uint8Array } }).Buffer;
-  if (bufferCtor) {
-    const buffer = bufferCtor.from(value, 'base64');
-    return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  }
-
-  // Fallback: attempt minimal manual decode to avoid throwing in constrained environments
-  try {
-    const sanitized = value.replace(/[^A-Za-z0-9+/=]/g, '');
-    if (typeof globalThis.atob === 'function') {
-      const binary = globalThis.atob(sanitized);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
+    try {
+      if (typeof globalThis.atob === 'function') {
+        const binary = globalThis.atob(value);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
       }
-      return bytes;
+
+      const bufferCtor = (globalThis as typeof globalThis & { Buffer?: { from(input: string, encoding: 'base64'): Uint8Array } }).Buffer;
+      if (bufferCtor) {
+        const buffer = bufferCtor.from(value, 'base64');
+        return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+      }
+    } catch (error) {
+      console.error('Failed to decode base64 beacon field:', error);
     }
-  } catch (error) {
-    console.error('Failed to decode base64 beacon field:', error);
   }
 
+  // Handle arrays directly
+  if (Array.isArray(value)) {
+    return new Uint8Array(value);
+  }
+
+  console.warn('Unknown format for binary data:', typeof value, value);
   return new Uint8Array();
 };
 
@@ -123,19 +134,19 @@ class BeaconCacheManager {
       return null;
     }
 
-    const fingerprint = raw.fingerprint instanceof Uint8Array
-      ? raw.fingerprint
-      : base64ToUint8Array(raw.fingerprint ?? null);
+    try {
+      const fingerprint = toUint8Array(raw.fingerprint);
+      const signature = toUint8Array(raw.signature);
 
-    const signature = raw.signature instanceof Uint8Array
-      ? raw.signature
-      : base64ToUint8Array(raw.signature ?? null);
-
-    return {
-      ...raw,
-      fingerprint,
-      signature
-    };
+      return {
+        ...raw,
+        fingerprint,
+        signature
+      };
+    } catch (error) {
+      console.error('Failed to normalize beacon:', error, raw);
+      return null;
+    }
   }
 
   private async initializePrimes() {

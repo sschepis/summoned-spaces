@@ -1,4 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import dotenv from 'dotenv';
+
+// Load environment variables from .env.local for development
+dotenv.config({ path: '.env.local' });
+
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
@@ -47,19 +52,12 @@ export function createWebSocketServer(server: IHttpServer) {
   async function broadcastNetworkUpdate() {
     const networkState = networkStateManager.getNetworkState();
     
-    // Fetch usernames for all nodes
+    // Fetch usernames for all nodes using new adapter
     const db = getDatabase();
     const nodesWithUsernames = await Promise.all(networkState.map(async (node) => {
-      const userRow = await new Promise<{username: string}>((resolve) => {
-        db.get('SELECT username FROM users WHERE user_id = ?', [node.userId], (err, row: {username: string} | undefined) => {
-          if (err || !row) {
-            resolve({username: node.userId.substring(0, 8)});
-          } else {
-            resolve(row);
-          }
-        });
-      });
-      return { ...node, username: userRow.username };
+      const user = await db.getUserById(node.userId);
+      const username = user?.username || node.userId.substring(0, 8);
+      return { ...node, username };
     }));
     
     const message: NetworkStateUpdateMessage = {
@@ -122,14 +120,10 @@ export function createWebSocketServer(server: IHttpServer) {
             // Register the connection with the manager
             connectionId = connectionManager.addConnection(ws, session.userId);
 
-            // Get username from database
+            // Get username from database using new adapter
             const db = getDatabase();
-            const userRow = await new Promise<{username: string}>((resolve, reject) => {
-              db.get('SELECT username FROM users WHERE user_id = ?', [session.userId], (err, row: {username: string} | undefined) => {
-                if (err) return reject(err);
-                resolve(row || {username: session.userId.substring(0, 8)});
-              });
-            });
+            const user = await db.getUserById(session.userId);
+            const userRow = { username: user?.username || session.userId.substring(0, 8) };
             
             // Add the node to the network state with username
             networkStateManager.addNode(connectionId, session.userId, userRow.username, session.pri.publicResonance);
@@ -255,39 +249,15 @@ export function createWebSocketServer(server: IHttpServer) {
             };
 
             if (category === 'all' || category === 'people') {
-              const userSql = `SELECT user_id, username FROM users WHERE username LIKE ? LIMIT 10`;
-              results.users = await new Promise((resolve, reject) => {
-                db.all(userSql, [`%${query}%`], (err: Error | null, rows: any[]) => {
-                  if (err) return reject(err);
-                  resolve(rows);
-                });
-              });
+              results.users = await db.searchUsers(query, 10);
             }
 
             if (category === 'all' || category === 'spaces') {
-              const spaceSql = `SELECT space_id, name, description FROM spaces WHERE name LIKE ? OR description LIKE ? LIMIT 10`;
-              results.spaces = await new Promise((resolve, reject) => {
-                db.all(spaceSql, [`%${query}%`, `%${query}%`], (err: Error | null, rows: any[]) => {
-                  if (err) return reject(err);
-                  resolve(rows);
-                });
-              });
+              results.spaces = await db.searchSpaces(query, 10);
             }
 
             if (category === 'all' || category === 'posts') {
-              const beaconSql = `
-                SELECT b.beacon_id, b.author_id, b.created_at, u.username
-                FROM beacons b
-                LEFT JOIN users u ON b.author_id = u.user_id
-                WHERE b.beacon_type = 'post'
-                LIMIT 10
-              `;
-              results.beacons = await new Promise((resolve, reject) => {
-                db.all(beaconSql, [], (err: Error | null, rows: any[]) => {
-                  if (err) return reject(err);
-                  resolve(rows);
-                });
-              });
+              results.beacons = await db.searchBeacons(query, 'post', 10);
             }
 
             ws.send(JSON.stringify({
@@ -300,48 +270,24 @@ export function createWebSocketServer(server: IHttpServer) {
             const { userId, beaconType } = message.payload;
             const db = getDatabase();
             
-            let sql: string;
-            const params: any[] = [];
+            let beacons: any[];
             
             // Support wildcard '*' to get all users' beacons of a specific type
-            // Include username in the query
             if (userId === '*') {
-              sql = `
-                SELECT b.*, u.username
-                FROM beacons b
-                LEFT JOIN users u ON b.author_id = u.user_id
-                WHERE 1=1
-              `;
+              beacons = await db.getBeaconsByType(beaconType || 'post', 100);
             } else {
-              sql = `
-                SELECT b.*, u.username
-                FROM beacons b
-                LEFT JOIN users u ON b.author_id = u.user_id
-                WHERE b.author_id = ?
-              `;
-              params.push(userId);
+              beacons = await db.getBeaconsByUser(userId, beaconType);
             }
             
-            if (beaconType) {
-              sql += ` AND b.beacon_type = ?`;
-              params.push(beaconType);
-            }
-            
-            sql += ` ORDER BY b.created_at DESC`;
-            
-            const beacons = await new Promise((resolve, reject) => {
-              db.all(sql, params, (err: Error | null, rows: any[]) => {
-                if (err) {
-                  console.error('Error retrieving beacons:', err.message);
-                  return reject(err);
-                }
-                resolve(rows);
-              });
-            });
+            // Add username to each beacon
+            const beaconsWithUsernames = await Promise.all(beacons.map(async (beacon) => {
+              const user = await db.getUserById(beacon.author_id);
+              return { ...beacon, username: user?.username || beacon.author_id.substring(0, 8) };
+            }));
             
             ws.send(JSON.stringify({
               kind: 'beaconsResponse',
-              payload: { beacons }
+              payload: { beacons: beaconsWithUsernames }
             }));
             break;
           }
@@ -349,17 +295,7 @@ export function createWebSocketServer(server: IHttpServer) {
             const { beaconId } = message.payload;
             const db = getDatabase();
             
-            const sql = `SELECT * FROM beacons WHERE beacon_id = ?`;
-            
-            const beacon = await new Promise((resolve, reject) => {
-              db.get(sql, [beaconId], (err: Error | null, row: any) => {
-                if (err) {
-                  console.error('Error retrieving beacon:', err.message);
-                  return reject(err);
-                }
-                resolve(row || null);
-              });
-            });
+            const beacon = await db.getBeaconById(beaconId);
             
             ws.send(JSON.stringify({
               kind: 'beaconResponse',
@@ -423,14 +359,10 @@ export function createWebSocketServer(server: IHttpServer) {
                 connectionId = connectionManager.addConnection(ws, userId);
                 console.log('[SERVER] New connectionId assigned:', connectionId);
                 
-                // Get username from database
+                // Get username from database using new adapter
                 const db = getDatabase();
-                const userRow = await new Promise<{username: string}>((resolve, reject) => {
-                  db.get('SELECT username FROM users WHERE user_id = ?', [userId], (err, row: {username: string} | undefined) => {
-                    if (err) return reject(err);
-                    resolve(row || {username: userId.substring(0, 8)});
-                  });
-                });
+                const user = await db.getUserById(userId);
+                const userRow = { username: user?.username || userId.substring(0, 8) };
                 
                 // Re-add the node to the network state with username
                 networkStateManager.addNode(connectionId, userId, userRow.username, pri.publicResonance);

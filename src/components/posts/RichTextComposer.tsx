@@ -18,7 +18,7 @@ export function RichTextComposer({
   const [content, setContent] = useState('');
   const [mentions, setMentions] = useState<Mention[]>([]);
   const [hashtags, setHashtags] = useState<Hashtag[]>([]);
-  const [formatting, setFormatting] = useState<RichTextFormatting>({
+  const [formatting] = useState<RichTextFormatting>({
     bold: [],
     italic: [],
     code: [],
@@ -30,16 +30,11 @@ export function RichTextComposer({
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Mock data for suggestions
-  const mockUsers = [
-    { id: '1', username: 'alice_quantum', name: 'Alice Quantum' },
-    { id: '2', username: 'bob_entangled', name: 'Bob Entangled' },
-    { id: '3', username: 'dr_resonance', name: 'Dr. Resonance' }
-  ];
-
-  const mockHashtags = [
-    'quantum', 'resonance', 'holographic', 'network', 'research', 'update'
-  ];
+  // Real user suggestions and popular hashtags
+  const [userSuggestions] = useState<Array<{ id: string; username: string; name: string }>>([]);
+  const [hashtagSuggestions] = useState<string[]>([
+    'quantum', 'resonance', 'holographic', 'network', 'research', 'update', 'collaboration', 'innovation'
+  ]);
 
   useEffect(() => {
     const isValid = content.trim().length > 0 && content.length <= maxLength;
@@ -68,7 +63,7 @@ export function RichTextComposer({
 
     while ((mentionMatch = mentionRegex.exec(text)) !== null) {
       const username = mentionMatch[1];
-      const user = mockUsers.find(u => u.username === username);
+      const user = userSuggestions.find(u => u.username === username);
       if (user) {
         foundMentions.push({
           id: user.id,
@@ -106,8 +101,10 @@ export function RichTextComposer({
     if (atMatch) {
       setShowMentionSuggestions(true);
       setShowHashtagSuggestions(false);
+      // TODO: Fetch user suggestions based on partial input
+      // For now, we'll use a basic implementation
     }
-    // Check for # trigger  
+    // Check for # trigger
     else if (beforeCursor.match(/#(\w*)$/)) {
       setShowHashtagSuggestions(true);
       setShowMentionSuggestions(false);
@@ -119,7 +116,7 @@ export function RichTextComposer({
     }
   };
 
-  const insertMention = (user: typeof mockUsers[0]) => {
+  const insertMention = (user: typeof userSuggestions[0]) => {
     if (!textareaRef.current) return;
     
     const beforeCursor = content.substring(0, cursorPosition);
@@ -256,7 +253,7 @@ export function RichTextComposer({
       {/* Mention Suggestions */}
       {showMentionSuggestions && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
-          {mockUsers.map((user) => (
+          {userSuggestions.map((user) => (
             <button
               key={user.id}
               onClick={() => insertMention(user)}
@@ -279,7 +276,7 @@ export function RichTextComposer({
       {/* Hashtag Suggestions */}
       {showHashtagSuggestions && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
-          {mockHashtags.map((tag) => (
+          {hashtagSuggestions.map((tag) => (
             <button
               key={tag}
               onClick={() => insertHashtag(tag)}

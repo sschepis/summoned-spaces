@@ -151,6 +151,37 @@ export abstract class DatabaseAdapter {
   // Database management operations
   abstract clearAllData(): Promise<void>;
   
+  // ============================================
+  // Legacy SQLite API Compatibility Layer
+  // ============================================
+  
+  // Legacy get method for backward compatibility
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get(sql: string, params: unknown[], callback: (err: Error | null, row?: any) => void): void {
+    this.query(sql, params)
+      .then(results => {
+        const row = results.length > 0 ? results[0] : undefined;
+        callback(null, row);
+      })
+      .catch(err => callback(err));
+  }
+  
+  // Legacy all method for backward compatibility
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  all(sql: string, params: unknown[], callback: (err: Error | null, rows: any[]) => void): void {
+    this.query(sql, params)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(results => callback(null, results as any[]))
+      .catch(err => callback(err, []));
+  }
+  
+  // Legacy run method for backward compatibility
+  run(sql: string, params: unknown[], callback?: (err: Error | null) => void): void {
+    this.query(sql, params)
+      .then(() => callback?.(null))
+      .catch(err => callback?.(err));
+  }
+  
   protected abstract mapUserRow(row: unknown): User;
   protected abstract mapBeaconRow(row: unknown): Beacon;
   protected abstract mapSpaceRow(row: unknown): Space;

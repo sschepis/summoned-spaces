@@ -1,6 +1,7 @@
 import type { Beacon } from './protocol'; // Using our placeholder Beacon type
 import { ConnectionManager } from './connections';
 import { getDatabase } from './database';
+import type { CreateBeaconData } from '../lib/database/types.js';
 
 export class PostManager {
   private connectionManager: ConnectionManager;
@@ -146,46 +147,45 @@ export class PostManager {
     beaconType: string
   ): Promise<void> {
     const db = getDatabase();
-    const sql = `
-      INSERT INTO beacons (beacon_id, beacon_type, author_id, prime_indices, epoch, fingerprint, signature, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
     
     console.log(`[PostManager] Preparing to save beacon with type: ${beaconType}`);
     
-    const params = [
-      beaconId,
-      beaconType,
-      authorId,
-      JSON.stringify(beacon.index),
-      beacon.epoch,
-      Buffer.from(beacon.fingerprint).toString('base64'),
-      Buffer.from(beacon.signature).toString('base64'),
-      new Date().toISOString()
-    ];
+    // Convert beacon data to match the NeonAdapter interface
+    const beaconData: CreateBeaconData = {
+      beacon_id: beaconId,
+      beacon_type: beaconType,
+      author_id: authorId,
+      prime_indices: {
+        base_resonance: 0.5,
+        amplification_factor: 0.5,
+        phase_alignment: 0.5,
+        entropy_level: 0.5,
+        prime_sequence: beacon.index,
+        resonance_signature: beacon.index.join('-')
+      },
+      epoch: beacon.epoch,
+      fingerprint: Buffer.from(beacon.fingerprint),
+      signature: Buffer.from(beacon.signature),
+      metadata: { beaconType }
+    };
     
-    console.log(`[PostManager] SQL params:`, {
+    console.log(`[PostManager] Beacon data:`, {
       beaconId,
       beaconType,
       authorId,
       primeIndicesLength: beacon.index.length,
       epoch: beacon.epoch,
-      fingerprintBase64Length: Buffer.from(beacon.fingerprint).toString('base64').length,
-      signatureBase64Length: Buffer.from(beacon.signature).toString('base64').length
+      fingerprintLength: beacon.fingerprint.length,
+      signatureLength: beacon.signature.length
     });
 
-    return new Promise((resolve, reject) => {
-      db.run(sql, params, (err: Error | null) => {
-        if (err) {
-          console.error('[PostManager] Error saving beacon to DB:', err.message);
-          console.error('[PostManager] SQL:', sql);
-          console.error('[PostManager] Params:', params);
-          return reject(err);
-        }
-        console.log(`[PostManager] Beacon ${beaconId} (type: ${beaconType}) saved successfully to database.`);
-        resolve();
-      });
-    });
+    try {
+      await db.createBeacon(beaconData);
+      console.log(`[PostManager] Beacon ${beaconId} (type: ${beaconType}) saved successfully to database.`);
+    } catch (err) {
+      console.error('[PostManager] Error saving beacon to DB:', err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 
   async handleCommentSubmission(
@@ -219,98 +219,85 @@ export class PostManager {
     
     // First save the beacon
     const beaconId = `beacon_${Math.random().toString(36).substr(2, 9)}`;
-    const beaconSql = `
-      INSERT INTO beacons (beacon_id, beacon_type, author_id, prime_indices, epoch, fingerprint, signature, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
     
-    await new Promise<void>((resolve, reject) => {
-      db.run(beaconSql, [
-        beaconId,
-        'comment', // Set beacon_type to 'comment'
-        authorId,
-        JSON.stringify(beacon.index),
-        beacon.epoch,
-        Buffer.from(beacon.fingerprint).toString('base64'),
-        Buffer.from(beacon.signature).toString('base64'),
-        new Date().toISOString()
-      ], (err: Error | null) => {
-        if (err) {
-          console.error('Error saving comment beacon', err.message);
-          return reject(err);
-        }
-        resolve();
-      });
-    });
+    const beaconData: CreateBeaconData = {
+      beacon_id: beaconId,
+      beacon_type: 'comment',
+      author_id: authorId,
+      prime_indices: {
+        base_resonance: 0.5,
+        amplification_factor: 0.5,
+        phase_alignment: 0.5,
+        entropy_level: 0.5,
+        prime_sequence: beacon.index,
+        resonance_signature: beacon.index.join('-')
+      },
+      epoch: beacon.epoch,
+      fingerprint: Buffer.from(beacon.fingerprint),
+      signature: Buffer.from(beacon.signature),
+      metadata: { beaconType: 'comment' }
+    };
+    
+    try {
+      await db.createBeacon(beaconData);
+    } catch (err) {
+      console.error('Error saving comment beacon', err instanceof Error ? err.message : err);
+      throw err;
+    }
 
-    // Then save the comment reference
+    // Then save the comment reference using raw query
     const commentSql = `
       INSERT INTO comments (comment_id, post_beacon_id, author_id, comment_beacon_id, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5)
     `;
     
-    return new Promise((resolve, reject) => {
-      db.run(commentSql, [
+    try {
+      await db.query(commentSql, [
         commentId,
         postBeaconId,
         authorId,
         beaconId,
         new Date().toISOString()
-      ], (err: Error | null) => {
-        if (err) {
-          console.error('Error saving comment', err.message);
-          return reject(err);
-        }
-        console.log(`Comment ${commentId} saved to database.`);
-        resolve();
-      });
-    });
+      ]);
+      console.log(`Comment ${commentId} saved to database.`);
+    } catch (err) {
+      console.error('Error saving comment', err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 
   async toggleLike(userId: string, postBeaconId: string): Promise<{ liked: boolean }> {
     const db = getDatabase();
     
-    // Check if already liked
-    const checkSql = `SELECT * FROM likes WHERE post_beacon_id = ? AND user_id = ?`;
+    // Check if already liked using PostgreSQL syntax
+    const checkSql = `SELECT * FROM likes WHERE post_beacon_id = $1 AND user_id = $2`;
     
-    const exists = await new Promise<boolean>((resolve, reject) => {
-      db.get(checkSql, [postBeaconId, userId], (err, row) => {
-        if (err) {
-          console.error('Error checking like status', err.message);
-          return reject(err);
-        }
-        resolve(!!row);
-      });
-    });
+    try {
+      const result = await db.query(checkSql, [postBeaconId, userId]);
+      const exists = result.length > 0;
 
-    if (exists) {
-      // Unlike
-      const deleteSql = `DELETE FROM likes WHERE post_beacon_id = ? AND user_id = ?`;
-      await new Promise<void>((resolve, reject) => {
-        db.run(deleteSql, [postBeaconId, userId], (err: Error | null) => {
-          if (err) {
-            console.error('Error unliking post', err.message);
-            return reject(err);
-          }
+      if (exists) {
+        // Unlike using adapter method
+        const success = await db.unlikeBeacon(userId, postBeaconId);
+        if (success) {
           console.log(`User ${userId} unliked post ${postBeaconId}`);
-          resolve();
-        });
-      });
-      return { liked: false };
-    } else {
-      // Like
-      const insertSql = `INSERT INTO likes (post_beacon_id, user_id, created_at) VALUES (?, ?, ?)`;
-      await new Promise<void>((resolve, reject) => {
-        db.run(insertSql, [postBeaconId, userId, new Date().toISOString()], (err: Error | null) => {
-          if (err) {
-            console.error('Error liking post', err.message);
-            return reject(err);
-          }
+          return { liked: false };
+        } else {
+          throw new Error('Failed to unlike post');
+        }
+      } else {
+        // Like using adapter method
+        const success = await db.likeBeacon(userId, postBeaconId);
+        if (success) {
           console.log(`User ${userId} liked post ${postBeaconId}`);
-          resolve();
-        });
-      });
-      return { liked: true };
+          return { liked: true };
+        } else {
+          throw new Error('Failed to like post');
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling like', err instanceof Error ? err.message : err);
+      throw err;
     }
   }
 }

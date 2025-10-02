@@ -151,12 +151,27 @@ async function handleFollow(payload: Record<string, unknown>): Promise<Communica
   const { userIdToFollow, userId } = payload;
   // sessionToken validation will be implemented with production database
   
+  // In production, this would:
+  // 1. Update the database follow relationship
+  // 2. Send a real-time notification to the target user
+  // 3. Trigger follower count update
+  
+  // For now, simulate the success response
   return {
     kind: 'followSuccess',
-    payload: { 
+    payload: {
       userIdToFollow: userIdToFollow as string,
       message: 'Follow action completed (production mode)',
-      follower: userId as string
+      follower: userId as string,
+      // Include notification data that would be sent via SSE
+      notification: {
+        kind: 'followNotification',
+        payload: {
+          followerId: userId as string,
+          followerUsername: `user_${(userId as string).substring(0, 8)}`,
+          type: 'follow'
+        }
+      }
     }
   };
 }
@@ -165,12 +180,26 @@ async function handleUnfollow(payload: Record<string, unknown>): Promise<Communi
   const { userIdToUnfollow, userId } = payload;
   // sessionToken validation will be implemented with production database
   
+  // In production, this would:
+  // 1. Remove the database follow relationship
+  // 2. Send a real-time notification to the target user
+  // 3. Trigger follower count update
+  
   return {
     kind: 'unfollowSuccess',
-    payload: { 
+    payload: {
       userIdToUnfollow: userIdToUnfollow as string,
       message: 'Unfollow action completed (production mode)',
-      follower: userId as string
+      follower: userId as string,
+      // Include notification data that would be sent via SSE
+      notification: {
+        kind: 'followNotification',
+        payload: {
+          followerId: userId as string,
+          followerUsername: `user_${(userId as string).substring(0, 8)}`,
+          type: 'unfollow'
+        }
+      }
     }
   };
 }

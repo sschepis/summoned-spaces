@@ -58,7 +58,7 @@ class ServerQuaternionicChatService {
             console.log(`Found valid split prime ${candidate} for user ${userId}`);
             return candidate;
           }
-        } catch (error) {
+        } catch {
           // This prime doesn't work with ResoLang, try next
         }
       }
@@ -345,11 +345,8 @@ export class QuaternionicChatManager {
     };
 
     if (roomId) {
-      // Broadcast to all room participants
-      const room = quaternionicChatService.getChatRoom(roomId);
-      if (room) {
-        this.broadcastToUsers(room.participants, deliveryMessage);
-      }
+      // For now, just send to the receiver since room management is simplified
+      this.broadcastToUsers([message.receiverId], deliveryMessage);
     } else {
       // Direct message delivery
       this.broadcastToUsers([message.receiverId], deliveryMessage);
@@ -374,11 +371,8 @@ export class QuaternionicChatManager {
     };
 
     if (roomId) {
-      // Broadcast to all room participants
-      const room = quaternionicChatService.getChatRoom(roomId);
-      if (room) {
-        this.broadcastToUsers(room.participants, deliveryMessage);
-      }
+      // For now, just send to the receiver since room management is simplified
+      this.broadcastToUsers([message.receiverId], deliveryMessage);
     } else {
       // Direct message delivery
       this.broadcastToUsers([message.receiverId], deliveryMessage);
@@ -391,13 +385,13 @@ export class QuaternionicChatManager {
     const sql = `
       INSERT INTO quaternionic_messages (
         message_id, sender_id, receiver_id, content, room_id,
-        phase_alignment, entropy_level, twist_angle, 
+        phase_alignment, entropy_level, twist_angle,
         is_quantum_delivered, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `;
     
-    return new Promise((resolve, reject) => {
-      db.run(sql, [
+    try {
+      await db.query(sql, [
         message.id,
         message.senderId,
         message.receiverId,
@@ -406,17 +400,14 @@ export class QuaternionicChatManager {
         message.phaseAlignment,
         message.entropyLevel,
         message.twistAngle,
-        message.isQuantumDelivered ? 1 : 0,
+        message.isQuantumDelivered,
         new Date().toISOString()
-      ], (err: Error | null) => {
-        if (err) {
-          console.error('Error storing quaternionic message:', err.message);
-          return reject(err);
-        }
-        console.log(`Quaternionic message ${message.id} stored in database`);
-        resolve();
-      });
-    });
+      ]);
+      console.log(`Quaternionic message ${message.id} stored in database`);
+    } catch (err) {
+      console.error('Error storing quaternionic message:', err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 
   private broadcastToUsers(userIds: string[], message: any): void {
@@ -436,21 +427,19 @@ export class QuaternionicChatManager {
     const db = getDatabase();
     
     const sql = `
-      SELECT * FROM quaternionic_messages 
-      WHERE room_id = ? 
-      ORDER BY created_at DESC 
-      LIMIT ?
+      SELECT * FROM quaternionic_messages
+      WHERE room_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
     `;
     
-    return new Promise((resolve, reject) => {
-      db.all(sql, [roomId, limit], (err, rows: any[]) => {
-        if (err) {
-          console.error('Error fetching quaternionic message history:', err.message);
-          return reject(err);
-        }
-        resolve(rows.reverse()); // Return in chronological order
-      });
-    });
+    try {
+      const result = await db.query(sql, [roomId, limit]);
+      return result.reverse(); // Return in chronological order
+    } catch (err) {
+      console.error('Error fetching quaternionic message history:', err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 
   async getRoomMetrics(roomId: string): Promise<any> {

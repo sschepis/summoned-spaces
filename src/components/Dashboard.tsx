@@ -25,11 +25,22 @@ import { QuickActionsCard } from './dashboard/QuickActionsCard';
 interface ActivityItem {
   id: string;
   type: string;
-  user: { name: string; avatar: string };
+  user: { name: string; avatar: string; id?: string };
   content: string;
   timestamp: Date;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  target?: {
+    type: 'post' | 'space' | 'user';
+    id: string;
+    name: string;
+  };
+  metadata?: {
+    spaceId?: string;
+    spaceName?: string;
+    postId?: string;
+    fileType?: string;
+  };
 }
 
 interface DashboardProps {
@@ -256,12 +267,21 @@ export function Dashboard({
           type: 'post',
           user: {
             name: beacon.username || beacon.author_id.substring(0, 8),
-            avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beacon.author_id}`
+            avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beacon.author_id}`,
+            id: beacon.author_id
           },
           content: 'created a holographic beacon',
           timestamp: new Date(beacon.created_at),
           icon: Activity,
-          color: 'cyan'
+          color: 'cyan',
+          target: {
+            type: 'post' as const,
+            id: beacon.beacon_id,
+            name: 'Holographic Beacon'
+          },
+          metadata: {
+            postId: beacon.beacon_id
+          }
         }));
         setRecentActivity(activities);
         
@@ -274,8 +294,36 @@ export function Dashboard({
     };
 
     webSocketService.addMessageListener(handleServerResponse);
-    return () => webSocketService.removeMessageListener(handleServerResponse);
-  }, []);
+    
+    // Listen for follow notifications to update follower count in real-time
+    const handleFollowNotification = (message: ServerMessage) => {
+      if (message.kind === 'followNotification' && user?.id) {
+        console.log('[Dashboard] Received follow notification:', message.payload);
+        
+        // Re-request updated follower count when someone follows us
+        if (message.payload.type === 'follow') {
+          console.log('[Dashboard] Someone followed us, updating follower count');
+          webSocketService.sendMessage({
+            kind: 'getFollowers',
+            payload: { userId: user.id }
+          });
+        } else if (message.payload.type === 'unfollow') {
+          console.log('[Dashboard] Someone unfollowed us, updating follower count');
+          webSocketService.sendMessage({
+            kind: 'getFollowers',
+            payload: { userId: user.id }
+          });
+        }
+      }
+    };
+    
+    webSocketService.addNotificationListener(handleFollowNotification);
+    
+    return () => {
+      webSocketService.removeMessageListener(handleServerResponse);
+      webSocketService.removeNotificationListener(handleFollowNotification);
+    };
+  }, [user?.id]);
 
   // Social feed handlers
   const handleCreatePost = (content: string, selectedSpace: string, attachments: File[]) => {
