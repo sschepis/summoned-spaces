@@ -276,15 +276,33 @@ class RESTCommunicationManager implements CommunicationManager {
 function createCommunicationManager(): CommunicationManager {
   const isProduction = import.meta.env.PROD;
   const isVercel = import.meta.env.VERCEL === '1';
+  const isVercelHostname = window.location.hostname.includes('vercel.app');
+  const isProductionBuild = import.meta.env.MODE === 'production';
+  const vercelEnv = import.meta.env.VERCEL_ENV;
+  
+  // Multiple ways to detect production/Vercel environment
+  const shouldUseREST = isProduction || isVercel || isVercelHostname || isProductionBuild || vercelEnv === 'production' || vercelEnv === 'preview';
   
   console.log('[COMM] Environment detection:', {
     isProduction,
     isVercel,
-    location: window.location.href
+    isVercelHostname,
+    isProductionBuild,
+    vercelEnv,
+    shouldUseREST,
+    mode: import.meta.env.MODE,
+    location: window.location.href,
+    allEnvVars: {
+      PROD: import.meta.env.PROD,
+      MODE: import.meta.env.MODE,
+      VERCEL: import.meta.env.VERCEL,
+      VERCEL_ENV: import.meta.env.VERCEL_ENV,
+      VERCEL_URL: import.meta.env.VERCEL_URL
+    }
   });
   
-  if (isProduction || isVercel) {
-    console.log('[COMM] Using REST + SSE communication for production');
+  if (shouldUseREST) {
+    console.log('[COMM] Using REST + SSE communication for production/Vercel');
     return new RESTCommunicationManager();
   } else {
     console.log('[COMM] Using WebSocket communication for development');

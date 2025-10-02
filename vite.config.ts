@@ -43,9 +43,10 @@ export default defineConfig({
     }
   },
   define: {
-    // Define environment variables for client
-    'process.env.VERCEL': JSON.stringify(process.env.VERCEL || '0'),
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    // Define environment variables for client - accessible via import.meta.env
+    'import.meta.env.VERCEL': JSON.stringify(process.env.VERCEL || '0'),
+    'import.meta.env.VERCEL_URL': JSON.stringify(process.env.VERCEL_URL || ''),
+    'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV || 'development')
   }
 })
 
