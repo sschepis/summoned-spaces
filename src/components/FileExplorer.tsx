@@ -1,199 +1,304 @@
-import { useState } from 'react';
-import { Download, Eye, Star, Trash2 } from 'lucide-react';
-import { FileToolbar, FileGrid, FileContextMenu } from './common/files';
-import type { FileItem, ViewMode, SortOption, ContextMenuItem } from './common/files';
+import { useState, useEffect } from 'react';
+import { FileGrid } from './common/files/FileGrid';
+import { FileListRow } from './common/files/FileListRow';
+import { FileToolbar } from './common/files/FileToolbar';
+import { FileUploadZone } from './FileUploadZone';
+import { FileDetailsModal } from './FileDetailsModal';
+import { LoadingSpinner } from './ui/LoadingSpinner';
+import webSocketService from '../services/websocket';
+import { useAuth } from '../contexts/AuthContext';
+import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
-interface FileExplorerProps {
-  spaceId: string;
-  onFileSelect: (file: FileItem) => void;
-  onFileAction: (action: string, fileIds: string[]) => void;
+interface FileRecord {
+    file_id: string;
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    uploader_id: string;
+    created_at: string;
+    fingerprint: string;
 }
 
-// Mock data
-const mockFiles: FileItem[] = [
-  {
-    id: '1',
-    name: 'quantum_algorithms.pdf',
-    type: 'pdf',
-    size: '2.4 MB',
-    sizeBytes: 2457600,
-    contributor: 'Dr. Sarah Chen',
-    contributorAvatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    uploadedAt: '2 days ago',
-    resonanceStrength: 0.94,
-    fingerprint: 'A7C4E9F2B8D1C5A3',
-    tags: ['quantum', 'algorithms', 'research'],
-    volumeName: 'Research Papers',
-    isFavorite: true
-  },
-  {
-    id: '2',
-    name: 'entanglement_theory.docx',
-    type: 'docx',
-    size: '1.8 MB',
-    sizeBytes: 1884160,
-    contributor: 'Marcus Rodriguez',
-    contributorAvatar: 'https://images.pexels.com/photos/2381069/pexels-photo-2381069.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    uploadedAt: '1 week ago',
-    resonanceStrength: 0.87,
-    tags: ['quantum', 'entanglement', 'theory'],
-    volumeName: 'Research Papers',
-    isFavorite: false
-  },
-  {
-    id: '3',
-    name: 'design_system_v2.png',
-    type: 'png',
-    size: '3.1 MB',
-    sizeBytes: 3248128,
-    contributor: 'Elena Kowalski',
-    contributorAvatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    uploadedAt: '5 days ago',
-    resonanceStrength: 0.89,
-    volumeName: 'Design Assets',
-    isFavorite: true
-  }
-];
+interface FileExplorerProps {
+    spaceId: string;
+}
 
-const volumes = [
-  { id: 'all', name: 'All Files' },
-  { id: '1', name: 'Research Papers' },
-  { id: '2', name: 'Design Assets' },
-  { id: '3', name: 'Documentation' }
-];
+interface UploadProgress {
+    fileName: string;
+    status: 'uploading' | 'success' | 'error';
+    error?: string;
+}
 
-export function FileExplorer({ spaceId, onFileSelect, onFileAction }: FileExplorerProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<SortOption>('name');
-  const [filterVolume, setFilterVolume] = useState<string>('all');
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId: string } | null>(null);
+export function FileExplorer({ spaceId }: FileExplorerProps) {
+    const [files, setFiles] = useState<FileRecord[]>([]);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [sort, setSort] = useState<{ by: string, order: 'asc' | 'desc' }>({ by: 'created_at', order: 'desc' });
+    const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const { waitForAuth } = useAuth();
 
-  // Filter and sort files
-  const filteredFiles = mockFiles
-    .filter(file => {
-      const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (file.tags && file.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
-      const matchesVolume = filterVolume === 'all' || file.volumeName === volumes.find(v => v.id === filterVolume)?.name;
-      return matchesSearch && matchesVolume;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'size':
-          return b.sizeBytes - a.sizeBytes;
-        case 'date':
-          return 0; // Would need proper date comparison
-        case 'resonance':
-          return b.resonanceStrength - a.resonanceStrength;
-        default:
-          return a.name.localeCompare(b.name);
-      }
+    useEffect(() => {
+        const fetchFiles = async () => {
+            await waitForAuth();
+            webSocketService.sendMessage({
+                kind: 'getSpaceFiles',
+                payload: { spaceId }
+            });
+        };
+        fetchFiles();
+
+        const handleFileUpdate = (message: { kind: string; payload: any; }) => {
+            if (message.kind === 'spaceFilesResponse' && message.payload.spaceId === spaceId) {
+                // DEDUPLICATION FIX: Filter out duplicates and invalid files
+                const validFiles = (message.payload.files || []).filter((file: FileRecord, index: number, arr: FileRecord[]) => {
+                    if (!file || !file.file_id) return false;
+                    // Keep only first occurrence of each file_id
+                    return arr.findIndex(f => f && f.file_id === file.file_id) === index;
+                });
+                setFiles(validFiles);
+            }
+            if (message.kind === 'fileAddedToSpace' && message.payload.spaceId === spaceId) {
+                const newFile = message.payload.file;
+                if (newFile && newFile.file_id) {
+                    setFiles(prev => {
+                        // DUPLICATE PREVENTION: Check if file already exists
+                        const exists = prev.some(f => f && f.file_id === newFile.file_id);
+                        if (exists) {
+                            console.log(`File ${newFile.file_id} already exists, skipping duplicate add`);
+                            return prev;
+                        }
+                        return [newFile, ...prev];
+                    });
+                }
+            }
+            if (message.kind === 'fileRemovedFromSpace' && message.payload.spaceId === spaceId) {
+                setFiles(prev => prev.filter(f => f && f.file_id !== message.payload.fileId));
+            }
+        };
+
+        webSocketService.addMessageListener(handleFileUpdate);
+        return () => webSocketService.removeMessageListener(handleFileUpdate);
+    }, [spaceId, waitForAuth]);
+
+    const handleUpload = async (uploadedFiles: globalThis.File[]) => {
+        try {
+            await waitForAuth();
+            setIsUploading(true);
+            
+            // Initialize progress tracking
+            const initialProgress: UploadProgress[] = uploadedFiles.map(file => ({
+                fileName: file.name,
+                status: 'uploading'
+            }));
+            setUploadProgress(initialProgress);
+
+            // Process files sequentially to avoid overwhelming the browser
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                
+                try {
+                    // Update progress to show current file being processed
+                    setUploadProgress(prev => prev.map((p, idx) =>
+                        idx === i ? { ...p, status: 'uploading' } : p
+                    ));
+
+                    await processFile(file, i);
+                    
+                    // Mark as successful
+                    setUploadProgress(prev => prev.map((p, idx) =>
+                        idx === i ? { ...p, status: 'success' } : p
+                    ));
+
+                } catch (error) {
+                    console.error(`Error uploading file ${file.name}:`, error);
+                    
+                    // Mark as failed
+                    setUploadProgress(prev => prev.map((p, idx) =>
+                        idx === i ? {
+                            ...p,
+                            status: 'error',
+                            error: error instanceof Error ? error.message : 'Upload failed'
+                        } : p
+                    ));
+                }
+            }
+
+            // Clear progress after a delay
+            setTimeout(() => {
+                setUploadProgress([]);
+                setIsUploading(false);
+            }, 3000);
+
+        } catch (error) {
+            console.error('Error during file upload process:', error);
+            setUploadProgress([]);
+            setIsUploading(false);
+        }
+    };
+
+    const processFile = async (file: globalThis.File, index: number): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                try {
+                    const fileContent = e.target?.result as ArrayBuffer;
+                    if (!fileContent) {
+                        throw new Error('Failed to read file content');
+                    }
+
+                    const fingerprint = `fingerprint_${file.name}_${file.size}_${Date.now()}`;
+                    
+                    // Convert ArrayBuffer to base64 in chunks to prevent UI blocking
+                    const base64Content = await arrayBufferToBase64Chunked(fileContent);
+                    
+                    // Send file to server
+                    webSocketService.sendMessage({
+                        kind: 'addFileToSpace',
+                        payload: {
+                            spaceId,
+                            fileName: file.name,
+                            fileType: file.type || 'application/octet-stream',
+                            fileSize: file.size,
+                            fingerprint,
+                            fileContent: base64Content
+                        }
+                    });
+                    
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            reader.onerror = () => {
+                reject(new Error(`Failed to read file: ${file.name}`));
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+    };
+
+    // Convert ArrayBuffer to base64 in chunks to prevent UI blocking
+    const arrayBufferToBase64Chunked = async (buffer: ArrayBuffer): Promise<string> => {
+        return new Promise((resolve) => {
+            const uint8Array = new Uint8Array(buffer);
+            const chunkSize = 8192; // Process 8KB at a time
+            let result = '';
+            let offset = 0;
+
+            const processChunk = () => {
+                const end = Math.min(offset + chunkSize, uint8Array.length);
+                const chunk = uint8Array.slice(offset, end);
+                const binaryString = Array.from(chunk, byte => String.fromCharCode(byte)).join('');
+                result += btoa(binaryString);
+                offset = end;
+
+                if (offset < uint8Array.length) {
+                    // Use setTimeout to yield control back to the browser
+                    setTimeout(processChunk, 0);
+                } else {
+                    resolve(result);
+                }
+            };
+
+            processChunk();
+        });
+    };
+
+    const handleRemoveFile = async (fileId: string) => {
+        await waitForAuth();
+        webSocketService.sendMessage({
+            kind: 'removeFileFromSpace',
+            payload: { spaceId, fileId }
+        });
+    };
+
+    const sortedFiles = [...files].sort((a, b) => {
+        const aVal = a[sort.by as keyof typeof a];
+        const bVal = b[sort.by as keyof typeof b];
+        if (aVal < bVal) return sort.order === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sort.order === 'asc' ? 1 : -1;
+        return 0;
     });
 
-  const handleFileClick = (file: FileItem, event: React.MouseEvent) => {
-    if (event.ctrlKey || event.metaKey) {
-      // Multi-select
-      const newSelected = new Set(selectedFiles);
-      if (newSelected.has(file.id)) {
-        newSelected.delete(file.id);
-      } else {
-        newSelected.add(file.id);
-      }
-      setSelectedFiles(newSelected);
-    } else {
-      // Single select and open
-      setSelectedFiles(new Set([file.id]));
-      onFileSelect(file);
-    }
-  };
+    return (
+        <div className="space-y-6">
+            <FileUploadZone
+                onUpload={handleUpload}
+                maxFileSize={50 * 1024 * 1024} // 50MB limit
+                maxFiles={5}
+            />
+            
+            {/* Upload Progress */}
+            {uploadProgress.length > 0 && (
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700 p-4">
+                    <h3 className="text-sm font-medium text-white mb-3">
+                        {isUploading ? 'Uploading Files...' : 'Upload Complete'}
+                    </h3>
+                    <div className="space-y-2">
+                        {uploadProgress.map((progress, index) => (
+                            <div key={index} className="flex items-center space-x-3">
+                                {progress.status === 'uploading' && (
+                                    <LoadingSpinner size="sm" />
+                                )}
+                                {progress.status === 'success' && (
+                                    <CheckCircle className="w-4 h-4 text-green-400" />
+                                )}
+                                {progress.status === 'error' && (
+                                    <AlertCircle className="w-4 h-4 text-red-400" />
+                                )}
+                                <span className="text-sm text-gray-300 flex-1">
+                                    {progress.fileName}
+                                </span>
+                                {progress.status === 'error' && progress.error && (
+                                    <span className="text-xs text-red-400">
+                                        {progress.error}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-  const handleContextMenu = (event: React.MouseEvent, fileId: string) => {
-    event.preventDefault();
-    setContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      fileId
-    });
-  };
-
-  const contextMenuItems: ContextMenuItem[] = [
-    {
-      id: 'summon',
-      label: 'Summon File',
-      icon: Download,
-      onClick: () => {
-        if (contextMenu) {
-          onFileAction('summon', [contextMenu.fileId]);
-        }
-      }
-    },
-    {
-      id: 'details',
-      label: 'View Details',
-      icon: Eye,
-      onClick: () => {
-        if (contextMenu) {
-          onFileAction('details', [contextMenu.fileId]);
-        }
-      }
-    },
-    {
-      id: 'favorite',
-      label: 'Add to Favorites',
-      icon: Star,
-      onClick: () => {
-        if (contextMenu) {
-          onFileAction('favorite', [contextMenu.fileId]);
-        }
-      }
-    },
-    {
-      id: 'delete',
-      label: 'Delete File',
-      icon: Trash2,
-      variant: 'danger',
-      onClick: () => {
-        if (contextMenu) {
-          onFileAction('delete', [contextMenu.fileId]);
-        }
-      }
-    }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <FileToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        filterVolume={filterVolume}
-        onFilterVolumeChange={setFilterVolume}
-        volumes={volumes}
-        selectedCount={selectedFiles.size}
-        onBulkAction={(action) => onFileAction(action, Array.from(selectedFiles))}
-      />
-
-      <FileGrid
-        files={filteredFiles}
-        viewMode={viewMode}
-        selectedFiles={selectedFiles}
-        onFileClick={handleFileClick}
-        onContextMenu={handleContextMenu}
-        searchQuery={searchQuery}
-      />
-
-      {contextMenu && (
-        <FileContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          items={contextMenuItems}
-        />
-      )}
-    </div>
-  );
+            <FileToolbar
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                sort={sort}
+                onSortChange={(s) => setSort(s)}
+                fileCount={files.length}
+            />
+            
+            {viewMode === 'grid' ? (
+                <FileGrid
+                    files={sortedFiles}
+                    spaceId={spaceId}
+                    onFileSelect={(file) => setSelectedFile(file)}
+                    onRemoveFile={handleRemoveFile}
+                />
+            ) : (
+                <div className="space-y-2">
+                    {sortedFiles.map(file => (
+                        <FileListRow
+                            key={file.file_id}
+                            file={file}
+                            onFileSelect={(file) => setSelectedFile(file)}
+                            onRemoveFile={handleRemoveFile}
+                        />
+                    ))}
+                </div>
+            )}
+            
+            {selectedFile && (
+                <FileDetailsModal
+                    file={selectedFile}
+                    spaceId={spaceId}
+                    isOpen={!!selectedFile}
+                    onClose={() => setSelectedFile(null)}
+                />
+            )}
+        </div>
+    );
 }

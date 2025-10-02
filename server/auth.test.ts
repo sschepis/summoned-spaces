@@ -1,33 +1,18 @@
 import { AuthenticationManager } from './auth';
-import { initializeDatabase, getDatabase } from './database';
-import fs from 'fs';
-
-// Mock the database path for testing
-vi.mock('./database', async (importOriginal) => {
-  const actual = await importOriginal() as object;
-  return {
-    ...actual,
-    DB_PATH: './test-auth.db',
-  };
-});
+import { initializeDatabase, getDatabase, closeDatabase, clearDatabase } from './database';
 
 describe('AuthenticationManager with SQLite', () => {
-  const TEST_DB_PATH = './test-auth.db';
-  
   beforeAll(async () => {
-    // Ensure a clean database for each test run
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
-    await initializeDatabase();
+    await initializeDatabase(':memory:');
   });
 
-  afterAll(() => {
-    const db = getDatabase();
-    db.close();
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+
+  afterEach(async () => {
+    await clearDatabase();
+  });
+
+  afterAll(async () => {
+    await closeDatabase();
   });
 
   it('should register a new user and store them in the database', async () => {
@@ -60,7 +45,6 @@ describe('AuthenticationManager with SQLite', () => {
   it('should allow a registered user to log in', async () => {
     const authManager = new AuthenticationManager();
     await authManager.registerUser('loginuser2', 'test2@test.com', 'password123');
-    
     const session = await authManager.loginUser('loginuser2', 'password123');
 
     expect(session).toBeDefined();

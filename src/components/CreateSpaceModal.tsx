@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { X, Zap, Clock, Users, Globe } from 'lucide-react';
-import { webSocketService } from '../services/websocket';
+import { spaceManager } from '../services/space-manager';
+import { useNotifications } from './NotificationSystem';
 
 interface CreateSpaceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSpaceCreated?: (spaceId: string) => void;
 }
 
-export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
+export function CreateSpaceModal({ isOpen, onClose, onSpaceCreated }: CreateSpaceModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -15,22 +17,70 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
     privacy: 'private',
     maxMembers: 50
   });
+  const [isCreating, setIsCreating] = useState(false);
+  const { showError } = useNotifications();
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = (): string | null => {
+    if (!formData.name.trim()) {
+      return 'Space name is required';
+    }
+    if (formData.name.trim().length < 3) {
+      return 'Space name must be at least 3 characters long';
+    }
+    if (formData.name.trim().length > 50) {
+      return 'Space name must be 50 characters or less';
+    }
+    if (formData.description.length > 500) {
+      return 'Description must be 500 characters or less';
+    }
+    // Basic name validation - alphanumeric, spaces, hyphens, underscores only
+    if (!/^[a-zA-Z0-9\s\-_]+$/.test(formData.name.trim())) {
+      return 'Space name can only contain letters, numbers, spaces, hyphens, and underscores';
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    webSocketService.sendMessage({
-      kind: 'createSpace',
-      payload: {
-        name: formData.name,
-        description: formData.description,
-        isPublic: formData.privacy === 'public'
-      }
-    });
+    // Validate form input
+    const validationError = validateForm();
+    if (validationError) {
+      showError('Validation Error', validationError);
+      return;
+    }
     
-    onClose();
+    setIsCreating(true);
+    
+    try {
+      // Create space using spaceManager - this automatically adds creator as owner
+      const spaceId = await spaceManager.createSpace(
+        formData.name.trim(),
+        formData.description.trim(),
+        formData.privacy === 'public'
+      );
+      
+      console.log(`Space created successfully: ${spaceId}`);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        description: '',
+        type: 'standard',
+        privacy: 'private',
+        maxMembers: 50
+      });
+      
+      onSpaceCreated?.(spaceId);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create space:', error);
+      showError('Space Creation Failed', error instanceof Error ? error.message : 'Failed to create space. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -62,11 +112,13 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white
+                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500
                          focus:border-transparent"
                 placeholder="Enter space name..."
                 required
+                maxLength={50}
+                minLength={3}
               />
             </div>
 
@@ -78,10 +130,11 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
-                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white
+                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500
                          focus:border-transparent"
                 placeholder="Describe the purpose of this space..."
+                maxLength={500}
               />
             </div>
 
@@ -161,11 +214,13 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
               </button>
               <button
                 type="submit"
-                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white 
-                         rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all 
-                         duration-200 font-medium shadow-lg hover:shadow-xl"
+                disabled={isCreating}
+                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white
+                         rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all
+                         duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50
+                         disabled:cursor-not-allowed"
               >
-                Create Space
+                {isCreating ? 'Creating...' : 'Create Space'}
               </button>
             </div>
           </form>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Save, Settings, Shield, Users, Clock, Database, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Save, Settings, Shield, Database, Trash2, AlertTriangle } from 'lucide-react';
 
 interface SpaceSettingsProps {
   isOpen: boolean;
@@ -23,33 +23,47 @@ interface SpaceConfig {
   };
 }
 
-const initialConfig: SpaceConfig = {
-  name: 'Project Quantum',
-  description: 'Research collaboration space for quantum computing papers',
-  visibility: 'private',
-  maxMembers: 50,
-  autoArchive: false,
-  archiveDays: 90,
-  requireApproval: true,
-  defaultPermissions: ['view_space', 'view_volumes', 'summon_files'],
-  resonanceConfig: {
-    primeCount: 32,
-    quantization: 64,
-    epochDuration: 2000
-  }
-};
-
 export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) {
-  const [config, setConfig] = useState<SpaceConfig>(initialConfig);
+  const [config, setConfig] = useState<SpaceConfig>({
+    name: `Space ${spaceId.substring(0, 8)}`,
+    description: 'A collaborative quantum space',
+    visibility: 'private',
+    maxMembers: 50,
+    autoArchive: false,
+    archiveDays: 90,
+    requireApproval: true,
+    defaultPermissions: ['view_space', 'view_volumes', 'summon_files'],
+    resonanceConfig: {
+      primeCount: 32,
+      quantization: 64,
+      epochDuration: 2000
+    }
+  });
+  const [loading, setLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'resonance' | 'danger'>('general');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    // Save configuration
-    console.log('Saving space config:', config);
-    onClose();
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // TODO: Implement actual space configuration saving via beacons
+      console.log('Saving space config:', config);
+      
+      // For now, simulate saving
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      onClose();
+    } catch (error) {
+      console.error('Failed to save space settings:', error);
+      setError('Failed to save settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tabs = [
@@ -394,12 +408,14 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
-                       rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
-                       duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
+              disabled={loading}
+              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-teal-500 text-white
+                       rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all
+                       duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2
+                       disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>Save Changes</span>
+              <span>{loading ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </div>

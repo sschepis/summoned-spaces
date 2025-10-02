@@ -1,174 +1,443 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity } from 'lucide-react';
 import { PageLayout } from './layouts/PageLayout';
-import { SpaceCard } from './common/SpaceCard';
-import { Space } from '../types/common';
+import { Space, User } from '../types/common';
+import { Post, PostType, RichTextPost, BinaryFilePost } from '../types/posts';
 import { CreateSpaceModal } from './CreateSpaceModal';
-import { PublicActivityStream as PublicActivityStream } from './PublicActivityStream';
-import { UserDiscovery } from './UserDiscovery';
-import { SpaceDiscovery } from './SpaceDiscovery';
-import { ContentComposer } from './ContentComposer';
-import { NetworkTopology } from './NetworkTopology';
-import { ActivityFeed } from './ActivityFeed';
-import { Tabs } from './ui/Tabs';
-import { Button } from './ui/Button';
-import { Grid } from './ui/Grid';
-import { EmptyState } from './ui/EmptyState';
+import { useAuth } from '../contexts/AuthContext';
+import { useNetworkState } from '../contexts/NetworkContext';
+import { userDataManager } from '../services/user-data-manager';
+import { quaternionicChatService } from '../services/quaternionic-chat';
+import webSocketService from '../services/websocket';
+import { ServerMessage } from '../../server/protocol';
+import { useNotifications } from './NotificationSystem';
+
+// Import dashboard components
+import { HeroSection } from './dashboard/HeroSection';
+import { QuantumUniverseCard } from './dashboard/QuantumUniverseCard';
+import { RecentActivityCard } from './dashboard/RecentActivityCard';
+import { FlexibleSocialFeedCard } from './dashboard/FlexibleSocialFeedCard';
+import { EnhancedContentComposer } from './dashboard/EnhancedContentComposer';
+import { YourSpacesCard } from './dashboard/YourSpacesCard';
+import { SuggestedConnectionsCard } from './dashboard/SuggestedConnectionsCard';
+import { QuickActionsCard } from './dashboard/QuickActionsCard';
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  user: { name: string; avatar: string };
+  content: string;
+  timestamp: Date;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
 
 interface DashboardProps {
   onViewSpace: (spaceId: string) => void;
+  onOpenDirectMessages: () => void;
+  onOpenSearch: () => void;
+  onOpenSettings: () => void;
 }
 
-// Tab Content Components
-const SpacesTab = ({ 
-  spaces, 
+export function Dashboard({ 
   onViewSpace, 
-  onCreateSpace 
-}: {
-  spaces: Space[];
-  onViewSpace: (spaceId: string) => void;
-  onCreateSpace: () => void;
-}) => (
-  <div>
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">My Spaces</h2>
-        <p className="text-gray-400">Your personal spaces for sharing and collaboration</p>
-      </div>
-      <Button
-        variant="primary"
-        icon={Plus}
-        onClick={onCreateSpace}
-      >
-        Create Space
-      </Button>
-    </div>
-
-    {spaces.length > 0 ? (
-      <Grid cols={2}>
-        {spaces.map((space) => (
-          <SpaceCard
-            key={space.id}
-            space={space}
-            onSelect={() => onViewSpace(space.id)}
-            showRole={true}
-          />
-        ))}
-      </Grid>
-    ) : (
-      <EmptyState
-        icon={Plus}
-        title="No spaces yet"
-        description="Create your first space to start collaborating"
-        action={{
-          label: "Create Your First Space",
-          onClick: onCreateSpace,
-          icon: Plus
-        }}
-      />
-    )}
-  </div>
-);
-
-const ActivityTab = () => (
-  <div>
-    <PublicActivityStream />
-  </div>
-);
-
-const DiscoverTab = ({ 
-  discoverTab, 
-  setDiscoverTab 
-}: {
-  discoverTab: 'people' | 'spaces';
-  setDiscoverTab: (tab: 'people' | 'spaces') => void;
-}) => (
-  <div className="space-y-8">
-    <div className="flex justify-center">
-      <Tabs
-        variant="pills"
-        tabs={[
-          { id: 'people', label: 'Discover People' },
-          { id: 'spaces', label: 'Discover Spaces' }
-        ]}
-        activeTab={discoverTab}
-        onTabChange={(tab) => setDiscoverTab(tab as 'people' | 'spaces')}
-      />
-    </div>
-    
-    {discoverTab === 'people' && <UserDiscovery />}
-    {discoverTab === 'spaces' && <SpaceDiscovery />}
-  </div>
-);
-
-export function Dashboard({ onViewSpace }: DashboardProps) {
+  onOpenDirectMessages, 
+  onOpenSearch, 
+  onOpenSettings 
+}: DashboardProps) {
+  const { user } = useAuth();
+  const { nodes } = useNetworkState();
+  const { showFollow, showUnfollow, showError } = useNotifications();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'holographic' | 'spaces' | 'activity' | 'discover'>('holographic');
-  const [discoverTab, setDiscoverTab] = useState<'people' | 'spaces'>('people');
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [quantumMetrics, setQuantumMetrics] = useState({
+    resonanceScore: 0,
+    phaseAlignment: 0,
+    entanglements: 0,
+    entropy: 0
+  });
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  const [followerCount, setFollowerCount] = useState<number>(0);
   
-  const mockSpaces: Space[] = []; // Remove mock data
+  // Social feed state
+  const [feedPosts, setFeedPosts] = useState<Post[]>([]);
 
-  const tabContent = {
-    spaces: (
-      <SpacesTab
-        spaces={mockSpaces}
-        onViewSpace={onViewSpace}
-        onCreateSpace={() => setIsCreateModalOpen(true)}
-      />
-    ),
-    activity: <ActivityTab />,
-    holographic: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h2 className="text-xl font-semibold mb-4 text-purple-300">1. Create a Memory</h2>
-          <ContentComposer />
-          <div className="mt-8">
-            <NetworkTopology />
-          </div>
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold mb-4 text-purple-300">2. Observe Network Activity</h2>
-          <ActivityFeed />
-        </div>
-      </div>
-    ),
-    discover: (
-      <DiscoverTab
-        discoverTab={discoverTab}
-        setDiscoverTab={setDiscoverTab}
-      />
-    )
+  // Load real data on mount
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadRealData = async () => {
+      try {
+        // Initialize quaternionic metrics with real data
+        await quaternionicChatService.initialize();
+        await quaternionicChatService.initializeUser(user.id);
+        
+        // Calculate real quantum metrics
+        const followingList = userDataManager.getFollowingList();
+        const activeConnections = nodes.length > 0 ? nodes.length - 1 : 0;
+        
+        // Calculate real phase alignment with connected users
+        let totalPhaseAlignment = 0;
+        let alignmentCount = 0;
+        
+        for (const node of nodes) {
+          if (node.userId !== user.id) {
+            try {
+              await quaternionicChatService.initializeUser(node.userId);
+              const alignment = quaternionicChatService.getPhaseAlignment(user.id, node.userId);
+              if (alignment > 0) {
+                totalPhaseAlignment += alignment;
+                alignmentCount++;
+              }
+            } catch {
+              // Skip if user can't be initialized
+            }
+          }
+        }
+        
+        const avgPhaseAlignment = alignmentCount > 0 ? totalPhaseAlignment / alignmentCount : 0;
+        
+        // Calculate real resonance score based on network activity
+        const resonanceScore = Math.min(
+          (followingList.length * 0.1) +
+          (activeConnections * 0.2) +
+          (avgPhaseAlignment * 0.3) +
+          (spaces.length * 0.1),
+          1.0
+        );
+        
+        setQuantumMetrics({
+          resonanceScore: Math.max(resonanceScore, 0.2), // Minimum 20% for connected users
+          phaseAlignment: Math.max(avgPhaseAlignment, activeConnections > 0 ? 0.75 : 0), // Default good alignment
+          entanglements: activeConnections,
+          entropy: Math.max(0.1, followingList.length > 0 ? Math.log2(followingList.length + 1) / 10 : 0.1)
+        });
+
+        // Request real follower count from server
+        webSocketService.sendMessage({
+          kind: 'getFollowers',
+          payload: { userId: user.id }
+        });
+
+        // Request real beacons for activity
+        webSocketService.sendMessage({
+          kind: 'getBeaconsByUser',
+          payload: { userId: '*', beaconType: 'post' }
+        });
+
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      }
+    };
+
+    loadRealData();
+  }, [user?.id, nodes, spaces.length]); // Add spaces.length to recalculate when spaces change
+
+  // Load real spaces data
+  useEffect(() => {
+    if (user) {
+      const userSpaces = userDataManager.getSpacesList().map(s => ({
+        id: s.spaceId,
+        name: `Space ${s.spaceId.substring(0, 8)}`,
+        description: `Joined ${new Date(s.joinedAt).toLocaleDateString()}`,
+        isPublic: true,
+        isJoined: true,
+        memberCount: 1, // Real member count would need to be fetched
+        tags: ['holographic'],
+        resonanceStrength: 0.8, // Calculate from actual activity
+        recentActivity: 'Active',
+      }));
+      setSpaces(userSpaces);
+
+      // Create real suggested users from network nodes (not following yet)
+      const followingList = userDataManager.getFollowingList();
+      
+      // Deduplicate by userId
+      const seenUserIds = new Set<string>();
+      const suggested = nodes
+        .filter(node => {
+          // Skip if it's the current user
+          if (node.userId === user.id) return false;
+          // Skip if already following
+          if (followingList.includes(node.userId)) return false;
+          // Skip if already seen (deduplication)
+          if (seenUserIds.has(node.userId)) return false;
+          
+          seenUserIds.add(node.userId);
+          return true;
+        })
+        .slice(0, 6)
+        .map(node => ({
+          id: node.userId,
+          name: node.username || node.userId.substring(0, 8),
+          username: `@${node.username || node.userId.substring(0, 8)}`,
+          avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
+          bio: 'Connected to quantum network',
+          isFollowing: false,
+          stats: {
+            followers: 0,
+            following: 0,
+            spaces: 0,
+            resonanceScore: 0.5
+          },
+          recentActivity: 'Online',
+          tags: ['live-node'],
+        }));
+      setSuggestedUsers(suggested);
+      
+      // Initialize with empty feed - posts will be created by user interactions
+      setFeedPosts([]);
+    }
+  }, [user, nodes]);
+
+  // Handle follow/unfollow actions
+  const handleFollowToggle = async (userId: string) => {
+    const userToToggle = suggestedUsers.find(u => u.id === userId);
+    if (!userToToggle) return;
+
+    const isCurrentlyFollowing = userToToggle.isFollowing;
+
+    // Optimistically update the UI
+    setSuggestedUsers(prev =>
+      prev.map(u =>
+        u.id === userId ? { ...u, isFollowing: !isCurrentlyFollowing } : u
+      )
+    );
+
+    try {
+      if (isCurrentlyFollowing) {
+        await userDataManager.unfollowUser(userId);
+        showUnfollow(
+          'Unfollowed',
+          `You are no longer following ${userToToggle.name}`
+        );
+      } else {
+        await userDataManager.followUser(userId);
+        showFollow(
+          'Following',
+          `You are now following ${userToToggle.name}`
+        );
+      }
+    } catch (error) {
+      // Revert the optimistic update on error
+      setSuggestedUsers(prev =>
+        prev.map(u =>
+          u.id === userId ? { ...u, isFollowing: isCurrentlyFollowing } : u
+        )
+      );
+      showError(
+        'Action Failed',
+        `Failed to ${isCurrentlyFollowing ? 'unfollow' : 'follow'} user. Please try again.`
+      );
+      console.error('Error toggling follow state:', error);
+    }
   };
 
-  return (
-    <PageLayout sidebar={activeTab === 'spaces' ? <ActivityFeed /> : undefined}>
-      <>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-        <p className="text-gray-400">Welcome back! Here's what's happening in your spaces.</p>
-      </div>
-      {/* Tab Navigation */}
-      <Tabs
-        tabs={[
-          { id: 'holographic', label: 'Holographic Network' },
-          { id: 'spaces', label: 'Your Spaces' },
-          { id: 'activity', label: 'Network Activity' },
-          { id: 'discover', label: 'Discover' }
-        ]}
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as 'holographic' | 'spaces' | 'activity' | 'discover')}
-        className="mb-8"
-      />
+  // Listen for real WebSocket responses
+  useEffect(() => {
+    const handleServerResponse = (message: ServerMessage) => {
+      if (message.kind === 'followersResponse') {
+        const count = message.payload.followers.length;
+        setFollowerCount(count);
+        
+        // Update quantum metrics when we get real follower data
+        setQuantumMetrics(prev => ({
+          ...prev,
+          resonanceScore: Math.max(0.2, (count * 0.15) + (prev.entanglements * 0.2) + (spaces.length * 0.1)),
+          entropy: Math.max(0.1, count > 0 ? Math.log2(count + 1) / 8 : 0.1)
+        }));
+        
+      } else if (message.kind === 'beaconsResponse') {
+        // Convert recent beacons to activity items
+        const beacons = message.payload.beacons || [];
+        const activities = beacons.slice(0, 5).map((beacon) => ({
+          id: beacon.beacon_id,
+          type: 'post',
+          user: {
+            name: beacon.username || beacon.author_id.substring(0, 8),
+            avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beacon.author_id}`
+          },
+          content: 'created a holographic beacon',
+          timestamp: new Date(beacon.created_at),
+          icon: Activity,
+          color: 'cyan'
+        }));
+        setRecentActivity(activities);
+        
+        // Update resonance score based on beacon activity
+        setQuantumMetrics(prev => ({
+          ...prev,
+          resonanceScore: Math.max(prev.resonanceScore, 0.3 + (activities.length * 0.05))
+        }));
+      }
+    };
 
-      {/* Tab Content */}
-      {tabContent[activeTab]}
+    webSocketService.addMessageListener(handleServerResponse);
+    return () => webSocketService.removeMessageListener(handleServerResponse);
+  }, []);
+
+  // Social feed handlers
+  const handleCreatePost = (content: string, selectedSpace: string, attachments: File[]) => {
+    const selectedSpaceObj = spaces.find(s => s.id === selectedSpace);
+    const postId = `post-${Date.now()}`;
+    const author = {
+      id: user?.id || 'current-user',
+      name: user?.name || 'You',
+      username: user?.username || 'you',
+      avatar: user?.avatar || 'https://api.dicebear.com/8.x/bottts/svg?seed=you'
+    };
+    const basePost = {
+      id: postId,
+      author,
+      spaceId: selectedSpace,
+      spaceName: selectedSpaceObj?.name || 'Unknown Space',
+      timestamp: new Date(),
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      isLiked: false
+    };
+    
+    let newPost: Post;
+    
+    // Create different post types based on content and attachments
+    if (attachments && attachments.length > 0) {
+      // Create binary file post when attachments are present
+      newPost = {
+        ...basePost,
+        type: PostType.BINARY_FILE,
+        caption: content || undefined,
+        files: attachments.map((file, index) => ({
+          id: `file-${postId}-${index}`,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: URL.createObjectURL(file),
+          mimeType: file.type,
+          previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+          metadata: {
+            uploadedAt: new Date()
+          }
+        }))
+      } as BinaryFilePost;
+    } else {
+      // Create rich text post when no attachments
+      newPost = {
+        ...basePost,
+        type: PostType.RICH_TEXT,
+        content,
+        mentions: [],
+        hashtags: [],
+        formatting: {
+          bold: [],
+          italic: [],
+          code: [],
+          links: []
+        }
+      } as RichTextPost;
+    }
+    
+    setFeedPosts(prev => [newPost, ...prev]);
+  };
+
+  const handleLikePost = (postId: string) => {
+    setFeedPosts(prev => prev.map(post =>
+      post.id === postId
+        ? {
+            ...post,
+            isLiked: !post.isLiked,
+            likes: post.isLiked ? post.likes - 1 : post.likes + 1
+          }
+        : post
+    ));
+  };
+
+  const handleCommentPost = (postId: string) => {
+    console.log('Comment on post:', postId);
+    // TODO: Implement comment functionality
+  };
+
+  const handleSharePost = (postId: string) => {
+    console.log('Share post:', postId);
+    // TODO: Implement share functionality
+  };
+
+
+  return (
+    <PageLayout>
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <HeroSection
+          user={user}
+          quantumMetrics={quantumMetrics}
+          nodes={nodes}
+          onOpenSearch={onOpenSearch}
+          onOpenDirectMessages={onOpenDirectMessages}
+          onCreateSpace={() => setIsCreateModalOpen(true)}
+        />
+
+        {/* Main Content Grid - Social Feed Focused */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          
+          {/* Left Column - Compact User Info */}
+          <div className="lg:col-span-1 space-y-6">
+            <QuantumUniverseCard
+              spaces={spaces}
+              followerCount={followerCount}
+              quantumMetrics={quantumMetrics}
+              onOpenSettings={onOpenSettings}
+            />
+
+            <YourSpacesCard
+              spaces={spaces}
+              onViewSpace={onViewSpace}
+            />
+          </div>
+
+          {/* Center Column - Social Feed (Primary Focus) */}
+          <div className="lg:col-span-2 space-y-6">
+            <EnhancedContentComposer
+              spaces={spaces}
+              onPost={handleCreatePost}
+            />
+
+            <FlexibleSocialFeedCard
+              posts={feedPosts}
+              onLike={handleLikePost}
+              onComment={handleCommentPost}
+              onShare={handleSharePost}
+            />
+          </div>
+
+          {/* Right Column - Discovery & Actions */}
+          <div className="lg:col-span-1 space-y-6">
+            <SuggestedConnectionsCard
+              suggestedUsers={suggestedUsers}
+              onFollowToggle={handleFollowToggle}
+            />
+
+            <RecentActivityCard recentActivity={recentActivity} />
+
+            <QuickActionsCard
+              onOpenDirectMessages={onOpenDirectMessages}
+              onOpenSearch={onOpenSearch}
+              onCreateSpace={() => setIsCreateModalOpen(true)}
+              onOpenSettings={onOpenSettings}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Create Space Modal */}
       <CreateSpaceModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onSpaceCreated={(spaceId) => {
+          console.log('New space created:', spaceId);
+          setIsCreateModalOpen(false);
+        }}
       />
-      </>
     </PageLayout>
   );
 }

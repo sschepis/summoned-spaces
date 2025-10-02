@@ -1,117 +1,74 @@
-import { LucideIcon, FileText, Image, Video, Music, Archive, Code, Database } from 'lucide-react';
-import { FileCard, FileItem } from './FileCard';
-import { FileListRow, FileListHeader } from './FileListRow';
-import { EmptyState } from '../../ui/EmptyState';
+import { FileCard } from './FileCard';
 
-// File type icon and color mappings
-export const fileTypeIcons: Record<string, LucideIcon> = {
-  pdf: FileText,
-  docx: FileText,
-  png: Image,
-  jpg: Image,
-  mp4: Video,
-  mp3: Music,
-  zip: Archive,
-  js: Code,
-  py: Code,
-  csv: Database
-};
-
-export const fileTypeColors: Record<string, string> = {
-  pdf: 'text-red-400',
-  docx: 'text-blue-400',
-  png: 'text-green-400',
-  jpg: 'text-green-400',
-  mp4: 'text-purple-400',
-  mp3: 'text-pink-400',
-  zip: 'text-yellow-400',
-  js: 'text-yellow-500',
-  py: 'text-green-500',
-  csv: 'text-cyan-400'
-};
-
-interface FileGridProps {
-  files: FileItem[];
-  viewMode: 'grid' | 'list';
-  selectedFiles: Set<string>;
-  onFileClick?: (file: FileItem, event: React.MouseEvent) => void;
-  onContextMenu?: (event: React.MouseEvent, fileId: string) => void;
-  emptyMessage?: string;
-  searchQuery?: string;
-  className?: string;
+interface FileRecord {
+    file_id: string;
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    uploader_id: string;
+    created_at: string;
+    fingerprint: string;
 }
 
-export function FileGrid({
-  files,
-  viewMode,
-  selectedFiles,
-  onFileClick,
-  onContextMenu,
-  emptyMessage,
-  searchQuery = '',
-  className = ''
-}: FileGridProps) {
-  if (files.length === 0) {
-    return (
-      <EmptyState
-        icon={FileText}
-        title={emptyMessage || 'No files found'}
-        description={
-          searchQuery 
-            ? `No files found matching "${searchQuery}"`
-            : 'No files in this space yet'
+interface FileGridProps {
+    files: FileRecord[];
+    spaceId: string;
+    onFileSelect: (file: FileRecord) => void;
+    onRemoveFile: (fileId: string) => void;
+}
+
+export function FileGrid({ files, spaceId, onFileSelect, onRemoveFile }: FileGridProps) {
+    // Defensive programming - filter out null/undefined files and ensure required properties exist
+    const validFiles = (files || []).filter(file => {
+        if (!file) return false;
+        if (!file.file_id) return false;
+        return true;
+    });
+
+    const handleFileSelect = (file: FileRecord) => {
+        try {
+            if (file && onFileSelect) {
+                onFileSelect(file);
+            }
+        } catch (error) {
+            console.error('Error selecting file:', error);
         }
-        className={className}
-      />
-    );
-  }
+    };
 
-  if (viewMode === 'grid') {
+    const handleRemoveFile = (fileId: string) => {
+        try {
+            if (fileId && onRemoveFile) {
+                onRemoveFile(fileId);
+            }
+        } catch (error) {
+            console.error('Error removing file:', error);
+        }
+    };
+
+    if (validFiles.length === 0) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-400">No files to display</p>
+            </div>
+        );
+    }
+
     return (
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 ${className}`}>
-        {files.map((file) => {
-          const Icon = fileTypeIcons[file.type] || FileText;
-          const iconColor = fileTypeColors[file.type] || 'text-gray-400';
-          
-          return (
-            <FileCard
-              key={file.id}
-              file={file}
-              icon={Icon}
-              iconColor={iconColor}
-              isSelected={selectedFiles.has(file.id)}
-              onClick={onFileClick}
-              onContextMenu={onContextMenu}
-            />
-          );
-        })}
-      </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            {validFiles.map((file, index) => {
+                // UNIQUE KEY FIX: Generate unique keys to prevent React duplication warnings
+                const uniqueKey = file.file_id || `${file.file_name}_${file.file_size}_${index}_${Date.now()}`;
+                
+                return (
+                    <FileCard
+                        key={uniqueKey}
+                        file={file}
+                        spaceId={spaceId}
+                        onSelect={() => handleFileSelect(file)}
+                        onRemove={() => handleRemoveFile(file.file_id)}
+                    />
+                );
+            })}
+        </div>
     );
-  }
-
-  // List view
-  return (
-    <div className={`bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden ${className}`}>
-      <FileListHeader />
-      <div className="divide-y divide-white/5">
-        {files.map((file) => {
-          const Icon = fileTypeIcons[file.type] || FileText;
-          const iconColor = fileTypeColors[file.type] || 'text-gray-400';
-          
-          return (
-            <FileListRow
-              key={file.id}
-              file={file}
-              icon={Icon}
-              iconColor={iconColor}
-              isSelected={selectedFiles.has(file.id)}
-              onClick={onFileClick}
-              onContextMenu={onContextMenu}
-              onMoreClick={onContextMenu}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
 }

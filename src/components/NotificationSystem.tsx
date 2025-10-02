@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, Info, Zap } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, Zap, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
 
 interface Notification {
   id: string;
-  type: 'success' | 'error' | 'info' | 'resonance';
+  type: 'success' | 'error' | 'info' | 'resonance' | 'follow' | 'unfollow' | 'message';
   title: string;
   message: string;
   duration?: number;
@@ -11,6 +11,9 @@ interface Notification {
     label: string;
     onClick: () => void;
   };
+  userId?: string; // For follow notifications
+  senderId?: string; // For message notifications
+  isQuantum?: boolean; // For quantum message indicators
 }
 
 interface NotificationSystemProps {
@@ -22,12 +25,20 @@ const notificationIcons = {
   success: CheckCircle,
   error: AlertCircle,
   info: Info,
-  resonance: Zap
+  resonance: Zap,
+  follow: UserPlus,
+  unfollow: UserMinus,
+  message: MessageCircle
 };
 
 const notificationStyles = {
-  info: 'bg-blue-500/10 border-blue-500/20 text-blue-300',
-  resonance: 'bg-blue-500/10 border-blue-500/20 text-blue-300'
+  success: 'bg-green-500/30 border-green-500/50 text-green-100',
+  error: 'bg-red-500/30 border-red-500/50 text-red-100',
+  info: 'bg-blue-500/30 border-blue-500/50 text-blue-100',
+  resonance: 'bg-blue-500/30 border-blue-500/50 text-blue-100',
+  follow: 'bg-green-500/30 border-green-500/50 text-green-100',
+  unfollow: 'bg-orange-500/30 border-orange-500/50 text-orange-100',
+  message: 'bg-cyan-500/30 border-cyan-500/50 text-cyan-100'
 };
 
 export function NotificationSystem({ notifications, onDismiss }: NotificationSystemProps) {
@@ -57,12 +68,17 @@ export function NotificationSystem({ notifications, onDismiss }: NotificationSys
         return (
           <div
             key={notification.id}
-            className={`p-4 rounded-lg border backdrop-blur-sm shadow-lg animate-in slide-in-from-right duration-300 ${
+            className={`p-4 rounded-lg border backdrop-blur-md shadow-xl animate-in slide-in-from-right duration-300 ${
               notificationStyles[notification.type]
             }`}
           >
             <div className="flex items-start space-x-3">
-              <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="relative">
+                <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                {notification.type === 'message' && notification.isQuantum && (
+                  <Zap className="w-3 h-3 absolute -top-1 -right-1 text-purple-400" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-white mb-1">{notification.title}</h4>
                 <p className="text-sm text-gray-300">{notification.message}</p>
@@ -118,6 +134,26 @@ export function useNotifications() {
     addNotification({ type: 'resonance', title, message, action });
   };
 
+  const showFollow = (title: string, message: string, userId?: string, action?: Notification['action']) => {
+    addNotification({ type: 'follow', title, message, userId, action, duration: 6000 });
+  };
+
+  const showUnfollow = (title: string, message: string, userId?: string, action?: Notification['action']) => {
+    addNotification({ type: 'unfollow', title, message, userId, action, duration: 6000 });
+  };
+
+  const showMessage = (title: string, message: string, senderId?: string, isQuantum?: boolean, action?: Notification['action']) => {
+    addNotification({
+      type: 'message',
+      title,
+      message,
+      senderId,
+      isQuantum,
+      action,
+      duration: 0 // Persistent until manually dismissed or action is taken
+    });
+  };
+
   return {
     notifications,
     addNotification,
@@ -125,6 +161,9 @@ export function useNotifications() {
     showSuccess,
     showError,
     showInfo,
-    showResonance
+    showResonance,
+    showFollow,
+    showUnfollow,
+    showMessage
   };
 }

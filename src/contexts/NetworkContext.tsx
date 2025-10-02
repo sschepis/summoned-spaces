@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { webSocketService } from '../services/websocket';
+import webSocketService from '../services/websocket';
 import { ServerMessage } from '../../server/protocol';
 import { PublicResonance } from '../services/holographic-memory';
 
 // State Types
 interface NetworkNode {
     userId: string;
+    username: string;
     publicResonance: PublicResonance;
     connectionId: string;
 }
@@ -19,11 +20,13 @@ export interface PostBeaconInfo {
 interface NetworkState {
   nodes: NetworkNode[];
   recentBeacons: PostBeaconInfo[];
+  totalConnections: number;
+  connectedUsers: number;
 }
 
 // Actions
 type NetworkAction =
-  | { type: 'SET_NETWORK_STATE'; payload: NetworkNode[] }
+  | { type: 'SET_NETWORK_STATE'; payload: { nodes: NetworkNode[], totalConnections: number, connectedUsers: number } }
   | { type: 'ADD_BEACON'; payload: PostBeaconInfo };
 
 // Context Type
@@ -33,13 +36,20 @@ type NetworkContextType = NetworkState;
 const initialState: NetworkState = {
   nodes: [],
   recentBeacons: [],
+  totalConnections: 0,
+  connectedUsers: 0,
 };
 
 // Reducer
 const networkReducer = (state: NetworkState, action: NetworkAction): NetworkState => {
   switch (action.type) {
     case 'SET_NETWORK_STATE':
-      return { ...state, nodes: action.payload };
+      return {
+        ...state,
+        nodes: action.payload.nodes,
+        totalConnections: action.payload.totalConnections,
+        connectedUsers: action.payload.connectedUsers,
+      };
     case 'ADD_BEACON': {
       // Keep the last 20 beacons for the feed
       const updatedBeacons = [action.payload, ...state.recentBeacons].slice(0, 20);
@@ -65,7 +75,14 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
   useEffect(() => {
     const handleServerMessage = (message: ServerMessage) => {
       if (message.kind === 'networkStateUpdate') {
-        dispatch({ type: 'SET_NETWORK_STATE', payload: message.payload.nodes });
+        dispatch({
+          type: 'SET_NETWORK_STATE',
+          payload: {
+            nodes: message.payload.nodes,
+            totalConnections: message.payload.nodes.length, // Simplified for now
+            connectedUsers: new Set(message.payload.nodes.map(n => n.userId)).size, // Simplified for now
+          }
+        });
       } else if (message.kind === 'newPostBeacon') {
         dispatch({
           type: 'ADD_BEACON',

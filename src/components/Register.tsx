@@ -20,7 +20,7 @@ export function RegisterRefactored({
   
   const form = useForm({
     initialValues: {
-      name: '',
+      username: '',
       email: '',
       password: '',
       confirmPassword: ''
@@ -28,9 +28,11 @@ export function RegisterRefactored({
     validate: (values) => {
       const errors: Record<string, string> = {};
       
-      // Name validation
-      const nameError = validators.required(values.name, 'Name');
-      if (nameError) errors.name = nameError;
+      // Username validation
+      const usernameError = validators.required(values.username, 'Username');
+      if (usernameError) errors.username = usernameError;
+      else if (values.username.length < 3) errors.username = 'Username must be at least 3 characters';
+      else if (!/^[a-zA-Z0-9_]+$/.test(values.username)) errors.username = 'Username can only contain letters, numbers, and underscores';
       
       // Email validation
       const emailError = validators.email(values.email);
@@ -54,7 +56,7 @@ export function RegisterRefactored({
       
       try {
         // Use AuthContext register method
-        await register(values.name, values.email, values.password);
+        await register(values.username, values.email, values.password);
         onRegisterSuccess();
       } catch (error) {
         setGeneralError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
@@ -86,15 +88,15 @@ export function RegisterRefactored({
     >
       <FormGroup>
         <FormField
-          name="name"
-          label="Full Name"
+          name="username"
+          label="Username"
           type="text"
-          value={form.values.name}
-          onChange={form.handleChange('name')}
-          onBlur={form.handleBlur('name')}
-          error={form.touched.name ? form.errors.name : undefined}
+          value={form.values.username}
+          onChange={form.handleChange('username')}
+          onBlur={form.handleBlur('username')}
+          error={form.touched.username ? form.errors.username : undefined}
           icon={User}
-          placeholder="John Doe"
+          placeholder="your_username"
           required
         />
         

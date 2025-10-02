@@ -33,12 +33,14 @@ export interface Space {
   createdAt?: string;
   lastActivity?: string;
   tags: string[];
-  role?: 'owner' | 'admin' | 'contributor' | 'viewer';
+  role?: SpaceRole;
   color?: string;
   cover?: string;
   growthRate?: number;
   isTemporary?: boolean;
 }
+
+export type SpaceRole = 'owner' | 'admin' | 'contributor' | 'viewer' | 'member';
 
 export interface ActivityItem {
   id: string;

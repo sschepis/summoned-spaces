@@ -236,83 +236,81 @@ interface AppProviderProps {
   children: ReactNode;
 }
 
-// Mock API functions (replace with actual API calls)
-const mockApi = {
+// Real beacon-based API functions
+const beaconApi = {
   fetchSpaces: async (): Promise<Space[]> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return [
-      {
-        id: '1',
-        name: 'Project Quantum',
-        description: 'Research collaboration space for quantum computing papers',
-        isPublic: true,
-        memberCount: 12,
-        volumeCount: 8,
-        resonanceStrength: 0.87,
-        lastActivity: '2 hours ago',
-        role: 'owner',
-        color: 'from-purple-500 to-pink-500',
-        tags: ['quantum', 'research', 'collaboration'],
-        creator: 'Dr. Sarah Chen',
-        createdAt: '2024-01-15',
-      },
-      {
-        id: '2',
-        name: 'Design System',
-        description: 'Shared design assets and component library',
-        isPublic: false,
-        memberCount: 25,
-        volumeCount: 15,
-        resonanceStrength: 0.92,
-        lastActivity: '1 hour ago',
-        role: 'admin',
-        color: 'from-blue-500 to-cyan-500',
-        tags: ['design', 'components', 'ui'],
-        creator: 'Elena Kowalski',
-        createdAt: '2024-02-01',
-      },
-    ];
+    try {
+      // TODO: Implement real beacon-based space fetching
+      // In a real implementation, this would:
+      // 1. Fetch public space beacons from the server
+      // 2. Decode each beacon to get space metadata
+      // 3. Return the decoded space data
+      
+      console.log('Fetching spaces from beacon system...');
+      
+      // For now, return empty array until beacon infrastructure is fully implemented
+      return [];
+      
+      // Example implementation:
+      // const spaceBeacons = await beaconCacheManager.getPublicSpaces();
+      // return Promise.all(spaceBeacons.map(async (beacon) => {
+      //   const decoded = holographicMemoryManager.decodeMemory(beacon);
+      //   return JSON.parse(decoded);
+      // }));
+    } catch (error) {
+      console.error('Failed to fetch spaces from beacons:', error);
+      return [];
+    }
   },
 
   fetchActivities: async (): Promise<ActivityItem[]> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return [
-      {
-        id: '1',
-        type: 'file_contributed',
-        user: {
-          id: 'sarah-chen',
-          name: 'Sarah Chen',
-          username: '@sarahc',
-          avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-          isFollowing: true,
-          verified: true,
-        },
-        action: 'shared some epic photos from their weekend trip',
-        target: 'mountain_adventure_2024.zip',
-        space: 'Photography Collective',
-        details: 'Amazing mountain shots with perfect lighting! Check out these captures from the summit 📸✨',
-        timestamp: '2 minutes ago',
-        metrics: { likes: 47, comments: 12, shares: 8, hasLiked: false, hasBookmarked: false },
-      },
-    ];
+    try {
+      // TODO: Implement real beacon-based activity fetching
+      // In a real implementation, this would:
+      // 1. Fetch recent activity beacons from followed users
+      // 2. Decode each beacon to get activity data
+      // 3. Return the decoded activity feed
+      
+      console.log('Fetching activities from beacon system...');
+      
+      // For now, return empty array until beacon infrastructure is fully implemented
+      return [];
+      
+      // Example implementation:
+      // const activityBeacons = await beaconCacheManager.getRecentActivities();
+      // return Promise.all(activityBeacons.map(async (beacon) => {
+      //   const decoded = holographicMemoryManager.decodeMemory(beacon);
+      //   return JSON.parse(decoded);
+      // }));
+    } catch (error) {
+      console.error('Failed to fetch activities from beacons:', error);
+      return [];
+    }
   },
 
   fetchUsers: async (): Promise<User[]> => {
-    await new Promise(resolve => setTimeout(resolve, 700));
-    return [
-      {
-        id: '1',
-        name: 'Dr. Sarah Chen',
-        username: '@sarahchen_quantum',
-        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-        bio: 'Quantum computing researcher at MIT. Pioneering work in prime-resonant algorithms.',
-        isFollowing: true,
-        stats: { followers: 2847, following: 342, spaces: 12, resonanceScore: 0.94 },
-        recentActivity: 'Published breakthrough paper on quantum entanglement',
-        tags: ['quantum-computing', 'research', 'algorithms'],
-      },
-    ];
+    try {
+      // TODO: Implement real beacon-based user discovery
+      // In a real implementation, this would:
+      // 1. Fetch user profile beacons from the network
+      // 2. Decode each beacon to get user profile data
+      // 3. Return the decoded user profiles
+      
+      console.log('Fetching users from beacon system...');
+      
+      // For now, return empty array until beacon infrastructure is fully implemented
+      return [];
+      
+      // Example implementation:
+      // const userBeacons = await beaconCacheManager.getDiscoverableUsers();
+      // return Promise.all(userBeacons.map(async (beacon) => {
+      //   const decoded = holographicMemoryManager.decodeMemory(beacon);
+      //   return JSON.parse(decoded);
+      // }));
+    } catch (error) {
+      console.error('Failed to fetch users from beacons:', error);
+      return [];
+    }
   },
 };
 
@@ -342,7 +340,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadSpaces = async (): Promise<void> => {
     dispatch({ type: 'SET_SPACES_LOADING', payload: true });
     try {
-      const spaces = await mockApi.fetchSpaces();
+      const spaces = await beaconApi.fetchSpaces();
       dispatch({ type: 'SET_SPACES', payload: spaces });
     } catch (error) {
       dispatch({
@@ -357,7 +355,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadActivities = async (): Promise<void> => {
     dispatch({ type: 'SET_ACTIVITIES_LOADING', payload: true });
     try {
-      const activities = await mockApi.fetchActivities();
+      const activities = await beaconApi.fetchActivities();
       dispatch({ type: 'SET_ACTIVITIES', payload: activities });
     } catch (error) {
       dispatch({
@@ -372,7 +370,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadUsers = async (): Promise<void> => {
     dispatch({ type: 'SET_USERS_LOADING', payload: true });
     try {
-      const users = await mockApi.fetchUsers();
+      const users = await beaconApi.fetchUsers();
       dispatch({ type: 'SET_USERS', payload: users });
     } catch (error) {
       dispatch({

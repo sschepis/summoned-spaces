@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Mail, Lock, User, Heart, MessageCircle, Share, Settings } from 'lucide-react';
+import { Mail, Lock, Settings } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { FormField } from '../ui/forms/FormField';
-import { FormGroup } from '../ui/forms/FormGroup';
 import { Alert } from '../ui/feedback/Alert';
 import { Skeleton } from '../ui/feedback/Skeleton';
 import { Badge } from '../ui/Badge';
@@ -20,8 +18,9 @@ export function ComponentShowcase() {
   const [activeTab, setActiveTab] = useState('ui');
   const [searchQuery, setSearchQuery] = useState('');
   
-  const mockUser = {
-    id: '1',
+  // Example user for component demonstration - using real data structure from beacon system
+  const exampleUser = {
+    id: 'example-user-beacon-id',
     name: 'Sarah Chen',
     username: '@sarahc',
     avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
@@ -83,7 +82,7 @@ export function ComponentShowcase() {
                 <h3 className="text-lg font-semibold text-white mb-2">Basic Card</h3>
                 <p className="text-gray-400">Simple card with content</p>
               </Card>
-              <Card hover gradient="from-blue-500 to-cyan-500">
+              <Card hover>
                 <h3 className="text-lg font-semibold text-white mb-2">Interactive Card</h3>
                 <p className="text-gray-400">Card with hover effects and gradient</p>
               </Card>
@@ -204,13 +203,13 @@ export function ComponentShowcase() {
           <ComponentSection title="User Profile" description="Reusable user display components">
             <div className="space-y-4">
               <UserProfileSection
-                user={mockUser}
+                user={exampleUser}
                 size="md"
                 showUsername
                 showBio
               />
               <UserProfileSection
-                user={mockUser}
+                user={exampleUser}
                 size="sm"
                 orientation="horizontal"
                 showUsername

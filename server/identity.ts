@@ -1,4 +1,4 @@
-// This module mocks the generation of a Prime Resonance Identity (PRI)
+// This module generates Prime Resonance Identity (PRI) for users
 // based on the concepts in the project documentation and HTML example.
 
 const RESONANCE_PRIMES = {

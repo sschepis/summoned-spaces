@@ -1,14 +1,11 @@
 import type { Beacon } from './protocol'; // Using our placeholder Beacon type
-import { SocialGraphManager } from './social';
 import { ConnectionManager } from './connections';
 import { getDatabase } from './database';
 
 export class PostManager {
-  private socialGraphManager: SocialGraphManager;
   private connectionManager: ConnectionManager;
 
-  constructor(socialGraphManager: SocialGraphManager, connectionManager: ConnectionManager) {
-    this.socialGraphManager = socialGraphManager;
+  constructor(connectionManager: ConnectionManager) {
     this.connectionManager = connectionManager;
     console.log('PostManager initialized');
   }
@@ -18,21 +15,55 @@ export class PostManager {
     beacon: Beacon,
     beaconType: string = 'post'
   ): Promise<{ postId: string; beaconId: string }> {
-    console.log(`Received ${beaconType} beacon submission from user ${userId}`);
+    console.log(`[PostManager] ===== BEACON SUBMISSION =====`);
+    console.log(`[PostManager] Received ${beaconType} beacon submission from user ${userId}`);
+    console.log(`[PostManager] Beacon type: ${beaconType}`);
+    console.log(`[PostManager] User ID: ${userId}`);
+    
+    // Convert arrays back to Uint8Arrays if needed
+    if (Array.isArray(beacon.fingerprint)) {
+      beacon.fingerprint = new Uint8Array(beacon.fingerprint);
+      console.log('[PostManager] Converted fingerprint from array to Uint8Array');
+    }
+    if (Array.isArray(beacon.signature)) {
+      beacon.signature = new Uint8Array(beacon.signature);
+      console.log('[PostManager] Converted signature from array to Uint8Array');
+    }
+    
+    console.log(`[PostManager] Beacon structure:`, {
+      hasSignature: !!beacon.signature,
+      signatureLength: beacon.signature?.length,
+      hasFingerprint: !!beacon.fingerprint,
+      fingerprintLength: beacon.fingerprint?.length,
+      hasIndex: !!beacon.index,
+      indexLength: beacon.index?.length,
+      epoch: beacon.epoch
+    });
 
-    // --- Mock Validation ---
+    // --- Beacon Validation ---
     if (!beacon.signature || beacon.signature.length === 0) {
         throw new Error("Invalid beacon: Signature is missing.");
     }
-    console.log('Mock validation passed for beacon fingerprint:', beacon.fingerprint);
+    if (!beacon.fingerprint || beacon.fingerprint.length === 0) {
+        throw new Error("Invalid beacon: Fingerprint is missing.");
+    }
+    if (!beacon.index || beacon.index.length === 0) {
+        throw new Error("Invalid beacon: Prime indices are missing.");
+    }
+    console.log('[PostManager] Beacon validation passed');
 
     // --- Persistence ---
     const beaconId = `beacon_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[PostManager] Saving beacon ${beaconId} to database...`);
     await this.saveBeaconToDb(beaconId, userId, beacon, beaconType);
     
-    // --- Propagation (only for posts, not user data beacons) ---
-    if (beaconType === 'post') {
-      this.propagateBeacon(userId, beacon);
+    // --- Propagation for posts and direct messages ---
+    console.log(`[PostManager] Checking propagation for beacon type: ${beaconType}`);
+    if (beaconType === 'post' || beaconType === 'direct_message' || beaconType === 'quantum_message' || beaconType === 'space_message') {
+      console.log(`[PostManager] Propagating ${beaconType} beacon ${beaconId}`);
+      this.propagateBeacon(userId, beacon, beaconType, beaconId);
+    } else {
+      console.log(`[PostManager] Skipping propagation for beacon type: ${beaconType}`);
     }
 
     const postId = `post_${Math.random().toString(36).substr(2, 9)}`;
@@ -42,28 +73,67 @@ export class PostManager {
     return { postId, beaconId };
   }
 
-  private async propagateBeacon(authorId: string, beacon: Beacon): Promise<void> {
-    const followers = await this.socialGraphManager.getFollowers(authorId);
+  private async propagateBeacon(authorId: string, beacon: Beacon, beaconType: string = 'post', beaconId: string = ''): Promise<void> {
+    // In the holographic architecture, propagation is handled client-side
+    // through the follower discovery service. The server just stores the beacon
+    // and clients discover and decode beacons based on their holographic permissions.
+    console.log(`Beacon from ${authorId} saved - propagation handled by holographic discovery`);
     
-    const recipients = new Set<string>(followers);
-    recipients.add(authorId);
-
-    console.log(`Propagating beacon from ${authorId} to recipients:`, Array.from(recipients));
-
-    for (const recipientId of recipients) {
-      const connections = this.connectionManager.getConnectionsByUserId(recipientId);
-      for (const ws of connections) {
+    // For direct messages and quantum messages, broadcast the actual beacon to all clients
+    // They will decode it client-side if they have the proper entanglement/permissions
+    if (beaconType === 'direct_message' || beaconType === 'quantum_message' || beaconType === 'space_message') {
+      console.log(`[PostManager] ===== BROADCASTING ${beaconType.toUpperCase()} BEACON =====`);
+      console.log(`[PostManager] Beacon ID: ${beaconId}`);
+      console.log(`[PostManager] Author ID: ${authorId}`);
+      console.log(`[PostManager] Beacon Type: ${beaconType}`);
+      console.log(`[PostManager] Beacon structure:`, {
+        fingerprint: beacon.fingerprint?.constructor?.name,
+        fingerprintLength: beacon.fingerprint?.length,
+        signature: beacon.signature?.constructor?.name,
+        signatureLength: beacon.signature?.length,
+        index: beacon.index,
+        epoch: beacon.epoch
+      });
+      
+      const allConnections = this.connectionManager.getAllConnections();
+      console.log(`[PostManager] Broadcasting to ${allConnections.length} connected clients`);
+      
+      const message = {
+        kind: 'beaconReceived',
+        payload: {
+          beaconId: beaconId,
+          senderId: authorId,
+          beaconType: beaconType,
+          beacon: beacon
+        }
+      };
+      console.log(`[PostManager] Broadcast message:`, message);
+      
+      for (const ws of allConnections) {
+        try {
+          const messageString = JSON.stringify(message);
+          ws.send(messageString);
+          console.log(`[PostManager] Successfully sent ${beaconType} beacon to client`);
+        } catch (error) {
+          console.error(`[PostManager] Failed to broadcast ${beaconType} beacon to client:`, error);
+        }
+      }
+      console.log(`[PostManager] Finished broadcasting ${beaconType} beacon`);
+    } else {
+      // For regular posts, just notify availability for holographic discovery
+      const allConnections = this.connectionManager.getAllConnections();
+      for (const ws of allConnections) {
         try {
           ws.send(JSON.stringify({
-            kind: 'newPostBeacon',
+            kind: 'newBeaconAvailable',
             payload: {
               authorId,
-              beacon,
+              beaconType: beaconType,
+              timestamp: Date.now()
             }
           }));
-          console.log(`Sent beacon to recipient ${recipientId}`);
         } catch (error) {
-          console.error(`Failed to send beacon to recipient ${recipientId}:`, error);
+          console.error(`Failed to broadcast beacon availability:`, error);
         }
       }
     }
@@ -81,24 +151,38 @@ export class PostManager {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
+    console.log(`[PostManager] Preparing to save beacon with type: ${beaconType}`);
+    
     const params = [
       beaconId,
       beaconType,
       authorId,
       JSON.stringify(beacon.index),
       beacon.epoch,
-      beacon.fingerprint,
-      beacon.signature,
+      Buffer.from(beacon.fingerprint).toString('base64'),
+      Buffer.from(beacon.signature).toString('base64'),
       new Date().toISOString()
     ];
+    
+    console.log(`[PostManager] SQL params:`, {
+      beaconId,
+      beaconType,
+      authorId,
+      primeIndicesLength: beacon.index.length,
+      epoch: beacon.epoch,
+      fingerprintBase64Length: Buffer.from(beacon.fingerprint).toString('base64').length,
+      signatureBase64Length: Buffer.from(beacon.signature).toString('base64').length
+    });
 
     return new Promise((resolve, reject) => {
       db.run(sql, params, (err: Error | null) => {
         if (err) {
-          console.error('Error saving beacon to DB', err.message);
+          console.error('[PostManager] Error saving beacon to DB:', err.message);
+          console.error('[PostManager] SQL:', sql);
+          console.error('[PostManager] Params:', params);
           return reject(err);
         }
-        console.log(`Beacon ${beaconId} saved to database.`);
+        console.log(`[PostManager] Beacon ${beaconId} (type: ${beaconType}) saved successfully to database.`);
         resolve();
       });
     });
@@ -136,18 +220,19 @@ export class PostManager {
     // First save the beacon
     const beaconId = `beacon_${Math.random().toString(36).substr(2, 9)}`;
     const beaconSql = `
-      INSERT INTO beacons (beacon_id, author_id, prime_indices, epoch, fingerprint, signature, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO beacons (beacon_id, beacon_type, author_id, prime_indices, epoch, fingerprint, signature, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     await new Promise<void>((resolve, reject) => {
       db.run(beaconSql, [
         beaconId,
+        'comment', // Set beacon_type to 'comment'
         authorId,
         JSON.stringify(beacon.index),
         beacon.epoch,
-        beacon.fingerprint,
-        beacon.signature,
+        Buffer.from(beacon.fingerprint).toString('base64'),
+        Buffer.from(beacon.signature).toString('base64'),
         new Date().toISOString()
       ], (err: Error | null) => {
         if (err) {

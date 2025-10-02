@@ -2,6 +2,7 @@ import type { PublicResonance } from './identity';
 
 interface NetworkNode {
     userId: string; // This is the nodeAddress from the PRI
+    username: string; // The user's display name
     publicResonance: PublicResonance;
     connectionId: string;
 }
@@ -20,10 +21,10 @@ export class NetworkStateManager {
      * @param userId The user's unique node address (from PRI).
      * @param publicResonance The public part of the user's PRI.
      */
-    addNode(connectionId: string, userId: string, publicResonance: PublicResonance): void {
-        const newNode: NetworkNode = { userId, publicResonance, connectionId };
+    addNode(connectionId: string, userId: string, username: string, publicResonance: PublicResonance): void {
+        const newNode: NetworkNode = { userId, username, publicResonance, connectionId };
         this.nodes.set(connectionId, newNode);
-        console.log(`Node ${userId} added to network state.`);
+        console.log(`Node ${username} (${userId}) added to network state.`);
         this.broadcastNetworkUpdate();
     }
 

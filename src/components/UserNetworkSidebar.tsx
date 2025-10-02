@@ -1,44 +1,43 @@
 import { Users, TrendingUp, Star, Zap, MessageCircle, UserCheck, Clock } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNetworkState } from '../contexts/NetworkContext';
+import { userDataManager } from '../services/user-data-manager';
 
-const networkStats = {
-  following: 247,
-  followers: 1834,
-  mutualConnections: 89,
-  activeToday: 42,
-  weeklyEngagement: 156,
-  topSpaces: [
-    { name: 'Quantum Research', members: 1247, role: 'admin' },
-    { name: 'Design Systems', members: 892, role: 'contributor' },
-    { name: 'Tech Innovation', members: 543, role: 'viewer' }
-  ],
-  recentConnections: [
-    {
-      name: 'Dr. Sarah Chen',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-      isFollowing: true,
-      timeAgo: '2 hours ago'
-    },
-    {
-      name: 'Marcus Rodriguez', 
-      avatar: 'https://images.pexels.com/photos/2381069/pexels-photo-2381069.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-      isFollowing: false,
-      timeAgo: '1 day ago'
-    },
-    {
-      name: 'Elena Kowalski',
-      avatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2', 
-      isFollowing: true,
-      timeAgo: '3 days ago'
-    }
-  ]
-};
+interface Connection {
+  name: string;
+  avatar: string;
+  isFollowing: boolean;
+  timeAgo: string;
+}
 
 export function UserNetworkSidebar() {
+  const { user } = useAuth();
+  const { nodes, recentBeacons } = useNetworkState();
+
   const formatNumber = (num: number) => {
     if (num >= 1000) {
       return `${(num / 1000).toFixed(1)}k`;
     }
     return num.toString();
+  };
+
+  const networkStats = {
+    following: userDataManager.getFollowingList().length,
+    followers: 0, // TODO: Implement followers count
+    mutualConnections: 0, // TODO: Implement mutual connections
+    activeToday: nodes.length,
+    weeklyEngagement: recentBeacons.length,
+    topSpaces: userDataManager.getSpacesList().slice(0, 3).map(s => ({
+      name: `Space ${s.spaceId.substring(0, 8)}`,
+      members: 1, // TODO: Implement member count
+      role: s.role
+    })),
+    recentConnections: nodes.slice(0, 3).map(node => ({
+      name: node.username || node.userId.substring(0, 8),
+      avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
+      isFollowing: userDataManager.getFollowingList().includes(node.userId),
+      timeAgo: 'Online' // Since these are active connections
+    }))
   };
 
   return (
@@ -47,13 +46,13 @@ export function UserNetworkSidebar() {
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center space-x-4 mb-4">
           <img
-            src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2"
+            src={user?.avatar || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2'}
             alt="You"
             className="w-16 h-16 rounded-full object-cover border-2 border-white/10"
           />
           <div>
-            <h2 className="text-xl font-bold text-white">Your Profile</h2>
-            <p className="text-gray-400 text-sm">@yourhandle</p>
+            <h2 className="text-xl font-bold text-white">{user?.name || 'Your Profile'}</h2>
+            <p className="text-gray-400 text-sm">{user?.username || '@yourhandle'}</p>
           </div>
         </div>
         
@@ -120,26 +119,30 @@ export function UserNetworkSidebar() {
       {/* Recent Connections */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Recent Connections</h3>
-        
+
         <div className="space-y-3">
-          {networkStats.recentConnections.map((connection) => (
-            <div key={connection.name} className="flex items-center space-x-3">
-              <img
-                src={connection.avatar}
-                alt={connection.name}
-                className="w-8 h-8 rounded-full object-cover border border-white/10"
-              />
-              <div className="flex-1">
-                <div className="text-white text-sm font-medium">{connection.name}</div>
-                <div className="text-gray-400 text-xs">{connection.timeAgo}</div>
+          {networkStats.recentConnections.length > 0 ? (
+            networkStats.recentConnections.map((connection) => (
+              <div key={connection.name} className="flex items-center space-x-3">
+                <img
+                  src={connection.avatar}
+                  alt={connection.name}
+                  className="w-8 h-8 rounded-full object-cover border border-white/10"
+                />
+                <div className="flex-1">
+                  <div className="text-white text-sm font-medium">{connection.name}</div>
+                  <div className="text-gray-400 text-xs">{connection.timeAgo}</div>
+                </div>
+                {connection.isFollowing ? (
+                  <UserCheck className="w-4 h-4 text-green-400" />
+                ) : (
+                  <Users className="w-4 h-4 text-gray-400" />
+                )}
               </div>
-              {connection.isFollowing ? (
-                <UserCheck className="w-4 h-4 text-green-400" />
-              ) : (
-                <Users className="w-4 h-4 text-gray-400" />
-              )}
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-gray-400 text-sm">No recent connections.</p>
+          )}
         </div>
       </div>
 

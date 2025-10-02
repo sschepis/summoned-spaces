@@ -12,7 +12,9 @@ vi.mock('../../../summoned-spaces/resolang/build/resolang.js', () => ({
   createHolographicEncoding: vi.fn(),
   holographicEncodingEncode: vi.fn((encoder: unknown, text: string) => {
     return {
-      mock: true,
+      signature: new Uint8Array([1, 2, 3]),
+      fingerprint: new Uint8Array([4, 5, 6]),
+      index: [7, 8, 9],
       text,
     };
   }),
@@ -42,20 +44,23 @@ describe('Client-Side Services', () => {
     const fragment = await holographicMemoryManager.encodeMemory('hello world');
 
     interface MockFragment {
-      mock: boolean;
+      signature: Uint8Array;
+      fingerprint: Uint8Array;
+      index: number[];
       text: string;
     }
 
     expect(fragment).toBeDefined();
-    expect((fragment as unknown as MockFragment).mock).toBe(true);
+    expect(fragment!.signature).toEqual(new Uint8Array([1, 2, 3]));
     expect((fragment as unknown as MockFragment).text).toBe('hello world');
   });
 
-  it('Holog-raphicMemoryManager should not encode memory before being initialized', async () => {
+  it('HolographicMemoryManager should not encode memory before being initialized', async () => {
     // Reset the manager state for this test
     // @ts-expect-error - Accessing private member for test reset
     holographicMemoryManager.currentUserPRI = null;
-    const fragment = await holographicMemoryManager.encodeMemory('hello world');
-    expect(fragment).toBeNull();
+    await expect(holographicMemoryManager.encodeMemory('hello world')).rejects.toThrow(
+      'Cannot encode memory: User PRI not set.',
+    );
   });
 });

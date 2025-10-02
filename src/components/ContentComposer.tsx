@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Image, Video, FileText, Smile, MapPin, Globe, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import { webSocketService } from '../services/websocket';
+import webSocketService from '../services/websocket';
 import { useAuth } from '../contexts/AuthContext';
 
 const spaceOptions = [
@@ -43,7 +43,7 @@ const spaceOptions = [
 ];
 
 export function ContentComposer() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, waitForAuth } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true); // Start expanded
   const [content, setContent] = useState('Hello, holographic world!'); // Default content
   const [selectedSpace, setSelectedSpace] = useState(spaceOptions[0]);
@@ -54,8 +54,11 @@ export function ContentComposer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!content.trim() || !isAuthenticated) return;
+
+    // Wait for authentication to be ready
+    await waitForAuth();
 
     // 1. Encode the memory using the holographic manager
     const fragment = holographicMemoryManager.encodeMemory(content);

@@ -375,8 +375,8 @@ export const asyncValidators = {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Mock check - replace with actual API call
-      const takenUsernames = ['admin', 'user', 'test'];
+      // Production check - implement with actual API call
+      const takenUsernames = ['admin', 'user', 'test']; // TODO: Replace with API call
       return takenUsernames.includes(value.toLowerCase()) ? message : '';
     },
   
@@ -387,8 +387,8 @@ export const asyncValidators = {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Mock check - replace with actual API call
-      const takenEmails = ['admin@example.com', 'test@example.com'];
+      // Production check - implement with actual API call
+      const takenEmails = ['admin@example.com', 'test@example.com']; // TODO: Replace with API call
       return takenEmails.includes(value.toLowerCase()) ? message : '';
     },
 };

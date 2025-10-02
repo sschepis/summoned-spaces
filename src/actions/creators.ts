@@ -61,7 +61,7 @@ export const authActions = {
       // This would be replaced with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       const user = { id: '1', email, name: 'User' };
-      const token = 'mock-jwt-token';
+      const token = `jwt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       dispatch(authActions.success({ user, token }));
       return { user, token };
     } catch (error) {
@@ -75,7 +75,7 @@ export const authActions = {
     try {
       await new Promise(resolve => setTimeout(resolve, 1200));
       const user = { id: Date.now().toString(), email, name };
-      const token = 'mock-jwt-token';
+      const token = `jwt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       dispatch(createAction(ACTION_TYPES.AUTH.REGISTER_SUCCESS, { user, token }));
       return { user, token };
     } catch (error) {

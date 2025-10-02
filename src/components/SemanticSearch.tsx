@@ -10,8 +10,9 @@ import { SpaceCard } from './common/SpaceCard';
 import { SearchResultsSection, PostCard } from './common/search';
 import type { PostResult } from './common/search';
 import { User as UserType, Space as SpaceType } from '../types/common';
-import { webSocketService } from '../services/websocket';
+import webSocketService from '../services/websocket';
 import { ServerMessage } from '../../server/protocol';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SemanticSearchProps {
   onBack: () => void;
@@ -33,6 +34,7 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<{ people: UserType[], spaces: SpaceType[], posts: PostResult[] }>({ people: [], spaces: [], posts: [] });
+  const { waitForAuth } = useAuth();
 
   useEffect(() => {
     const handleMessage = (message: ServerMessage) => {
@@ -90,6 +92,10 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
     }
 
     setIsSearching(true);
+    
+    // Wait for auth before searching
+    await waitForAuth();
+    
     webSocketService.sendMessage({
       kind: 'search',
       payload: { query: searchQuery, category }

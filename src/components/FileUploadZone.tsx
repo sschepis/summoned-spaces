@@ -1,151 +1,173 @@
-import { useState, useCallback } from 'react';
-import { Upload, File, X, Zap } from 'lucide-react';
+import { UploadCloud, AlertCircle } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 interface FileUploadZoneProps {
-  onClose: () => void;
+    onUpload: (files: File[]) => void;
+    maxFileSize?: number; // in bytes
+    maxFiles?: number;
+    acceptedFileTypes?: string[];
 }
 
-export function FileUploadZone({ onClose }: FileUploadZoneProps) {
-  const [dragActive, setDragActive] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
+export function FileUploadZone({
+    onUpload,
+    maxFileSize = 100 * 1024 * 1024, // 100MB default
+    maxFiles = 10,
+    acceptedFileTypes
+}: FileUploadZoneProps) {
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
+    const validateFiles = (files: File[]): { valid: File[], errors: string[] } => {
+        const errors: string[] = [];
+        const valid: File[] = [];
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+        if (files.length > maxFiles) {
+            errors.push(`Cannot upload more than ${maxFiles} files at once`);
+            return { valid: [], errors };
+        }
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    setFiles(prev => [...prev, ...droppedFiles]);
-  }, []);
+        for (const file of files) {
+            if (file.size > maxFileSize) {
+                errors.push(`File "${file.name}" is too large (max ${Math.round(maxFileSize / (1024 * 1024))}MB)`);
+                continue;
+            }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...selectedFiles]);
-    }
-  };
+            if (acceptedFileTypes && !acceptedFileTypes.some(type =>
+                file.type.includes(type) || file.name.toLowerCase().endsWith(type)
+            )) {
+                errors.push(`File "${file.name}" type not supported`);
+                continue;
+            }
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
+            valid.push(file);
+        }
 
-  const handleUpload = async () => {
-    setUploading(true);
-    // Simulate upload process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setUploading(false);
-    setFiles([]);
-    onClose();
-  };
+        return { valid, errors };
+    };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-white">Contribute Files</h2>
-        <p className="text-gray-400 text-sm">Files are encoded as mathematical resonance fingerprints</p>
-      </div>
-
-      <div
-        className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 ${
-          dragActive 
-            ? 'border-cyan-400 bg-cyan-500/10' 
-            : 'border-white/20 bg-white/5 hover:bg-white/10'
-        }`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="absolute inset-0 opacity-0 cursor-pointer"
-        />
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        setUploadError(null);
         
-        <div className="space-y-4">
-          <div className="flex justify-center">
-            <div className="p-3 rounded-full bg-cyan-500/20">
-              <Upload className="w-8 h-8 text-cyan-400" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-medium text-white mb-2">
-              Drop files here or click to browse
-            </h3>
-            <p className="text-gray-400 text-sm">
-              Files will be encoded using prime-resonant mathematical fingerprinting
-            </p>
-          </div>
-        </div>
-      </div>
+        try {
+            const { valid, errors } = validateFiles(acceptedFiles);
+            
+            if (errors.length > 0) {
+                setUploadError(errors.join(', '));
+                return;
+            }
 
-      {files.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium text-white">Files to Upload ({files.length})</h3>
-          <div className="space-y-2">
-            {files.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-white/5 
-                                        rounded-lg border border-white/10">
-                <div className="flex items-center space-x-3">
-                  <File className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm font-medium text-white">{file.name}</div>
-                    <div className="text-xs text-gray-400">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </div>
-                  </div>
+            if (valid.length > 0) {
+                onUpload(valid);
+            }
+        } catch (error) {
+            console.error('Error processing dropped files:', error);
+            setUploadError('Failed to process files');
+        }
+    }, [onUpload, maxFileSize, maxFiles, acceptedFileTypes]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        multiple: true,
+        noClick: true // Prevent default click to use our custom handler
+    });
+
+    const openFilePicker = async (event: React.MouseEvent) => {
+        event.stopPropagation();
+        setUploadError(null);
+
+        try {
+            // Check if File System Access API is supported
+            if ('showOpenFilePicker' in window) {
+                try {
+                    const handles = await (window as any).showOpenFilePicker({
+                        multiple: true,
+                        excludeAcceptAllOption: false,
+                        types: acceptedFileTypes ? [{
+                            description: 'Allowed files',
+                            accept: acceptedFileTypes.reduce((acc, type) => {
+                                acc[type] = [type];
+                                return acc;
+                            }, {} as Record<string, string[]>)
+                        }] : undefined
+                    });
+                    
+                    const files = await Promise.all(handles.map(async (handle: any) => {
+                        const file = await handle.getFile();
+                        return file;
+                    }));
+                    
+                    const { valid, errors } = validateFiles(files);
+                    
+                    if (errors.length > 0) {
+                        setUploadError(errors.join(', '));
+                        return;
+                    }
+
+                    if (valid.length > 0) {
+                        onUpload(valid);
+                    }
+                } catch (err: any) {
+                    if (err.name !== 'AbortError') { // User cancelled
+                        console.error('File System Access API error:', err);
+                        setUploadError('Failed to open file picker');
+                    }
+                }
+            } else {
+                // Fallback to traditional file input
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                if (acceptedFileTypes) {
+                    input.accept = acceptedFileTypes.join(',');
+                }
+                
+                input.onchange = (e) => {
+                    const files = Array.from((e.target as HTMLInputElement).files || []);
+                    const { valid, errors } = validateFiles(files);
+                    
+                    if (errors.length > 0) {
+                        setUploadError(errors.join(', '));
+                        return;
+                    }
+
+                    if (valid.length > 0) {
+                        onUpload(valid);
+                    }
+                };
+                
+                input.click();
+            }
+        } catch (error) {
+            console.error('Error opening file picker:', error);
+            setUploadError('Failed to open file picker');
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <div
+                {...getRootProps()}
+                className={`p-10 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors
+                    ${isDragActive ? 'border-cyan-400 bg-cyan-500/10' : 'border-gray-600 hover:border-gray-500'}
+                    ${uploadError ? 'border-red-500 bg-red-500/5' : ''}`}
+                onClick={openFilePicker}
+            >
+                <input {...getInputProps()} />
+                <div className="flex flex-col items-center">
+                    <UploadCloud className="w-12 h-12 text-gray-500 mb-4" />
+                    <p className="text-lg text-white">Drag & drop files here, or click to select</p>
+                    <p className="text-sm text-gray-400">
+                        Max {Math.round(maxFileSize / (1024 * 1024))}MB per file, up to {maxFiles} files
+                    </p>
                 </div>
-                <button
-                  onClick={() => removeFile(index)}
-                  className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {files.length > 0 && (
-        <div className="flex items-center justify-between pt-6 border-t border-white/10">
-          <div className="text-sm text-gray-400">
-            {files.length} file{files.length !== 1 ? 's' : ''} ready for resonance encoding
-          </div>
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white 
-                     rounded-lg hover:from-blue-400 hover:to-teal-400 transition-all 
-                     duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 
-                     flex items-center space-x-2"
-          >
-            {uploading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Encoding...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                <span>Begin Resonance Encoding</span>
-              </>
+            </div>
+            
+            {uploadError && (
+                <div className="flex items-center space-x-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <p className="text-sm text-red-400">{uploadError}</p>
+                </div>
             )}
-          </button>
         </div>
-      )}
-    </div>
-  );
+    );
 }

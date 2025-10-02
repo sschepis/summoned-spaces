@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNetworkState, PostBeaconInfo } from '../contexts/NetworkContext';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import { webSocketService } from '../services/websocket';
+import webSocketService from '../services/websocket';
 import { useAuth } from '../contexts/AuthContext';
+import { User } from '../types/common';
 
 export function ActivityFeed() {
   const { recentBeacons } = useNetworkState();
@@ -22,12 +23,16 @@ export function ActivityFeed() {
     // For simplicity, we'll try to teleport to the first other user on the network
     const target = recentBeacons.find(b => b.authorId !== user.id);
     if (target) {
+      // Generate a memory ID from the beacon's fingerprint and epoch for uniqueness
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const beacon = beaconInfo.beacon as any;
+      const memoryId = beacon.fingerprint ? `memory_${beacon.fingerprint}_${beacon.epoch || Date.now()}` : `memory_${Date.now()}`;
+      
       webSocketService.sendMessage({
         kind: 'requestTeleport',
         payload: {
           targetUserId: target.authorId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          memoryId: (beaconInfo.beacon as any).id || 'mock_memory_id'
+          memoryId: memoryId
         }
       });
       alert(`Teleport request sent to ${target.authorId}`);
@@ -45,32 +50,50 @@ export function ActivityFeed() {
         {recentBeacons.length === 0 ? (
           <p className="text-gray-500 text-center py-4">Awaiting network activity...</p>
         ) : (
-          recentBeacons.map((beaconInfo, index) => (
-            <div key={beaconInfo.receivedAt} className="p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10" onClick={() => handleBeaconClick(beaconInfo, index)}>
-              <p className="text-sm text-cyan-300">
-                <span className="font-bold">New Beacon</span> from node:
-                <span className="font-mono ml-2 bg-cyan-900/50 px-2 py-1 rounded">
-                  {beaconInfo.authorId.substring(0, 8)}...
-                </span>
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Received at: {new Date(beaconInfo.receivedAt).toLocaleTimeString()}
-              </p>
-              {user && beaconInfo.authorId !== user.id && (
-                <button
-                  onClick={() => handleTeleport(beaconInfo)}
-                  className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded mt-2"
-                >
-                  Teleport to Self
-                </button>
-              )}
-              {selectedBeacon === index && decodedContent && (
-                <div className="mt-2 p-2 bg-black/20 rounded">
-                  <p className="text-white text-sm">{decodedContent}</p>
+          recentBeacons.map((beaconInfo, index) => {
+            // In a real app, we'd fetch user details for each authorId
+            const author: User = {
+              id: beaconInfo.authorId,
+              name: beaconInfo.authorId.substring(0, 8), // Placeholder
+              username: `@${beaconInfo.authorId.substring(0, 8)}`, // Placeholder
+              avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beaconInfo.authorId}`,
+              bio: '', isFollowing: false, stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0 }, recentActivity: '', tags: []
+            };
+
+            return (
+              <div key={beaconInfo.receivedAt} className="p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10" onClick={() => handleBeaconClick(beaconInfo, index)}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full" />
+                  <div>
+                    <p className="text-sm font-medium text-white">{author.name}</p>
+                    <p className="text-xs text-gray-400">{author.username}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))
+                <p className="text-sm text-cyan-300">
+                  <span className="font-bold">New Beacon</span> from node:
+                  <span className="font-mono ml-2 bg-cyan-900/50 px-2 py-1 rounded">
+                    {beaconInfo.authorId.substring(0, 8)}...
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Received at: {new Date(beaconInfo.receivedAt).toLocaleTimeString()}
+                </p>
+                {user && beaconInfo.authorId !== user.id && (
+                  <button
+                    onClick={() => handleTeleport(beaconInfo)}
+                    className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded mt-2"
+                  >
+                    Teleport to Self
+                  </button>
+                )}
+                {selectedBeacon === index && decodedContent && (
+                  <div className="mt-2 p-2 bg-black/20 rounded">
+                    <p className="text-white text-sm">{decodedContent}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

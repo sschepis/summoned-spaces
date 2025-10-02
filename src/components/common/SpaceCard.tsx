@@ -92,14 +92,22 @@ export function SpaceCard({
           {showJoinButton && onJoin && (
             <Button
               size="sm"
-              variant={space.isJoined ? 'success' : 'secondary'}
-              icon={space.isJoined ? undefined : Plus}
+              variant={
+                space.role === 'owner' ? 'primary' :
+                space.isJoined ? 'success' :
+                'secondary'
+              }
+              icon={space.isJoined || space.role === 'owner' ? undefined : Plus}
+              disabled={space.role === 'owner'}
               onClick={(e) => {
                 e.stopPropagation();
-                onJoin(space.id);
+                if (space.role !== 'owner') {
+                  onJoin(space.id);
+                }
               }}
+              className={space.role === 'owner' ? 'cursor-not-allowed opacity-75' : ''}
             >
-              {space.isJoined ? 'Joined' : 'Join'}
+              {space.role === 'owner' ? 'Owner' : space.isJoined ? 'Joined' : 'Join'}
             </Button>
           )}
         </div>

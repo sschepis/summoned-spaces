@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Users, Calendar, Star, Shield, Settings, Plus, TrendingUp, Zap, Crown, Eye } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
+import { beaconCacheManager } from '../services/beacon-cache';
+import { holographicMemoryManager } from '../services/holographic-memory';
 
 interface SpaceInfo {
   id: string;
@@ -25,46 +28,74 @@ interface SpaceInfo {
   };
 }
 
-const mockSpaceInfo: SpaceInfo = {
-  id: 'global-space',
-  name: 'Global Space',
-  description: 'The main public space where everyone can share content, discover new creators, and connect with the broader community. A place for general discussions, trending topics, and serendipitous discoveries.',
-  memberCount: 12847,
-  createdDate: 'January 2024',
-  resonanceStrength: 0.89,
-  isPublic: true,
-  userRole: 'contributor',
-  isMember: true,
-  rules: [
-    'Be respectful and kind to all community members',
-    'No spam, self-promotion, or off-topic content',
-    'Share high-quality content that adds value',
-    'Use appropriate tags and descriptions',
-    'Respect intellectual property and attribution'
-  ],
-  moderators: [
-    {
-      id: 'admin-1',
-      name: 'Sarah Chen',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-      role: 'owner'
-    },
-    {
-      id: 'admin-2', 
-      name: 'Marcus Rodriguez',
-      avatar: 'https://images.pexels.com/photos/2381069/pexels-photo-2381069.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-      role: 'admin'
-    }
-  ],
-  stats: {
-    totalFiles: 45729,
-    activeToday: 1247,
-    weeklyGrowth: 12.4
-  }
-};
-
 export function SpaceInfoSidebar() {
-  const space = mockSpaceInfo;
+  const [space, setSpace] = useState<SpaceInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadSpaceInfo = async () => {
+      try {
+        // TODO: Implement real beacon-based space info loading
+        // In a real implementation, this would:
+        // 1. Fetch space metadata beacons
+        // 2. Fetch space statistics beacons
+        // 3. Fetch moderator list beacons for this space
+        // 4. Decode all beacons and compile space info
+        
+        console.log('Loading space info from beacon system...');
+        setLoading(false);
+        
+        // For now, use empty state until beacon infrastructure is implemented
+        // Example implementation:
+        // const spaceBeacon = await beaconCacheManager.getSpaceInfo('global-space');
+        // const statsBeacon = await beaconCacheManager.getSpaceStats('global-space');
+        // const moderatorsBeacon = await beaconCacheManager.getSpaceModerators('global-space');
+        //
+        // const decodedSpace = holographicMemoryManager.decodeMemory(spaceBeacon);
+        // const decodedStats = holographicMemoryManager.decodeMemory(statsBeacon);
+        // const decodedModerators = holographicMemoryManager.decodeMemory(moderatorsBeacon);
+        //
+        // setSpace({
+        //   ...JSON.parse(decodedSpace),
+        //   stats: JSON.parse(decodedStats),
+        //   moderators: JSON.parse(decodedModerators)
+        // });
+        
+      } catch (error) {
+        console.error('Failed to load space info:', error);
+        setLoading(false);
+      }
+    };
+
+    loadSpaceInfo();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-80 space-y-4">
+        <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-white/10 rounded"></div>
+            <div className="h-4 bg-white/10 rounded w-3/4"></div>
+            <div className="h-4 bg-white/10 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!space) {
+    return (
+      <div className="w-80">
+        <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+          <p className="text-gray-400 text-center">No space information available</p>
+          <p className="text-gray-500 text-sm text-center mt-2">
+            Space data will be loaded from beacon system when implemented
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {

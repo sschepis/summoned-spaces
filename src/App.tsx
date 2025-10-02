@@ -8,6 +8,7 @@ import { ForgotPassword } from './components/ForgotPassword';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import { SpaceView } from './components/SpaceView';
+import { SpaceDiscovery } from './components/SpaceDiscovery';
 import { SemanticSearch } from './components/SemanticSearch';
 import { AnalyticsBoard } from './components/AnalyticsBoard';
 import { DirectMessages } from './components/DirectMessages';
@@ -17,10 +18,14 @@ import { PublicActivityStream } from './components/PublicActivityStream';
 import { UserSettings } from './components/UserSettings';
 import { SystemAdmin } from './components/SystemAdmin';
 import { ContentAdmin } from './components/ContentAdmin';
+import webSocketService from './services/websocket';
+import { holographicMemoryManager } from './services/holographic-memory';
+import { FollowNotificationMessage } from '../server/protocol';
 
 export type View =
   | 'feed'
   | 'space'
+  | 'spaces'
   | 'friends'
   | 'messages'
   | 'search'
@@ -84,8 +89,111 @@ const AuthViews: React.FC = () => {
 const AppViews: React.FC = () => {
   const [currentView, setCurrentView] = React.useState<View>('dashboard');
   const [selectedSpaceId, setSelectedSpaceId] = React.useState<string | null>(null);
-  const { logout } = useAuth();
-  const { notifications, dismissNotification } = useNotifications();
+  const [selectedConversation, setSelectedConversation] = React.useState<string | null>(null);
+  const { logout, user: currentUser } = useAuth();
+  const { notifications, dismissNotification, showFollow, showUnfollow, showMessage } = useNotifications();
+
+  // Listen for follow notifications from WebSocket
+  React.useEffect(() => {
+    const handleFollowNotification = (notification: FollowNotificationMessage) => {
+      if (notification.kind === 'followNotification') {
+        const { followerId, followerUsername, type } = notification.payload;
+        
+        if (type === 'follow') {
+          showFollow(
+            'New Follower!',
+            `${followerUsername} started following you`,
+            followerId,
+            {
+              label: 'View Profile',
+              onClick: () => {
+                // Navigate to social network view to see followers
+                setCurrentView('friends');
+              }
+            }
+          );
+        } else {
+          showUnfollow(
+            'Follower Update',
+            `${followerUsername} unfollowed you`,
+            followerId
+          );
+        }
+      }
+    };
+
+    webSocketService.addNotificationListener(handleFollowNotification);
+
+    return () => {
+      webSocketService.removeNotificationListener(handleFollowNotification);
+    };
+  }, [showFollow, showUnfollow, setCurrentView]);
+
+  // Listen for global message notifications (when not in DirectMessages or not viewing specific conversation)
+  React.useEffect(() => {
+    const handleGlobalMessageNotification = (message: { kind: string; payload: Record<string, unknown> }) => {
+      // Only show global notifications if not in DirectMessages view or not viewing the specific conversation
+      if (message.kind === 'beaconReceived') {
+        const payload = message.payload as {
+          beaconId: string;
+          senderId: string;
+          beaconType: string;
+          beacon: unknown;
+        };
+        
+        // Process quantum_message and direct_message beacons
+        if ((payload.beaconType === 'quantum_message' || payload.beaconType === 'direct_message') &&
+            (currentView !== 'messages' || selectedConversation !== payload.senderId)) {
+          
+          console.log(`[App] Global message notification from ${payload.senderId}`);
+          
+          try {
+            const decodedContent = holographicMemoryManager.decodeMemory(payload.beacon);
+            
+            if (decodedContent) {
+              let messageData;
+              try {
+                messageData = JSON.parse(decodedContent);
+              } catch {
+                messageData = {
+                  content: decodedContent,
+                  timestamp: new Date().toISOString()
+                };
+              }
+              
+              // Use simplified sender name (first 8 chars of user ID)
+              const senderName = payload.senderId.substring(0, 8);
+              const isQuantumMessage = messageData.isQuantumDelivered || payload.beaconType === 'quantum_message';
+              
+              showMessage(
+                `New ${isQuantumMessage ? 'Quantum ' : ''}Message`,
+                `${senderName}: ${messageData.content.length > 50 ? messageData.content.substring(0, 50) + '...' : messageData.content}`,
+                payload.senderId,
+                isQuantumMessage,
+                {
+                  label: 'Open Messages',
+                  onClick: () => {
+                    setSelectedConversation(payload.senderId);
+                    setCurrentView('messages');
+                  }
+                }
+              );
+              
+              console.log(`[App] Showed global notification for message from ${payload.senderId}`);
+            }
+          } catch (error) {
+            console.error('[App] Error processing global message notification:', error);
+          }
+        }
+      }
+    };
+
+    webSocketService.addMessageListener(handleGlobalMessageNotification);
+
+    return () => {
+      webSocketService.removeMessageListener(handleGlobalMessageNotification);
+    };
+  }, [currentView, selectedConversation, showMessage, currentUser?.id]);
 
   const handleViewSpace = React.useCallback((spaceId: string) => {
     setSelectedSpaceId(spaceId);
@@ -105,9 +213,11 @@ const AppViews: React.FC = () => {
         return (
           <SpaceView
             spaceId={selectedSpaceId}
-            onBack={() => setCurrentView('dashboard')}
+            onBack={() => setCurrentView('spaces')}
           />
         );
+      case 'spaces':
+        return <SpaceDiscovery onViewSpace={handleViewSpace} />;
       case 'friends':
         return <SocialNetwork onBack={() => setCurrentView('dashboard')} />;
       case 'messages':
@@ -117,7 +227,14 @@ const AppViews: React.FC = () => {
       case 'analytics':
         return <AnalyticsBoard />;
       case 'dashboard':
-        return <Dashboard onViewSpace={handleViewSpace} />;
+        return (
+          <Dashboard
+            onViewSpace={handleViewSpace}
+            onOpenDirectMessages={() => setCurrentView('messages')}
+            onOpenSearch={() => setCurrentView('search')}
+            onOpenSettings={() => setCurrentView('settings')}
+          />
+        );
       case 'settings':
         return <UserSettings onBack={() => setCurrentView('dashboard')} />;
       case 'system-admin':
@@ -125,7 +242,14 @@ const AppViews: React.FC = () => {
       case 'content-admin':
         return <ContentAdmin onBack={() => setCurrentView('dashboard')} />;
       default:
-        return <Dashboard onViewSpace={handleViewSpace} />;
+        return (
+          <Dashboard
+            onViewSpace={handleViewSpace}
+            onOpenDirectMessages={() => setCurrentView('messages')}
+            onOpenSearch={() => setCurrentView('search')}
+            onOpenSettings={() => setCurrentView('settings')}
+          />
+        );
     }
   }, [currentView, selectedSpaceId, handleViewSpace]);
 
@@ -153,15 +277,17 @@ const AppViews: React.FC = () => {
 
 // Root app component that handles authentication state
 const AppContent: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, sessionRestoring } = useAuth();
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Show loading state while checking authentication or restoring session
+  if (loading || sessionRestoring) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Entering the quantum realm...</p>
+          <p className="text-white text-lg">
+            {sessionRestoring ? 'Restoring quantum connection...' : 'Entering the quantum realm...'}
+          </p>
         </div>
       </div>
     );

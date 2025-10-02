@@ -5,11 +5,12 @@ import type { Duplex } from 'stream';
 import { AuthenticationManager } from './auth';
 import { ConnectionManager } from './connections';
 import { PostManager } from './posts';
-import { SocialGraphManager } from './social';
 import { SpaceManager } from './spaces';
 import { initializeDatabase, getDatabase } from './database';
 import { NetworkStateManager } from './networkState';
-import { ClientMessage, ErrorMessage, NetworkStateUpdateMessage } from './protocol';
+import { ClientMessage, ErrorMessage, NetworkStateUpdateMessage, FollowNotificationMessage } from './protocol';
+import { SocialGraphManager } from './social';
+import { QuaternionicChatManager } from './quaternionic-chat';
 
 // Define an interface that captures the essential parts of the http server we need.
 // This makes our function more generic and less coupled to specific http/https/http2 implementations.
@@ -21,17 +22,49 @@ export function createWebSocketServer(server: IHttpServer) {
   const wss = new WebSocketServer({ noServer: true });
   const authManager = new AuthenticationManager();
   const connectionManager = new ConnectionManager();
-  const socialGraphManager = new SocialGraphManager();
   const networkStateManager = new NetworkStateManager();
-  const spaceManager = new SpaceManager();
-  const postManager = new PostManager(socialGraphManager, connectionManager);
+  const postManager = new PostManager(connectionManager);
+  const spaceManager = new SpaceManager(postManager);
+  const quaternionicChatManager = new QuaternionicChatManager(connectionManager);
+  
+  // Create social graph manager with notification broadcaster
+  const socialGraphManager = new SocialGraphManager((targetUserId: string, message: FollowNotificationMessage) => {
+    // Send notification to all connections of the target user
+    const targetConnections = connectionManager.getConnectionsByUserId(targetUserId);
+    const messageString = JSON.stringify(message);
+    
+    targetConnections.forEach(ws => {
+      try {
+        ws.send(messageString);
+        console.log(`[SERVER] Sent follow notification to user ${targetUserId}`);
+      } catch (error) {
+        console.error(`[SERVER] Failed to send follow notification to user ${targetUserId}:`, error);
+      }
+    });
+  });
 
   // Add a function to broadcast network state to all clients
-  function broadcastNetworkUpdate() {
+  async function broadcastNetworkUpdate() {
     const networkState = networkStateManager.getNetworkState();
+    
+    // Fetch usernames for all nodes
+    const db = getDatabase();
+    const nodesWithUsernames = await Promise.all(networkState.map(async (node) => {
+      const userRow = await new Promise<{username: string}>((resolve) => {
+        db.get('SELECT username FROM users WHERE user_id = ?', [node.userId], (err, row: {username: string} | undefined) => {
+          if (err || !row) {
+            resolve({username: node.userId.substring(0, 8)});
+          } else {
+            resolve(row);
+          }
+        });
+      });
+      return { ...node, username: userRow.username };
+    }));
+    
     const message: NetworkStateUpdateMessage = {
       kind: 'networkStateUpdate',
-      payload: { nodes: networkState }
+      payload: { nodes: nodesWithUsernames }
     };
     const messageString = JSON.stringify(message);
     
@@ -89,8 +122,17 @@ export function createWebSocketServer(server: IHttpServer) {
             // Register the connection with the manager
             connectionId = connectionManager.addConnection(ws, session.userId);
 
-            // Add the node to the network state
-            networkStateManager.addNode(connectionId, session.userId, session.pri.publicResonance);
+            // Get username from database
+            const db = getDatabase();
+            const userRow = await new Promise<{username: string}>((resolve, reject) => {
+              db.get('SELECT username FROM users WHERE user_id = ?', [session.userId], (err, row: {username: string} | undefined) => {
+                if (err) return reject(err);
+                resolve(row || {username: session.userId.substring(0, 8)});
+              });
+            });
+            
+            // Add the node to the network state with username
+            networkStateManager.addNode(connectionId, session.userId, userRow.username, session.pri.publicResonance);
 
             ws.send(JSON.stringify({
               kind: 'loginSuccess',
@@ -123,8 +165,36 @@ export function createWebSocketServer(server: IHttpServer) {
             }
             const userId = connectionManager['connections'].get(connectionId)!.userId;
             const { userIdToFollow } = message.payload;
+            
+            console.log(`[SERVER] User ${userId} wants to follow ${userIdToFollow}`);
+            
+            // Update the social graph
             await socialGraphManager.addFollow(userIdToFollow, userId);
-            // Optional: send a confirmation message back to the client
+            
+            // Send success response to the follower
+            ws.send(JSON.stringify({
+              kind: 'followSuccess',
+              payload: { userIdToFollow }
+            }));
+            break;
+          }
+          case 'unfollow': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { userIdToUnfollow } = message.payload;
+            
+            console.log(`[SERVER] User ${userId} wants to unfollow ${userIdToUnfollow}`);
+            
+            // Update the social graph
+            await socialGraphManager.removeFollow(userIdToUnfollow, userId);
+            
+            // Send success response
+            ws.send(JSON.stringify({
+              kind: 'unfollowSuccess',
+              payload: { userIdToUnfollow }
+            }));
             break;
           }
           case 'createSpace': {
@@ -205,7 +275,13 @@ export function createWebSocketServer(server: IHttpServer) {
             }
 
             if (category === 'all' || category === 'posts') {
-              const beaconSql = `SELECT beacon_id, author_id FROM beacons WHERE beacon_type = 'post' LIMIT 10`;
+              const beaconSql = `
+                SELECT b.beacon_id, b.author_id, b.created_at, u.username
+                FROM beacons b
+                LEFT JOIN users u ON b.author_id = u.user_id
+                WHERE b.beacon_type = 'post'
+                LIMIT 10
+              `;
               results.beacons = await new Promise((resolve, reject) => {
                 db.all(beaconSql, [], (err: Error | null, rows: any[]) => {
                   if (err) return reject(err);
@@ -218,6 +294,323 @@ export function createWebSocketServer(server: IHttpServer) {
               kind: 'searchResponse',
               payload: results
             }));
+            break;
+          }
+          case 'getBeaconsByUser': {
+            const { userId, beaconType } = message.payload;
+            const db = getDatabase();
+            
+            let sql: string;
+            const params: any[] = [];
+            
+            // Support wildcard '*' to get all users' beacons of a specific type
+            // Include username in the query
+            if (userId === '*') {
+              sql = `
+                SELECT b.*, u.username
+                FROM beacons b
+                LEFT JOIN users u ON b.author_id = u.user_id
+                WHERE 1=1
+              `;
+            } else {
+              sql = `
+                SELECT b.*, u.username
+                FROM beacons b
+                LEFT JOIN users u ON b.author_id = u.user_id
+                WHERE b.author_id = ?
+              `;
+              params.push(userId);
+            }
+            
+            if (beaconType) {
+              sql += ` AND b.beacon_type = ?`;
+              params.push(beaconType);
+            }
+            
+            sql += ` ORDER BY b.created_at DESC`;
+            
+            const beacons = await new Promise((resolve, reject) => {
+              db.all(sql, params, (err: Error | null, rows: any[]) => {
+                if (err) {
+                  console.error('Error retrieving beacons:', err.message);
+                  return reject(err);
+                }
+                resolve(rows);
+              });
+            });
+            
+            ws.send(JSON.stringify({
+              kind: 'beaconsResponse',
+              payload: { beacons }
+            }));
+            break;
+          }
+          case 'getBeaconById': {
+            const { beaconId } = message.payload;
+            const db = getDatabase();
+            
+            const sql = `SELECT * FROM beacons WHERE beacon_id = ?`;
+            
+            const beacon = await new Promise((resolve, reject) => {
+              db.get(sql, [beaconId], (err: Error | null, row: any) => {
+                if (err) {
+                  console.error('Error retrieving beacon:', err.message);
+                  return reject(err);
+                }
+                resolve(row || null);
+              });
+            });
+            
+            ws.send(JSON.stringify({
+              kind: 'beaconResponse',
+              payload: { beacon }
+            }));
+            break;
+          }
+          case 'getFollowers': {
+            const { userId } = message.payload;
+            console.log(`[SERVER] Getting followers for user: ${userId}`);
+            
+            try {
+              const followers = await socialGraphManager.getFollowers(userId);
+              ws.send(JSON.stringify({
+                kind: 'followersResponse',
+                payload: { followers }
+              }));
+            } catch (error) {
+              console.error('[SERVER] Error getting followers:', error);
+              ws.send(JSON.stringify({
+                kind: 'followersResponse',
+                payload: { followers: [] }
+              }));
+            }
+            break;
+          }
+          case 'getFollowing': {
+            const { userId } = message.payload;
+            console.log(`[SERVER] Getting following for user: ${userId}`);
+            
+            try {
+              const following = await socialGraphManager.getFollowing(userId);
+              ws.send(JSON.stringify({
+                kind: 'followingResponse',
+                payload: { following }
+              }));
+            } catch (error) {
+              console.error('[SERVER] Error getting following:', error);
+              ws.send(JSON.stringify({
+                kind: 'followingResponse',
+                payload: { following: [] }
+              }));
+            }
+            break;
+          }
+          case 'restoreSession': {
+            const { sessionToken, userId, pri } = message.payload;
+            console.log('[SERVER] Received restoreSession request for user:', userId);
+            console.log('[SERVER] Session token:', sessionToken);
+            console.log('[SERVER] Current connectionId:', connectionId);
+            
+            try {
+              // Validate the session token (in a real app, you'd check expiration, etc.)
+              console.log('[SERVER] Validating session token...');
+              const validatedSession = await authManager.validateSessionToken(sessionToken, userId);
+              
+              if (validatedSession) {
+                console.log('[SERVER] Session token validated successfully');
+                
+                // CRITICAL: Re-register the connection FIRST before any other operations
+                connectionId = connectionManager.addConnection(ws, userId);
+                console.log('[SERVER] New connectionId assigned:', connectionId);
+                
+                // Get username from database
+                const db = getDatabase();
+                const userRow = await new Promise<{username: string}>((resolve, reject) => {
+                  db.get('SELECT username FROM users WHERE user_id = ?', [userId], (err, row: {username: string} | undefined) => {
+                    if (err) return reject(err);
+                    resolve(row || {username: userId.substring(0, 8)});
+                  });
+                });
+                
+                // Re-add the node to the network state with username
+                networkStateManager.addNode(connectionId, userId, userRow.username, pri.publicResonance);
+                console.log('[SERVER] Node added to network state');
+                
+                // Chrome fix: Ensure all server-side state is synchronized before confirming
+                // This prevents race conditions where authenticated requests arrive before
+                // the server has fully processed the session restoration
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                console.log(`[SERVER] Session fully restored for user ${userId} on connection ${connectionId}`);
+                
+                // Send success response BEFORE broadcasting to ensure client knows restoration is complete
+                ws.send(JSON.stringify({
+                  kind: 'sessionRestored',
+                  payload: { userId, success: true }
+                }));
+                
+                // Small delay before broadcast to ensure the success message is processed first
+                setTimeout(() => {
+                  // Trigger a network state update to notify all clients
+                  broadcastNetworkUpdate();
+                }, 100);
+              } else {
+                console.log('[SERVER] Session validation failed');
+                ws.send(JSON.stringify({
+                  kind: 'sessionRestored',
+                  payload: { userId, success: false }
+                }));
+              }
+            } catch (error) {
+              console.error('[SERVER] Error restoring session:', error);
+              ws.send(JSON.stringify({
+                kind: 'sessionRestored',
+                payload: { userId, success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+              }));
+            }
+            break;
+          }
+          case 'joinQuaternionicChatRoom': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { roomId, participants } = message.payload;
+            await quaternionicChatManager.handleJoinChatRoom(userId, roomId, participants);
+            break;
+          }
+          case 'sendQuaternionicMessage': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { receiverId, content, roomId } = message.payload;
+            await quaternionicChatManager.handleQuaternionicMessage(userId, receiverId, content, roomId);
+            break;
+          }
+          case 'synchronizeQuaternionicPhases': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { targetUserId } = message.payload;
+            await quaternionicChatManager.handlePhaseSynchronization(userId, targetUserId);
+            break;
+          }
+          case 'getQuaternionicMessageHistory': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const { roomId, limit } = message.payload;
+            const messages = await quaternionicChatManager.getQuaternionicMessageHistory(roomId, limit);
+            ws.send(JSON.stringify({
+              kind: 'quaternionicMessageHistoryResponse',
+              payload: { messages }
+            }));
+            break;
+          }
+          case 'getQuaternionicRoomMetrics': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const { roomId } = message.payload;
+            const metrics = await quaternionicChatManager.getRoomMetrics(roomId);
+            ws.send(JSON.stringify({
+              kind: 'quaternionicRoomMetricsResponse',
+              payload: { metrics }
+            }));
+            break;
+          }
+          case 'addFileToSpace': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { spaceId, fileName, fileType, fileSize, fingerprint, fileContent } = message.payload;
+            await spaceManager.addFileToSpace(spaceId, userId, { fileName, fileType, fileSize, fingerprint, fileContent });
+            
+            // Notify all members of the space that the file index was updated
+            const allConnections = connectionManager.getAllConnections();
+            for (const ws of allConnections) {
+              ws.send(JSON.stringify({
+                kind: 'fileAddedToSpace',
+                payload: {
+                  spaceId,
+                  file: {
+                    file_id: fingerprint, // Use fingerprint as ID
+                    space_id: spaceId,
+                    uploader_id: userId,
+                    file_name: fileName,
+                    file_type: fileType,
+                    file_size: fileSize,
+                    fingerprint: fingerprint,
+                    created_at: new Date().toISOString()
+                  }
+                }
+              }));
+            }
+            break;
+          }
+          case 'removeFileFromSpace': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const userId = connectionManager['connections'].get(connectionId)!.userId;
+            const { spaceId, fileId } = message.payload;
+            await spaceManager.removeFileFromSpace(spaceId, userId, fileId);
+
+            // Notify all members of the space
+            // (simplified: broadcasting to all connections for now)
+            const allConnections = connectionManager.getAllConnections();
+            for (const ws of allConnections) {
+                ws.send(JSON.stringify({
+                    kind: 'fileRemovedFromSpace',
+                    payload: { spaceId, fileId }
+                }));
+            }
+            break;
+          }
+          case 'getSpaceFiles': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const { spaceId } = message.payload;
+            const files = await spaceManager.getSpaceFiles(spaceId);
+            ws.send(JSON.stringify({
+              kind: 'spaceFilesResponse',
+              payload: { spaceId, files }
+            }));
+            break;
+          }
+          case 'downloadFile': {
+            if (!connectionId) {
+              throw new Error("Not authenticated");
+            }
+            const { spaceId, fingerprint } = message.payload;
+            console.log(`[SERVER] Download request for file ${fingerprint} in space ${spaceId}`);
+            
+            try {
+              const fileContent = await spaceManager.getFileContent(fingerprint, spaceId);
+              if (fileContent) {
+                ws.send(JSON.stringify({
+                  kind: 'downloadFileResponse',
+                  payload: { fingerprint, content: fileContent, success: true }
+                }));
+                console.log(`[SERVER] File content sent for ${fingerprint}`);
+              } else {
+                ws.send(JSON.stringify({
+                  kind: 'downloadFileResponse',
+                  payload: { fingerprint, content: null, success: false, error: 'File content not found' }
+                }));
+                console.log(`[SERVER] File content not found for ${fingerprint}`);
+              }
+            } catch (error) {
+              console.error(`[SERVER] Error downloading file ${fingerprint}:`, error);
+              ws.send(JSON.stringify({
+                kind: 'downloadFileResponse',
+                payload: { fingerprint, content: null, success: false, error: error instanceof Error ? error.message : 'Download failed' }
+              }));
+            }
             break;
           }
           default: {

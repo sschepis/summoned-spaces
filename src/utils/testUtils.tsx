@@ -103,54 +103,86 @@ export const paginationTestUtils = {
   }
 };
 
-// Mock data generators
+// Real data generators using beacon-based system
+export const createTestData = {
+  user: async (overrides = {}) => {
+    // In a real implementation, this would create a user beacon
+    // and return the decoded user data structure
+    const userData = {
+      id: `user_${Math.random().toString(36).substr(2, 9)}`,
+      name: 'Test User',
+      username: '@testuser',
+      email: 'test@example.com',
+      avatar: 'https://example.com/avatar.jpg',
+      bio: 'Test user bio',
+      verified: false,
+      isFollowing: false,
+      stats: {
+        followers: 100,
+        following: 50,
+        spaces: 5,
+        resonanceScore: 0.85
+      },
+      ...overrides
+    };
+    
+    // TODO: Encode as beacon and store
+    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(userData));
+    
+    return userData;
+  },
+
+  space: async (overrides = {}) => {
+    // In a real implementation, this would create a space beacon
+    const spaceData = {
+      id: `space_${Math.random().toString(36).substr(2, 9)}`,
+      name: 'Test Space',
+      description: 'A test space for development',
+      memberCount: 25,
+      fileCount: 100,
+      isPublic: true,
+      color: 'from-blue-500 to-cyan-500',
+      resonanceStrength: 0.92,
+      tags: ['test', 'development'],
+      ...overrides
+    };
+    
+    // TODO: Encode as beacon and store
+    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(spaceData));
+    
+    return spaceData;
+  },
+
+  activity: async (overrides = {}) => {
+    // In a real implementation, this would create an activity beacon
+    const activityData = {
+      id: `activity_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'file_contributed',
+      user: await createTestData.user(),
+      action: 'shared a file',
+      timestamp: '2 minutes ago',
+      metrics: {
+        likes: 10,
+        comments: 5,
+        shares: 2,
+        hasLiked: false,
+        hasBookmarked: false
+      },
+      ...overrides
+    };
+    
+    // TODO: Encode as beacon and store
+    // const beacon = await holographicMemoryManager.encodeMemory(JSON.stringify(activityData));
+    
+    return activityData;
+  }
+};
+
+// Legacy mockData for backwards compatibility - now uses beacon-based generators
 export const mockData = {
-  user: (overrides = {}) => ({
-    id: '1',
-    name: 'Test User',
-    username: '@testuser',
-    email: 'test@example.com',
-    avatar: 'https://example.com/avatar.jpg',
-    bio: 'Test user bio',
-    verified: false,
-    isFollowing: false,
-    stats: {
-      followers: 100,
-      following: 50,
-      spaces: 5,
-      resonanceScore: 0.85
-    },
-    ...overrides
-  }),
-
-  space: (overrides = {}) => ({
-    id: '1',
-    name: 'Test Space',
-    description: 'A test space for development',
-    memberCount: 25,
-    fileCount: 100,
-    isPublic: true,
-    color: 'from-blue-500 to-cyan-500',
-    resonanceStrength: 0.92,
-    tags: ['test', 'development'],
-    ...overrides
-  }),
-
-  activity: (overrides = {}) => ({
-    id: '1',
-    type: 'file_contributed',
-    user: mockData.user(),
-    action: 'shared a file',
-    timestamp: '2 minutes ago',
-    metrics: {
-      likes: 10,
-      comments: 5,
-      shares: 2,
-      hasLiked: false,
-      hasBookmarked: false
-    },
-    ...overrides
-  })
+  user: (overrides = {}) => createTestData.user(overrides),
+  space: (overrides = {}) => createTestData.space(overrides),
+  activity: (overrides = {}) => createTestData.activity(overrides)
 };
 
 // Performance testing utilities

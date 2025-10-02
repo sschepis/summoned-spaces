@@ -2,18 +2,18 @@ import { UserCard } from './common/UserCard';
 import { Grid } from './ui/Grid';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
-import { webSocketService } from '../services/websocket';
+import webSocketService from '../services/websocket';
 
 export function UserDiscovery() {
   const { nodes } = useNetworkState();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, waitForAuth } = useAuth();
 
   const users = nodes
     .filter(node => node.userId !== currentUser?.id)
     .map(node => ({
       id: node.userId,
-      name: node.userId.substring(0, 8),
-      username: `@${node.userId.substring(0, 8)}`,
+      name: node.username || node.userId.substring(0, 8),
+      username: `@${node.username || node.userId.substring(0, 8)}`,
       avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
       bio: 'A resonant being in the quantum network.',
       isFollowing: false,
@@ -22,7 +22,8 @@ export function UserDiscovery() {
       tags: ['live-node', 'holographic'],
     }));
 
-  const handleFollow = (userId: string) => {
+  const handleFollow = async (userId: string) => {
+    await waitForAuth();
     webSocketService.sendMessage({
       kind: 'follow',
       payload: { userIdToFollow: userId }

@@ -9,6 +9,7 @@ import { Users } from 'lucide-react';
 interface UserListProps {
   users: User[];
   onFollow: (userId: string) => void;
+  onUnfollow?: (userId: string) => void;
   loading?: boolean;
   loadingCount?: number;
   emptyTitle?: string;
@@ -21,9 +22,10 @@ interface UserListProps {
   className?: string;
 }
 
-export function UserList({ 
-  users, 
+export function UserList({
+  users,
   onFollow,
+  onUnfollow,
   loading = false,
   loadingCount = 3,
   emptyTitle = 'No users found',
@@ -33,7 +35,7 @@ export function UserList({
   showTags = true,
   paginate = false,
   itemsPerPage = 10,
-  className = '' 
+  className = ''
 }: UserListProps) {
   const pagination = usePagination({
     totalItems: users.length,
@@ -74,6 +76,7 @@ export function UserList({
           key={user.id}
           user={user}
           onFollow={onFollow}
+          onUnfollow={onUnfollow}
           showStats={showStats}
           showActivity={showActivity}
           showTags={showTags}

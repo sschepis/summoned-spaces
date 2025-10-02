@@ -8,19 +8,21 @@ import { User } from '../../types/common';
 interface UserCardProps {
   user: User;
   onFollow: (userId: string) => void;
+  onUnfollow?: (userId: string) => void;
   size?: 'sm' | 'md' | 'lg';
   showStats?: boolean;
   showActivity?: boolean;
   showTags?: boolean;
 }
 
-export function UserCard({ 
-  user, 
-  onFollow, 
+export function UserCard({
+  user,
+  onFollow,
+  onUnfollow,
   size = 'md',
   showStats = true,
   showActivity = true,
-  showTags = true 
+  showTags = true
 }: UserCardProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -50,7 +52,13 @@ export function UserCard({
               size="sm"
               variant={user.isFollowing ? 'success' : 'secondary'}
               icon={user.isFollowing ? UserCheck : UserPlus}
-              onClick={() => onFollow(user.id)}
+              onClick={() => {
+                if (user.isFollowing && onUnfollow) {
+                  onUnfollow(user.id);
+                } else {
+                  onFollow(user.id);
+                }
+              }}
             >
               {user.isFollowing ? 'Following' : 'Follow'}
             </Button>
@@ -96,7 +104,7 @@ export function UserCard({
           {showTags && user.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {user.tags.map((tag) => (
-                <Badge key={tag} variant="blue" size="sm">
+                <Badge key={tag} variant="cyan" size="sm">
                   {tag}
                 </Badge>
               ))}
