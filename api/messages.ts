@@ -132,7 +132,8 @@ async function handleMessage(message: CommunicationMessage): Promise<Communicati
 // Individual message handlers with proper typing
 
 async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { sessionToken: _sessionToken, userId } = payload;
+  const { userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   // In production, validate session and store to Neon database
   return {
@@ -147,7 +148,8 @@ async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise
 }
 
 async function handleFollow(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { userIdToFollow, sessionToken: _sessionToken, userId } = payload;
+  const { userIdToFollow, userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   return {
     kind: 'followSuccess',
@@ -160,7 +162,8 @@ async function handleFollow(payload: Record<string, unknown>): Promise<Communica
 }
 
 async function handleUnfollow(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { userIdToUnfollow, sessionToken: _sessionToken, userId } = payload;
+  const { userIdToUnfollow, userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   return {
     kind: 'unfollowSuccess',
@@ -213,7 +216,8 @@ async function handleGetPublicSpaces(): Promise<CommunicationResponse> {
 }
 
 async function handleCreateSpace(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { name, description, isPublic, sessionToken: _sessionToken, userId } = payload;
+  const { name, description, isPublic, userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   return {
     kind: 'createSpaceSuccess',
@@ -229,7 +233,8 @@ async function handleCreateSpace(payload: Record<string, unknown>): Promise<Comm
 }
 
 async function handleSubmitCommentBeacon(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { postBeaconId, sessionToken: _sessionToken, userId } = payload;
+  const { postBeaconId, userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   return {
     kind: 'submitCommentSuccess',
@@ -243,7 +248,8 @@ async function handleSubmitCommentBeacon(payload: Record<string, unknown>): Prom
 }
 
 async function handleLikePost(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { postBeaconId, sessionToken: _sessionToken, userId } = payload;
+  const { postBeaconId, userId } = payload;
+  // sessionToken validation will be implemented with production database
   
   return {
     kind: 'likePostSuccess',
