@@ -274,42 +274,94 @@ class RESTCommunicationManager implements CommunicationManager {
 
 // Environment detection and manager selection
 function createCommunicationManager(): CommunicationManager {
+  // Consolidated environment detection (removed duplicate vercel.app checks)
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  const port = window.location.port;
+  
+  // Primary detection: Vercel hosting
+  const isVercelHostname = hostname.includes('vercel.app');
+  
+  // Secondary detection: Production indicators
+  const isHTTPS = protocol === 'https:';
+  const isNotLocalhost = !hostname.includes('localhost') &&
+                         !hostname.includes('127.0.0.1') &&
+                         hostname !== 'localhost';
+  const isNotDevPort = !port ||
+                       (port !== '3000' && port !== '5173' && port !== '8080');
+  
+  // Environment variables
   const isProduction = import.meta.env.PROD;
   const isVercel = import.meta.env.VERCEL === '1';
-  const isVercelHostname = window.location.hostname.includes('vercel.app');
   const isProductionBuild = import.meta.env.MODE === 'production';
   const vercelEnv = import.meta.env.VERCEL_ENV;
   
-  // Multiple ways to detect production/Vercel environment
-  const shouldUseREST = isProduction || isVercel || isVercelHostname || isProductionBuild || vercelEnv === 'production' || vercelEnv === 'preview';
+  // Single decision point: Use REST for any production indicator
+  const shouldUseREST = isVercelHostname ||
+                       (isHTTPS && isNotLocalhost && isNotDevPort) ||
+                       isProduction ||
+                       isVercel ||
+                       isProductionBuild ||
+                       vercelEnv === 'production' ||
+                       vercelEnv === 'preview';
   
   console.log('[COMM] Environment detection:', {
-    isProduction,
-    isVercel,
-    isVercelHostname,
-    isProductionBuild,
-    vercelEnv,
+    hostname, protocol, port,
+    isVercelHostname, isHTTPS, isNotLocalhost, isNotDevPort,
+    isProduction, isVercel, isProductionBuild, vercelEnv,
     shouldUseREST,
     mode: import.meta.env.MODE,
-    location: window.location.href,
-    allEnvVars: {
-      PROD: import.meta.env.PROD,
-      MODE: import.meta.env.MODE,
-      VERCEL: import.meta.env.VERCEL,
-      VERCEL_ENV: import.meta.env.VERCEL_ENV,
-      VERCEL_URL: import.meta.env.VERCEL_URL
-    }
+    location: window.location.href
   });
   
   if (shouldUseREST) {
-    console.log('[COMM] Using REST + SSE communication for production/Vercel');
+    console.log('[COMM] ✅ Using REST + SSE communication for production/Vercel');
     return new RESTCommunicationManager();
   } else {
-    console.log('[COMM] Using WebSocket communication for development');
+    console.log('[COMM] 🔧 Using WebSocket communication for development');
     return new WebSocketCommunicationManager();
   }
 }
 
-// Export singleton instance
-export const communicationManager = createCommunicationManager();
+// Dynamic communication manager that re-evaluates environment each time
+export const communicationManager = {
+  _instance: null as CommunicationManager | null,
+  
+  getInstance(): CommunicationManager {
+    if (!this._instance) {
+      this._instance = createCommunicationManager();
+    }
+    return this._instance;
+  },
+  
+  // Force recreation (useful for environment changes)
+  reset(): void {
+    if (this._instance) {
+      this._instance.disconnect();
+    }
+    this._instance = null;
+  },
+  
+  // Proxy methods to the actual instance
+  async connect(): Promise<void> {
+    return this.getInstance().connect();
+  },
+  
+  async send(message: CommunicationMessage): Promise<void> {
+    return this.getInstance().send(message);
+  },
+  
+  onMessage(callback: (message: CommunicationMessage) => void): void {
+    return this.getInstance().onMessage(callback);
+  },
+  
+  disconnect(): void {
+    return this.getInstance().disconnect();
+  },
+  
+  isConnected(): boolean {
+    return this.getInstance().isConnected();
+  }
+};
+
 export type { CommunicationMessage, CommunicationManager };

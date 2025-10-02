@@ -1,8 +1,35 @@
 import { ClientMessage, ServerMessage, FollowNotificationMessage } from '../../server/protocol';
 
-const WS_URL = typeof window !== 'undefined'
-    ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'
-    : 'ws://localhost:5173/ws';
+// Environment-aware URL detection - avoid WebSocket in production
+function getWebSocketUrl(): string | null {
+    if (typeof window === 'undefined') {
+        return 'ws://localhost:5173/ws';
+    }
+    
+    // Check if we're on Vercel (production)
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    const isVercel = hostname.includes('vercel.app');
+    const isHTTPS = protocol === 'https:';
+    const isNotLocalhost = !hostname.includes('localhost') &&
+                          !hostname.includes('127.0.0.1') &&
+                          hostname !== 'localhost';
+    
+    console.log('[WS] Environment detection:', {
+        hostname, protocol, isVercel, isHTTPS, isNotLocalhost
+    });
+    
+    // Don't attempt WebSocket connections in production
+    if (isVercel || (isHTTPS && isNotLocalhost)) {
+        console.log('[WS] 🚫 Production environment detected - WebSocket disabled');
+        return null;
+    }
+    
+    console.log('[WS] 🔧 Development environment detected - WebSocket enabled');
+    return (protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+}
+
+const WS_URL = getWebSocketUrl();
 
 export class WebSocketService {
     private ws: WebSocket | null = null;
@@ -16,10 +43,20 @@ export class WebSocketService {
     private reconnectDelay = 1000; // Start with 1 second
 
     constructor() {
-        this.connect();
+        if (WS_URL) {
+            this.connect();
+        } else {
+            console.log('[WS] WebSocket disabled in production environment');
+            this.isConnected = false;
+        }
     }
 
     private connect() {
+        if (!WS_URL) {
+            console.log('[WS] WebSocket URL not available - skipping connection');
+            return;
+        }
+        
         console.log('[WS] Attempting to connect to:', WS_URL);
         console.log('[WS] User Agent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown');
         
@@ -123,6 +160,11 @@ export class WebSocketService {
     }
 
     public sendMessage(message: ClientMessage) {
+        if (!WS_URL) {
+            console.log('[WS] 🚫 WebSocket disabled in production - message not sent:', message.kind);
+            return;
+        }
+        
         if (this.ws?.readyState === WebSocket.OPEN && this.isConnected) {
             console.log('[WS] Sending message:', message.kind);
             try {
@@ -144,6 +186,11 @@ export class WebSocketService {
     }
 
     public waitForConnection(): Promise<void> {
+        if (!WS_URL) {
+            console.log('[WS] WebSocket disabled in production - skipping wait');
+            return Promise.resolve();
+        }
+        
         return new Promise((resolve, reject) => {
             if (this.isReady()) {
                 resolve();
