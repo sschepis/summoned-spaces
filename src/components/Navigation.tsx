@@ -1,20 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Home, Zap, Settings, BarChart3, MessageCircle } from 'lucide-react';
 import { Users, Database, User, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ResonanceIndicator } from './ResonanceIndicator';
-import { View } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { userDataManager } from '../services/user-data-manager';
 
-interface NavigationProps {
-  currentView: View;
-  onViewChange: (view: View) => void;
-  onLogout: () => void;
-}
-
-export function Navigation({ currentView, onViewChange, onLogout }: NavigationProps) {
-  const { user } = useAuth();
+export function Navigation() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout } = useAuth();
   const { nodes, recentBeacons, connectedUsers } = useNetworkState();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [responseTime, setResponseTime] = useState(0);
@@ -96,14 +92,31 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
     health: Math.min(0.95, Math.max(0.1, (nodes.length * 0.1) + (recentBeacons.length * 0.01) + 0.7))
   };
 
+  // Map current route to determine active navigation item
+  const getCurrentView = (pathname: string): string => {
+    if (pathname.startsWith('/spaces')) return 'spaces';
+    if (pathname.startsWith('/friends')) return 'friends';
+    if (pathname.startsWith('/messages')) return 'messages';
+    if (pathname.startsWith('/search')) return 'search';
+    if (pathname.startsWith('/analytics')) return 'analytics';
+    return 'dashboard';
+  };
+
+  const currentView = getCurrentView(location.pathname);
+
   const navItems = [
-    { id: 'dashboard' as View, icon: Home, label: 'Home' },
-    { id: 'spaces' as View, icon: Database, label: 'Spaces' },
-    { id: 'friends' as View, icon: Users, label: 'Friends' },
-    { id: 'messages' as View, icon: MessageCircle, label: 'Messages' },
-    { id: 'search' as View, icon: Search, label: 'Semantic Search' },
-    { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },
+    { id: 'dashboard', route: '/dashboard', icon: Home, label: 'Home' },
+    { id: 'spaces', route: '/spaces', icon: Database, label: 'Spaces' },
+    { id: 'friends', route: '/friends', icon: Users, label: 'Friends' },
+    { id: 'messages', route: '/messages', icon: MessageCircle, label: 'Messages' },
+    { id: 'search', route: '/search', icon: Search, label: 'Semantic Search' },
+    { id: 'analytics', route: '/analytics', icon: BarChart3, label: 'Analytics' },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <nav className="relative z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
@@ -127,7 +140,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => onViewChange(item.id)}
+                onClick={() => navigate(item.route)}
                 className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 ${
                   currentView === item.id
                     ? 'bg-cyan-500/20 text-cyan-300 shadow-lg shadow-cyan-500/20'
@@ -190,7 +203,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                   <div className="py-1">
                     <button
                       onClick={() => {
-                        onViewChange('settings');
+                        navigate('/settings');
                         setShowUserMenu(false);
                       }}
                       className="w-full px-4 py-2 text-left text-gray-300 hover:text-white
@@ -204,7 +217,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                     
                     <button
                       onClick={() => {
-                        onViewChange('system-admin');
+                        navigate('/admin/system');
                         setShowUserMenu(false);
                       }}
                       className="w-full px-4 py-2 text-left text-gray-300 hover:text-white
@@ -215,7 +228,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                     </button>
                     <button
                       onClick={() => {
-                        onViewChange('content-admin');
+                        navigate('/admin/content');
                         setShowUserMenu(false);
                       }}
                       className="w-full px-4 py-2 text-left text-gray-300 hover:text-white
@@ -227,6 +240,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                     <button
                       onClick={() => {
                         // TODO: Navigate to user profile
+                        navigate('/profile');
                         setShowUserMenu(false);
                       }}
                       className="w-full px-4 py-2 text-left text-gray-300 hover:text-white
@@ -240,7 +254,7 @@ export function Navigation({ currentView, onViewChange, onLogout }: NavigationPr
                     
                     <button
                       onClick={() => {
-                        onLogout();
+                        handleLogout();
                         setShowUserMenu(false);
                       }}
                       className="w-full px-4 py-2 text-left text-red-400 hover:text-red-300

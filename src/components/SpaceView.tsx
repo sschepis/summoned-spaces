@@ -4,25 +4,28 @@ import { SpaceChat } from './SpaceChat';
 import { MemberList } from './MemberList';
 import { SpaceSettings } from './SpaceSettings';
 import { FileExplorer } from './FileExplorer';
+import { SpacePosts } from './SpacePosts';
 import { Tabs } from './ui/Tabs';
 import { UserAvatar } from './ui/UserAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { spaceManager, SpaceMember } from '../services/space-manager';
 import webSocketService from '../services/websocket';
 import type { Space } from '../types/common';
+import type { ServerMessage, PublicSpacesResponseMessage } from '../../server/protocol';
 import { ArrowLeft, Crown } from 'lucide-react';
+
 
 interface SpaceViewProps {
     spaceId: string | null;
     onBack: () => void;
 }
 
-type SpaceViewTab = 'chat' | 'files' | 'members' | 'settings';
+type SpaceViewTab = 'posts' | 'chat' | 'files' | 'members' | 'settings';
 
 export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
     const [space, setSpace] = useState<Space | null>(null);
     const [members, setMembers] = useState<SpaceMember[]>([]);
-    const [activeTab, setActiveTab] = useState<SpaceViewTab>('files');
+    const [activeTab, setActiveTab] = useState<SpaceViewTab>('posts');
     const { user } = useAuth();
 
     useEffect(() => {
@@ -39,10 +42,11 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
                 
                 // Fetch space metadata from server
                 await new Promise<void>((resolve, reject) => {
-                    const handleMessage = (message: any) => {
+                    const handleMessage = (message: ServerMessage) => {
                         if (message.kind === 'publicSpacesResponse') {
-                            const allSpaces = message.payload.spaces;
-                            const currentSpace = allSpaces.find((s: any) => s.space_id === spaceId);
+                            const spacesMessage = message as PublicSpacesResponseMessage;
+                            const allSpaces = spacesMessage.payload.spaces;
+                            const currentSpace = allSpaces.find((s) => s.space_id === spaceId);
                             
                             if (currentSpace) {
                                 const spaceData: Space = {
@@ -102,10 +106,12 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
     useEffect(() => {
         if (!spaceId || !user) return;
 
-        const handleRealtimeUpdates = async (message: any) => {
+        const handleRealtimeUpdates = async (message: ServerMessage) => {
             // Listen for space member updates (both our own submissions and incoming beacons)
-            if (message.kind === 'submitPostSuccess' && message.payload.beaconType === 'space_members') {
-                console.log('Space members updated, refreshing member list...');
+            if (message.kind === 'submitPostSuccess') {
+                console.log('Post submitted successfully, checking if it affects space members...');
+                // We would need additional logic here to determine if this was a space_members beacon
+                // For now, we'll refresh on any post submission to be safe
                 try {
                     const updatedMembers = await spaceManager.getSpaceMembers(spaceId);
                     setMembers(updatedMembers);
@@ -176,6 +182,12 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
         }
         
         switch (activeTab) {
+            case 'posts':
+                return <SpacePosts
+                    spaceId={spaceId}
+                    spaceName={space?.name || 'Space'}
+                    isUserMember={isUserMember}
+                />;
             case 'chat':
                 if (!isUserMember) {
                     return (
@@ -197,7 +209,7 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
             case 'settings':
                 // Only show settings if user is owner or admin
                 if (userRole === 'owner' || userRole === 'admin') {
-                    return <SpaceSettings spaceId={spaceId} isOpen={true} onClose={() => setActiveTab('files')} />;
+                    return <SpaceSettings spaceId={spaceId} isOpen={true} onClose={() => setActiveTab('posts')} />;
                 } else {
                     return (
                         <div className="text-center py-8">
@@ -257,13 +269,15 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
             <div className="border-b border-white/10 mb-8">
                 <Tabs
                     tabs={[
+                        { id: 'posts', label: 'Posts' },
                         { id: 'files', label: 'Files' },
                         { id: 'chat', label: 'Chat' },
                         { id: 'members', label: `Members (${members.length})` },
                         // Only show settings tab to owners/admins
-                        ...(user && members.find(m => m.userId === user.id)?.role &&
-                           ['owner', 'admin'].includes(members.find(m => m.userId === user.id)?.role!)
-                           ? [{ id: 'settings', label: 'Settings' }] : [])
+                        ...((() => {
+                            const userMember = members.find(m => m.userId === user?.id);
+                            return userMember?.role && ['owner', 'admin'].includes(userMember.role);
+                        })() ? [{ id: 'settings', label: 'Settings' }] : [])
                     ]}
                     activeTab={activeTab}
                     onTabChange={(tabId) => setActiveTab(tabId as SpaceViewTab)}
