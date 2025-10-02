@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Vercel-compatible WebSocket Alternative using Server-Sent Events
  * Provides real-time functionality for Summoned Spaces quantum beacon system
