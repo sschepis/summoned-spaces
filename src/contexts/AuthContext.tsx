@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { User } from '../types/common';
-import webSocketService from '../services/websocket';
+import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
 import { holographicMemoryManager, PrimeResonanceIdentity } from '../services/holographic-memory';
 import { userDataManager } from '../services/user-data-manager';
 import { spaceManager } from '../services/space-manager';
 import { beaconCacheManager } from '../services/beacon-cache';
-import { ServerMessage } from '../../server/protocol';
+import { useCallback } from 'react';
 
 // Auth State Types
 interface AuthState {
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   // Session restoration function
-  const restoreSession = async () => {
+  const restoreSession = useCallback(async () => {
     console.log('[AUTH] restoreSession called');
     console.log('[AUTH] state.isAuthenticated:', state.isAuthenticated);
     console.log('[AUTH] state.loading:', state.loading);
@@ -115,10 +115,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             hasPri: !!session.pri
           });
           
-          // Ensure WebSocket is truly ready before sending
-          if (!webSocketService.isReady()) {
-            console.log('[AUTH] WebSocket not ready, waiting...');
-            await webSocketService.waitForConnection();
+          // Ensure communication manager is ready before sending
+          if (!communicationManager.isConnected()) {
+            console.log('[AUTH] Communication manager not ready, connecting...');
+            await communicationManager.connect();
           }
           
           // Browser-specific delays to prevent race conditions
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // Re-authenticate with the server using stored session token
           console.log('[AUTH] Sending restoreSession message to server...');
-          webSocketService.sendMessage({
+          await communicationManager.send({
             kind: 'restoreSession',
             payload: {
               sessionToken: session.token,
@@ -164,15 +164,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AUTH] Failed to access localStorage during restore:', error);
       dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
     }
-  };
+  }, [state.isAuthenticated, state.loading, state.sessionRestoring]);
 
-  // Set up reconnection listener and session restoration message handler
+  // Set up message handler for session restoration
   useEffect(() => {
-    const handleSessionRestoredMessage = (message: ServerMessage) => {
+    const handleMessage = (message: CommunicationMessage) => {
       if (message.kind === 'sessionRestored') {
         console.log('[AUTH] Received sessionRestored message:', message.payload);
-        if (message.payload.success) {
-          console.log('[AUTH] Server session restored successfully for user:', message.payload.userId);
+        const payload = message.payload as Record<string, unknown>;
+        if (payload.success) {
+          console.log('[AUTH] Server session restored successfully for user:', payload.userId);
           // Chrome fix: Add a small delay to ensure server-side state is fully synchronized
           const isChrome = typeof navigator !== 'undefined' &&
             /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
@@ -193,13 +194,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    webSocketService.addReconnectionListener(restoreSession);
-    webSocketService.addMessageListener(handleSessionRestoredMessage);
+    communicationManager.onMessage(handleMessage);
     
-    return () => {
-      webSocketService.removeReconnectionListener(restoreSession);
-      webSocketService.removeMessageListener(handleSessionRestoredMessage);
-    };
+    // Note: SSE doesn't have explicit reconnection events, reconnection is automatic
+    // If needed, session restoration will happen through the initial connection
   }, [state.isAuthenticated]); // Re-run when auth state changes
 
   // Load session from localStorage on mount
@@ -255,13 +253,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Mark session as restoring
             dispatch({ type: 'SESSION_RESTORE_START' });
             
-            // Wait for WebSocket connection then restore session on server
-            console.log('[AUTH] Waiting for WebSocket connection...');
-            webSocketService.waitForConnection().then(() => {
-              console.log('[AUTH] WebSocket connected, restoring server session...');
+            // Wait for communication manager connection then restore session on server
+            console.log('[AUTH] Waiting for communication manager connection...');
+            communicationManager.connect().then(() => {
+              console.log('[AUTH] Communication manager connected, restoring server session...');
               restoreSession();
-            }).catch(error => {
-              console.error('[AUTH] Failed to connect WebSocket:', error);
+            }).catch((error: Error) => {
+              console.error('[AUTH] Failed to connect communication manager:', error);
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             });
           } catch (error) {
@@ -289,7 +287,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Wait a bit for localStorage to be available
       setTimeout(loadSession, 100);
     }
-  }, []);
+  }, [restoreSession, state]);
 
   // Save session to localStorage whenever auth state changes
   useEffect(() => {
@@ -322,11 +320,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<void> => {
     dispatch({ type: 'AUTH_START' });
-    return new Promise((resolve, reject) => {
-      const handleAuthMessage = (message: ServerMessage) => {
+    
+    try {
+      // Set up message handler
+      let loginResolve: () => void;
+      let loginReject: (error: Error) => void;
+      const loginPromise = new Promise<void>((resolve, reject) => {
+        loginResolve = resolve;
+        loginReject = reject;
+      });
+      
+      const handleAuthMessage = (message: CommunicationMessage) => {
         if (message.kind === 'loginSuccess') {
+          const payload = message.payload as Record<string, unknown>;
           const user: User = {
-            id: message.payload.userId,
+            id: payload.userId as string,
             name: username,
             username: `@${username}`,
             avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
@@ -339,11 +347,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           dispatch({
             type: 'AUTH_SUCCESS',
-            payload: { user, token: message.payload.sessionToken, pri: message.payload.pri },
+            payload: {
+              user,
+              token: payload.sessionToken as string,
+              pri: payload.pri as PrimeResonanceIdentity
+            },
           });
           
           // Initialize the HolographicMemoryManager with the user's PRI
-          holographicMemoryManager.setCurrentUser(message.payload.pri);
+          holographicMemoryManager.setCurrentUser(payload.pri as PrimeResonanceIdentity);
 
           // Initialize user data manager
           userDataManager.setCurrentUser(user.id);
@@ -359,40 +371,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return spaceManager.initializeForUser(user.id);
           }).then(() => {
             console.log('[AUTH] SpaceManager initialized after login');
-          }).catch(error => {
+          }).catch((error: Error) => {
             console.error('[AUTH] Failed to initialize user services after login:', error);
           });
 
-          webSocketService.removeMessageListener(handleAuthMessage);
-          resolve();
-        } else if (message.kind === 'error' && (message.payload.requestKind === 'login' || !message.payload.requestKind)) {
-          dispatch({ type: 'AUTH_FAILURE', payload: message.payload.message });
-          webSocketService.removeMessageListener(handleAuthMessage);
-          reject(new Error(message.payload.message));
+          loginResolve();
+        } else if (message.kind === 'error') {
+          const payload = message.payload as Record<string, unknown>;
+          if (payload.requestKind === 'login' || !payload.requestKind) {
+            dispatch({ type: 'AUTH_FAILURE', payload: payload.message as string });
+            loginReject(new Error(payload.message as string));
+          }
         }
       };
-      webSocketService.addMessageListener(handleAuthMessage);
-      webSocketService.sendMessage({ kind: 'login', payload: { username, password } });
-    });
+      
+      communicationManager.onMessage(handleAuthMessage);
+      await communicationManager.send({ kind: 'login', payload: { username, password } });
+      
+      return loginPromise;
+    } catch (error) {
+      dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Login failed' });
+      throw error;
+    }
   };
 
   const register = async (username: string, email: string, password: string): Promise<void> => {
     dispatch({ type: 'AUTH_START' });
-    return new Promise((resolve, reject) => {
-        const handleRegisterMessage = (message: ServerMessage) => {
-            if (message.kind === 'registerSuccess') {
-                // Automatically log in after successful registration
-                login(username, password).then(resolve).catch(reject);
-                webSocketService.removeMessageListener(handleRegisterMessage);
-            } else if (message.kind === 'error' && message.payload.requestKind === 'register') {
-                dispatch({ type: 'AUTH_FAILURE', payload: message.payload.message });
-                webSocketService.removeMessageListener(handleRegisterMessage);
-                reject(new Error(message.payload.message));
-            }
-        };
-        webSocketService.addMessageListener(handleRegisterMessage);
-        webSocketService.sendMessage({ kind: 'register', payload: { username, email, password } });
-    });
+    
+    try {
+      // Set up message handler
+      let registerResolve: () => void;
+      let registerReject: (error: Error) => void;
+      const registerPromise = new Promise<void>((resolve, reject) => {
+        registerResolve = resolve;
+        registerReject = reject;
+      });
+      
+      const handleRegisterMessage = (message: CommunicationMessage) => {
+        if (message.kind === 'registerSuccess') {
+          // Automatically log in after successful registration
+          login(username, password).then(registerResolve).catch(registerReject);
+        } else if (message.kind === 'error') {
+          const payload = message.payload as Record<string, unknown>;
+          if (payload.requestKind === 'register') {
+            dispatch({ type: 'AUTH_FAILURE', payload: payload.message as string });
+            registerReject(new Error(payload.message as string));
+          }
+        }
+      };
+      
+      communicationManager.onMessage(handleRegisterMessage);
+      await communicationManager.send({ kind: 'register', payload: { username, email, password } });
+      
+      return registerPromise;
+    } catch (error) {
+      dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Registration failed' });
+      throw error;
+    }
   };
 
   const logout = (): void => {
