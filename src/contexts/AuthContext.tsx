@@ -200,24 +200,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // If needed, session restoration will happen through the initial connection
   }, [state.isAuthenticated]); // Re-run when auth state changes
 
-  // Load session from localStorage on mount
+  // Load session from localStorage on mount (ONLY ONCE)
   useEffect(() => {
+    let mounted = true;
+    
     console.log('[AUTH] Initial session restoration on mount');
-    console.log('[AUTH] state.isAuthenticated:', state.isAuthenticated);
-    console.log('[AUTH] state.loading:', state.loading);
-    console.log('[AUTH] state.sessionRestoring:', state.sessionRestoring);
     
     // Safari fix: Ensure localStorage is accessible
     const loadSession = () => {
+      if (!mounted) return;
+      
       try {
         const savedSession = localStorage.getItem('holographic_session');
         console.log('[AUTH] LocalStorage session exists:', !!savedSession);
         
-        if (savedSession) {
+        if (savedSession && mounted) {
           try {
             const session = JSON.parse(savedSession);
             const user: User = session.user;
             const pri: PrimeResonanceIdentity = session.pri;
+            
+            if (!mounted) return;
             
             console.log('[AUTH] Restoring client-side auth state for user:', user.username);
             
@@ -271,12 +274,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           console.log('[AUTH] No saved session found');
           // No saved session, set loading to false
-          dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+          if (mounted) {
+            dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+          }
         }
       } catch (error) {
         console.error('[AUTH] Failed to access localStorage:', error);
         // Safari might block localStorage in certain scenarios
-        dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+        if (mounted) {
+          dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+        }
       }
     };
     
@@ -287,7 +294,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Wait a bit for localStorage to be available
       setTimeout(loadSession, 100);
     }
-  }, [restoreSession, state]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty array: run ONLY ONCE on mount
 
   // Save session to localStorage whenever auth state changes
   useEffect(() => {
