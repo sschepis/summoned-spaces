@@ -7,9 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -43,9 +42,15 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 # Copy server files
 COPY --chown=nodejs:nodejs server ./server
 COPY --chown=nodejs:nodejs api ./api
+COPY --chown=nodejs:nodejs lib ./lib
+COPY --chown=nodejs:nodejs resolang ./resolang
 COPY --chown=nodejs:nodejs index.html ./
 COPY --chown=nodejs:nodejs vite.config.ts ./
 COPY --chown=nodejs:nodejs tsconfig*.json ./
+
+# Create necessary directories
+RUN mkdir -p uploads logs && \
+    chown -R nodejs:nodejs uploads logs
 
 # Switch to non-root user
 USER nodejs
