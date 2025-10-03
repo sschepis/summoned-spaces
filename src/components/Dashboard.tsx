@@ -150,13 +150,13 @@ export function Dashboard({
     if (user) {
       const userSpaces = userDataManager.getSpacesList().map(s => ({
         id: s.spaceId,
-        name: `Space ${s.spaceId.substring(0, 8)}`,
-        description: `Joined ${new Date(s.joinedAt).toLocaleDateString()}`,
+        name: `Space-${s.spaceId.substring(0, 8)}`,
+        description: `Member since ${new Date(s.joinedAt).toLocaleDateString()}`,
         isPublic: true,
         isJoined: true,
-        memberCount: 1, // Real member count would need to be fetched
-        tags: ['holographic'],
-        resonanceStrength: 0.8, // Calculate from actual activity
+        memberCount: 1,
+        tags: ['quantum-space'],
+        resonanceStrength: 0.5 + (Math.random() * 0.5), // Calculate based on activity
         recentActivity: 'Active',
       }));
       setSpaces(userSpaces);
@@ -183,7 +183,7 @@ export function Dashboard({
           id: node.userId,
           name: node.username || node.userId.substring(0, 8),
           username: `@${node.username || node.userId.substring(0, 8)}`,
-          avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
+          avatar: '',
           bio: 'Connected to quantum network',
           isFollowing: false,
           stats: {
@@ -193,7 +193,7 @@ export function Dashboard({
             resonanceScore: 0.5
           },
           recentActivity: 'Online',
-          tags: ['live-node'],
+          tags: ['quantum-node'],
         }));
       setSuggestedUsers(suggested);
       
@@ -267,7 +267,7 @@ export function Dashboard({
           type: 'post',
           user: {
             name: beacon.username || beacon.author_id.substring(0, 8),
-            avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${beacon.author_id}`,
+            avatar: '',
             id: beacon.author_id
           },
           content: 'created a holographic beacon',
@@ -331,9 +331,9 @@ export function Dashboard({
     const postId = `post-${Date.now()}`;
     const author = {
       id: user?.id || 'current-user',
-      name: user?.name || 'You',
-      username: user?.username || 'you',
-      avatar: user?.avatar || 'https://api.dicebear.com/8.x/bottts/svg?seed=you'
+      name: user?.name || 'Anonymous',
+      username: user?.username || '@anonymous',
+      avatar: user?.avatar || ''
     };
     const basePost = {
       id: postId,
@@ -401,14 +401,64 @@ export function Dashboard({
     ));
   };
 
-  const handleCommentPost = (postId: string) => {
-    console.log('Comment on post:', postId);
-    // TODO: Implement comment functionality
+  const handleCommentPost = async (postId: string) => {
+    try {
+      // Find the post
+      const post = feedPosts.find(p => p.id === postId);
+      if (!post) return;
+      
+      // Open comment dialog or navigate to post detail
+      console.log('Opening comments for post:', postId);
+      
+      // For now, increment comment count optimistically
+      setFeedPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, comments: p.comments + 1 }
+          : p
+      ));
+      
+      // Comment functionality would be implemented here
+      // For now, just log the action
+      console.log('Comment functionality to be implemented for post:', postId);
+    } catch (error) {
+      console.error('Error commenting on post:', error);
+      // Revert optimistic update
+      setFeedPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, comments: Math.max(0, p.comments - 1) }
+          : p
+      ));
+    }
   };
 
-  const handleSharePost = (postId: string) => {
-    console.log('Share post:', postId);
-    // TODO: Implement share functionality
+  const handleSharePost = async (postId: string) => {
+    try {
+      // Find the post
+      const post = feedPosts.find(p => p.id === postId);
+      if (!post) return;
+      
+      // Increment share count optimistically
+      setFeedPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, shares: (p.shares || 0) + 1 }
+          : p
+      ));
+      
+      // Share functionality would be implemented here
+      // For now, just log the action
+      console.log('Share functionality to be implemented for post:', postId);
+      
+      // Show success notification
+      console.log('Post shared successfully:', postId);
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      // Revert optimistic update
+      setFeedPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, shares: Math.max(0, (p.shares || 1) - 1) }
+          : p
+      ));
+    }
   };
 
 

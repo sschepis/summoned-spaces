@@ -52,36 +52,59 @@ export function YouTubeComposer({ onChange }: YouTubeComposerProps) {
         throw new Error('Invalid YouTube URL');
       }
 
-      // Simulate API call to YouTube Data API
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call backend API to fetch YouTube video metadata
+      const response = await fetch(`/api/youtube/video/${videoId}`);
       
-      // Generate basic video preview
-      const basicPreview = generateVideoPreview(videoId, url);
-      setPreview(basicPreview);
-    } catch {
-      setError('Failed to fetch video information. Please check the URL and try again.');
-      setPreview(null);
+      if (!response.ok) {
+        throw new Error('Failed to fetch video information');
+      }
+      
+      const videoData = await response.json();
+      
+      // Transform API response to VideoPreview format
+      const preview: VideoPreview = {
+        videoId,
+        url,
+        title: videoData.title || 'Untitled Video',
+        description: videoData.description || '',
+        thumbnailUrl: videoData.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        duration: videoData.duration || '0:00',
+        channelName: videoData.channelName || 'Unknown Channel',
+        channelId: videoData.channelId || 'unknown',
+        viewCount: videoData.viewCount,
+        publishedAt: videoData.publishedAt ? new Date(videoData.publishedAt) : new Date(),
+        tags: videoData.tags || []
+      };
+      
+      setPreview(preview);
+    } catch (error) {
+      console.error('Failed to fetch video preview:', error);
+      
+      // Fallback to basic preview with just thumbnail
+      const videoId = extractVideoId(url);
+      if (videoId) {
+        const fallbackPreview: VideoPreview = {
+          videoId,
+          url,
+          title: 'YouTube Video',
+          description: 'Unable to fetch video details. The video will still be shared.',
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          duration: '0:00',
+          channelName: 'YouTube',
+          channelId: 'unknown',
+          viewCount: undefined,
+          publishedAt: new Date(),
+          tags: []
+        };
+        setPreview(fallbackPreview);
+        setError('Could not fetch full video details, but you can still share the video.');
+      } else {
+        setError('Failed to fetch video information. Please check the URL and try again.');
+        setPreview(null);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateVideoPreview = (videoId: string, url: string): VideoPreview => {
-    // TODO: In a real implementation, this would call the YouTube Data API
-    // For now, create a basic preview with the video ID and thumbnail
-    return {
-      videoId,
-      url,
-      title: 'YouTube Video',
-      description: 'Video description would be fetched from YouTube API',
-      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      duration: '0:00',
-      channelName: 'YouTube Channel',
-      channelId: 'unknown',
-      viewCount: undefined,
-      publishedAt: new Date(),
-      tags: []
-    };
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {

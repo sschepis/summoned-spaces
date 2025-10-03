@@ -17,6 +17,7 @@ export function RegisterRefactored({
 }: RegisterProps) {
   const { register } = useAuth();
   const [generalError, setGeneralError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const form = useForm({
     initialValues: {
@@ -53,6 +54,12 @@ export function RegisterRefactored({
     },
     onSubmit: async (values) => {
       setGeneralError('');
+      
+      // Check if terms are accepted
+      if (!termsAccepted) {
+        setGeneralError('Please accept the Terms of Service and Privacy Policy to continue.');
+        return;
+      }
       
       try {
         // Use AuthContext register method
@@ -145,16 +152,28 @@ export function RegisterRefactored({
         <label className="flex items-center space-x-2">
           <input
             type="checkbox"
-            className="w-4 h-4 bg-white/10 border border-white/20 rounded text-cyan-500 
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="w-4 h-4 bg-white/10 border border-white/20 rounded text-cyan-500
                      focus:ring-2 focus:ring-cyan-500 focus:ring-offset-0 focus:ring-offset-transparent"
           />
           <span className="text-sm text-gray-300">
             I agree to the{' '}
-            <a href="#" className="text-cyan-400 hover:text-cyan-300">
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300"
+            >
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="#" className="text-cyan-400 hover:text-cyan-300">
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300"
+            >
               Privacy Policy
             </a>
           </span>

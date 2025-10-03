@@ -121,17 +121,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             await communicationManager.connect();
           }
           
-          // Browser-specific delays to prevent race conditions
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-          
-          if (isSafari) {
-            console.log('[AUTH] Safari detected, adding 200ms delay before session restore');
-            await new Promise(resolve => setTimeout(resolve, 200));
-          } else if (isChrome) {
-            console.log('[AUTH] Chrome detected, adding 250ms delay before session restore');
-            await new Promise(resolve => setTimeout(resolve, 250));
-          }
+          // Add a small delay to ensure WebSocket connection is established
+          // This is more reliable than browser-specific hacks
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           // Mark session as restoring BEFORE sending the message
           dispatch({ type: 'SESSION_RESTORE_START' });
@@ -174,18 +166,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const payload = message.payload as Record<string, unknown>;
         if (payload.success) {
           console.log('[AUTH] Server session restored successfully for user:', payload.userId);
-          // Chrome fix: Add a small delay to ensure server-side state is fully synchronized
-          const isChrome = typeof navigator !== 'undefined' &&
-            /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-          
-          if (isChrome) {
-            console.log('[AUTH] Chrome detected, adding synchronization delay');
-            setTimeout(() => {
-              dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-            }, 150);
-          } else {
+          // Add a small delay to ensure server-side state is synchronized
+          // This prevents race conditions across all browsers
+          setTimeout(() => {
             dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-          }
+          }, 50);
         } else {
           console.log('[AUTH] Server session restoration failed, logging out');
           localStorage.removeItem('holographic_session');
@@ -249,6 +234,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log('[AUTH] SpaceManager initialized after beacon data load');
             }).catch(error => {
               console.error('[AUTH] Failed to initialize user data/SpaceManager:', error);
+              // Don't fail silently - show error to user
+              dispatch({
+                type: 'AUTH_FAILURE',
+                payload: 'Failed to load user data. Please try refreshing the page.'
+              });
             });
             
             console.log('[AUTH] Client-side session restored for user:', user.username);
@@ -287,13 +277,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
     
-    // Safari fix: Sometimes localStorage is not immediately available
-    if (typeof window !== 'undefined' && window.localStorage) {
-      loadSession();
-    } else {
-      // Wait a bit for localStorage to be available
-      setTimeout(loadSession, 100);
-    }
+    // Load session immediately
+    loadSession();
     
     return () => {
       mounted = false;
@@ -348,12 +333,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: payload.userId as string,
             name: username,
             username: `@${username}`,
-            avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-            bio: 'Logged in via PRI',
+            avatar: payload.avatar as string || '', // Use server-provided avatar or empty string
+            bio: payload.bio as string || '',
             isFollowing: false,
-            stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
-            recentActivity: 'Just logged in',
-            tags: ['resonant-being'],
+            stats: payload.stats as User['stats'] || { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
+            recentActivity: payload.recentActivity as string || 'Just logged in',
+            tags: payload.tags as string[] || [],
           };
           
           dispatch({
@@ -384,6 +369,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log('[AUTH] SpaceManager initialized after login');
           }).catch((error: Error) => {
             console.error('[AUTH] Failed to initialize user services after login:', error);
+            // Don't fail silently - show error to user
+            dispatch({
+              type: 'AUTH_FAILURE',
+              payload: 'Failed to initialize user services. Please try logging in again.'
+            });
           });
 
           loginResolve();

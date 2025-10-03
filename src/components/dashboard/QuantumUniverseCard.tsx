@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { Star, Settings, Users, Globe, TrendingUp, Activity, Eye, EyeOff } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { userDataManager } from '../../services/user-data-manager';
+import { Space } from '../../types/common';
 
 interface QuantumUniverseCardProps {
-  spaces: any[];
+  spaces: Space[];
   followerCount: number;
   quantumMetrics: {
     resonanceScore: number;

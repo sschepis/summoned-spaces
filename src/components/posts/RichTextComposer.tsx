@@ -29,12 +29,13 @@ export function RichTextComposer({
   const [cursorPosition, setCursorPosition] = useState(0);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Real user suggestions and popular hashtags
-  const [userSuggestions] = useState<Array<{ id: string; username: string; name: string }>>([]);
+  
+  // User suggestions and popular hashtags
+  const [userSuggestions, setUserSuggestions] = useState<Array<{ id: string; username: string; name: string }>>([]);
   const [hashtagSuggestions] = useState<string[]>([
     'quantum', 'resonance', 'holographic', 'network', 'research', 'update', 'collaboration', 'innovation'
   ]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const isValid = content.trim().length > 0 && content.length <= maxLength;
@@ -101,8 +102,13 @@ export function RichTextComposer({
     if (atMatch) {
       setShowMentionSuggestions(true);
       setShowHashtagSuggestions(false);
-      // TODO: Fetch user suggestions based on partial input
-      // For now, we'll use a basic implementation
+      const query = atMatch[1];
+      setSearchQuery(query);
+      
+      // Fetch user suggestions based on partial input
+      if (query.length > 0) {
+        fetchUserSuggestions(query);
+      }
     }
     // Check for # trigger
     else if (beforeCursor.match(/#(\w*)$/)) {
@@ -113,6 +119,25 @@ export function RichTextComposer({
     else {
       setShowMentionSuggestions(false);
       setShowHashtagSuggestions(false);
+      setSearchQuery('');
+    }
+  };
+
+  const fetchUserSuggestions = async (query: string) => {
+    try {
+      // Fetch user suggestions from API
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=10`);
+      if (response.ok) {
+        const users = await response.json();
+        setUserSuggestions(users);
+      } else {
+        console.error('Failed to fetch user suggestions:', response.statusText);
+        setUserSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user suggestions:', error);
+      // Fallback to empty suggestions on error
+      setUserSuggestions([]);
     }
   };
 
@@ -253,23 +278,33 @@ export function RichTextComposer({
       {/* Mention Suggestions */}
       {showMentionSuggestions && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
-          {userSuggestions.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => insertMention(user)}
-              className="w-full flex items-center space-x-3 px-3 py-2 hover:bg-white/10 transition-colors text-left"
-            >
-              <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-xs font-semibold text-white">
-                  {user.name.charAt(0)}
-                </span>
-              </div>
-              <div>
-                <div className="text-white text-sm font-medium">{user.name}</div>
-                <div className="text-gray-400 text-xs">@{user.username}</div>
-              </div>
-            </button>
-          ))}
+          {userSuggestions.length > 0 ? (
+            userSuggestions.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => insertMention(user)}
+                className="w-full flex items-center space-x-3 px-3 py-2 hover:bg-white/10 transition-colors text-left"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-semibold text-white">
+                    {user.name.charAt(0)}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-white text-sm font-medium">{user.name}</div>
+                  <div className="text-gray-400 text-xs">@{user.username}</div>
+                </div>
+              </button>
+            ))
+          ) : searchQuery.length > 0 ? (
+            <div className="px-3 py-2 text-gray-400 text-sm">
+              No users found matching "{searchQuery}"
+            </div>
+          ) : (
+            <div className="px-3 py-2 text-gray-400 text-sm">
+              Start typing to search for users
+            </div>
+          )}
         </div>
       )}
 

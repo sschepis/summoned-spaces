@@ -67,41 +67,19 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
     }
   }, 30000); // Every 30 seconds
 
-  // Simulate some real-time updates for production
-  const updateInterval = setInterval(() => {
-    const networkUpdate: SSEMessage = {
-      kind: 'networkStateUpdate',
-      payload: {
-        nodes: [{
-          nodeId: 'production-node-1',
-          userId: 'system',
-          username: 'System',
-          status: 'running',
-          timestamp: Date.now()
-        }]
-      }
-    };
-    
-    try {
-      res.write(`data: ${JSON.stringify(networkUpdate)}\n\n`);
-    } catch (error) {
-      console.error('[SSE] Error sending update:', error);
-      clearInterval(updateInterval);
-      clearInterval(pingInterval);
-    }
-  }, 60000); // Every 60 seconds
+  // In production, this would receive real-time updates from the database
+  // For now, we only send ping messages to keep the connection alive
+  // Real updates would be triggered by database changes or message queue events
 
   // Clean up on client disconnect
   req.on('close', () => {
     console.log('[SSE] Client disconnected from events stream');
     clearInterval(pingInterval);
-    clearInterval(updateInterval);
   });
 
   req.on('error', (error: Error) => {
     console.error('[SSE] Client connection error:', error);
     clearInterval(pingInterval);
-    clearInterval(updateInterval);
   });
 
   // Keep the connection open

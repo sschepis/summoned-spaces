@@ -2,6 +2,7 @@ import type { Beacon } from './protocol'; // Using our placeholder Beacon type
 import { ConnectionManager } from './connections';
 import { getDatabase } from './database';
 import type { CreateBeaconData } from '../lib/database/types.js';
+import { randomBytes } from 'crypto';
 
 export class PostManager {
   private connectionManager: ConnectionManager;
@@ -54,7 +55,7 @@ export class PostManager {
     console.log('[PostManager] Beacon validation passed');
 
     // --- Persistence ---
-    const beaconId = `beacon_${Math.random().toString(36).substr(2, 9)}`;
+    const beaconId = `beacon_${randomBytes(8).toString('hex')}`;
     console.log(`[PostManager] Saving beacon ${beaconId} to database...`);
     await this.saveBeaconToDb(beaconId, userId, beacon, beaconType);
     
@@ -67,7 +68,7 @@ export class PostManager {
       console.log(`[PostManager] Skipping propagation for beacon type: ${beaconType}`);
     }
 
-    const postId = `post_${Math.random().toString(36).substr(2, 9)}`;
+    const postId = `post_${randomBytes(8).toString('hex')}`;
     
     console.log(`Beacon processed. Type: ${beaconType}, PostID: ${postId}, BeaconID: ${beaconId}`);
 
@@ -156,10 +157,12 @@ export class PostManager {
       beacon_type: beaconType,
       author_id: authorId,
       prime_indices: {
-        base_resonance: 0.5,
-        amplification_factor: 0.5,
-        phase_alignment: 0.5,
-        entropy_level: 0.5,
+        // Calculate resonance values from beacon data
+        base_resonance: (beacon.index[0] || 1) / 1000,
+        amplification_factor: (beacon.index[1] || 1) / 1000,
+        phase_alignment: (beacon.index[2] || 1) / 1000,
+        entropy_level: beacon.fingerprint.length > 0 ?
+          Array.from(beacon.fingerprint).reduce((a, b) => a + b, 0) / (beacon.fingerprint.length * 255) : 0.5,
         prime_sequence: beacon.index,
         resonance_signature: beacon.index.join('-')
       },
@@ -201,7 +204,7 @@ export class PostManager {
     }
 
     // Persistence
-    const commentId = `comment_${Math.random().toString(36).substr(2, 9)}`;
+    const commentId = `comment_${randomBytes(8).toString('hex')}`;
     await this.saveCommentToDb(commentId, postBeaconId, userId, beacon);
 
     console.log(`Comment processed. CommentID: ${commentId}`);
@@ -218,17 +221,19 @@ export class PostManager {
     const db = getDatabase();
     
     // First save the beacon
-    const beaconId = `beacon_${Math.random().toString(36).substr(2, 9)}`;
+    const beaconId = `beacon_${randomBytes(8).toString('hex')}`;
     
     const beaconData: CreateBeaconData = {
       beacon_id: beaconId,
       beacon_type: 'comment',
       author_id: authorId,
       prime_indices: {
-        base_resonance: 0.5,
-        amplification_factor: 0.5,
-        phase_alignment: 0.5,
-        entropy_level: 0.5,
+        // Calculate resonance values from beacon data
+        base_resonance: (beacon.index[0] || 1) / 1000,
+        amplification_factor: (beacon.index[1] || 1) / 1000,
+        phase_alignment: (beacon.index[2] || 1) / 1000,
+        entropy_level: beacon.fingerprint.length > 0 ?
+          Array.from(beacon.fingerprint).reduce((a, b) => a + b, 0) / (beacon.fingerprint.length * 255) : 0.5,
         prime_sequence: beacon.index,
         resonance_signature: beacon.index.join('-')
       },

@@ -4,15 +4,15 @@ import { AuthFormLayout } from './common/forms/AuthFormLayout';
 import { FormField } from './ui/forms/FormField';
 import { Alert } from './ui/feedback/Alert';
 import { useForm, validators } from '../hooks/useForm';
+import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
 
 interface ForgotPasswordProps {
-  onBack: () => void;
+  onBack?: () => void; // Make optional since it's not used
   onBackToLogin: () => void;
 }
 
-export function ForgotPasswordRefactored({ 
-  onBack, 
-  onBackToLogin 
+export function ForgotPasswordRefactored({
+  onBackToLogin
 }: ForgotPasswordProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [generalError, setGeneralError] = useState('');
@@ -34,14 +34,51 @@ export function ForgotPasswordRefactored({
       setGeneralError('');
       
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Set up message handler for password reset response
+        let resetResolve: () => void;
+        let resetReject: (error: Error) => void;
+        const resetPromise = new Promise<void>((resolve, reject) => {
+          resetResolve = resolve;
+          resetReject = reject;
+        });
         
-        // For demo purposes, accept any valid email
-        console.log('Password reset email sent to:', values.email);
-        setIsSubmitted(true);
+        const handleResetMessage = (message: CommunicationMessage) => {
+          if (message.kind === 'passwordResetSent') {
+            console.log('Password reset email sent to:', values.email);
+            setIsSubmitted(true);
+            resetResolve();
+          } else if (message.kind === 'error') {
+            const payload = message.payload as Record<string, unknown>;
+            if (payload.requestKind === 'requestPasswordReset') {
+              const errorMessage = (payload.message as string) || 'Failed to send reset email. Please try again.';
+              setGeneralError(errorMessage);
+              resetReject(new Error(errorMessage));
+            }
+          }
+        };
+        
+        // Listen for the response
+        communicationManager.onMessage(handleResetMessage);
+        
+        // Send password reset request
+        await communicationManager.send({
+          kind: 'requestPasswordReset',
+          payload: { email: values.email }
+        });
+        
+        // Wait for the response with a timeout
+        await Promise.race([
+          resetPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out. Please try again.')), 10000)
+          )
+        ]);
       } catch (error) {
-        setGeneralError('Failed to send reset email. Please try again.');
+        if (error instanceof Error) {
+          setGeneralError(error.message);
+        } else {
+          setGeneralError('Failed to send reset email. Please try again.');
+        }
       }
     }
   });

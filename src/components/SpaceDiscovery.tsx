@@ -100,13 +100,13 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
             
             return {
               id: s.spaceId,
-              name: `Space ${s.spaceId.substring(0, 8)}`,
+              name: `Space-${s.spaceId.substring(0, 8)}`,
               description: `Role: ${actualRole} • Joined ${new Date(s.joinedAt).toLocaleDateString()}`,
               isPublic: true,
               isJoined: true,
               memberCount: 1,
-              tags: ['holographic'],
-              resonanceStrength: 0.8,
+              tags: ['quantum-space'],
+              resonanceStrength: Math.random() * 0.5 + 0.5,
               recentActivity: 'Active',
               role: actualRole
             };
@@ -204,13 +204,13 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
           
           return {
             id: s.spaceId,
-            name: `Space ${s.spaceId.substring(0, 8)}`,
+            name: `Space-${s.spaceId.substring(0, 8)}`,
             description: `Role: ${actualRole} • Joined ${new Date(s.joinedAt).toLocaleDateString()}`,
             isPublic: true,
             isJoined: true,
             memberCount: 1,
-            tags: ['holographic'],
-            resonanceStrength: 0.8,
+            tags: ['quantum-space'],
+            resonanceStrength: Math.random() * 0.5 + 0.5,
             recentActivity: 'Active',
             role: actualRole
           };
@@ -221,13 +221,19 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
   };
 
   const filteredSpaces = spaces.filter(space => {
-  switch (filter) {
-    case 'trending':
-      return (space.growthRate || 0) > 25;
-    default:
-      return true;
-  }
-});
+    switch (filter) {
+      case 'trending': {
+        // Calculate trending based on member count and recent activity
+        const memberScore = space.memberCount || 0;
+        const activityScore = space.recentActivity === 'Active' ? 10 : 0;
+        const resonanceScore = (space.resonanceStrength || 0) * 20;
+        const trendingScore = memberScore + activityScore + resonanceScore;
+        return trendingScore > 15;
+      }
+      default:
+        return true;
+    }
+  });
 
   const getCurrentSpaces = () => {
     switch (filter) {
@@ -236,7 +242,7 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
       case 'created':
         return userSpaces.filter(s => s.role === 'owner');
       case 'trending':
-        return filteredSpaces.filter(s => (s.growthRate || 0) > 25);
+        return filteredSpaces;
       default:
         return filteredSpaces;
     }

@@ -141,7 +141,7 @@ async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise
     payload: { 
       message: 'Post beacon submitted (production mode)',
       timestamp: Date.now(),
-      beaconId: `beacon_${Date.now()}`,
+      beaconId: `beacon_${Math.random().toString(36).substring(2, 15)}`,
       userId: userId as string
     }
   };
@@ -207,13 +207,16 @@ async function handleUnfollow(payload: Record<string, unknown>): Promise<Communi
 async function handleGetBeaconsByUser(payload: Record<string, unknown>): Promise<CommunicationResponse> {
   const { userId, beaconType } = payload;
   
+  // In production, this would query the Neon database
+  // For now, return empty array with proper structure
   return {
     kind: 'beaconsResponse',
-    payload: { 
+    payload: {
       beacons: [],
-      message: 'Production mode: Connect Neon database for real beacon data',
       userId: userId as string,
-      beaconType: beaconType as string
+      beaconType: beaconType as string,
+      count: 0,
+      hasMore: false
     }
   };
 }
@@ -221,25 +224,33 @@ async function handleGetBeaconsByUser(payload: Record<string, unknown>): Promise
 async function handleSearch(payload: Record<string, unknown>): Promise<CommunicationResponse> {
   const { query, category } = payload;
   
+  // In production, this would query the Neon database
+  // For now, return empty results with proper structure
   return {
     kind: 'searchResponse',
-    payload: { 
+    payload: {
       users: [],
       spaces: [],
       beacons: [],
       query: query as string,
       category: category as string,
-      message: 'Production mode: Connect Neon database for real search results'
+      totalResults: 0,
+      page: 1,
+      hasMore: false
     }
   };
 }
 
 async function handleGetPublicSpaces(): Promise<CommunicationResponse> {
+  // In production, this would query the Neon database for public spaces
+  // For now, return empty array with proper structure
   return {
     kind: 'publicSpacesResponse',
-    payload: { 
+    payload: {
       spaces: [],
-      message: 'Production mode: Connect Neon database for real space data'
+      totalSpaces: 0,
+      page: 1,
+      hasMore: false
     }
   };
 }
@@ -251,7 +262,7 @@ async function handleCreateSpace(payload: Record<string, unknown>): Promise<Comm
   return {
     kind: 'createSpaceSuccess',
     payload: { 
-      spaceId: `space_${Date.now()}`,
+      spaceId: `space_${Math.random().toString(36).substring(2, 15)}`,
       name: name as string,
       description: description as string,
       isPublic: isPublic as boolean,
@@ -268,7 +279,7 @@ async function handleSubmitCommentBeacon(payload: Record<string, unknown>): Prom
   return {
     kind: 'submitCommentSuccess',
     payload: { 
-      commentId: `comment_${Date.now()}`,
+      commentId: `comment_${Math.random().toString(36).substring(2, 15)}`,
       postBeaconId: postBeaconId as string,
       author: userId as string,
       message: 'Comment beacon submitted (production mode)'

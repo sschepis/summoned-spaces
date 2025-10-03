@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Server, Database, Users, Zap, AlertTriangle, CheckCircle, Activity, Clock, Shield, Settings, RefreshCw, Globe, TrendingUp, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Server, Database, Users, Zap, Activity, Clock, Shield, RefreshCw, Globe, BarChart3 } from 'lucide-react';
 import { ResonanceIndicator } from './ResonanceIndicator';
 import { PageHeader } from './ui/PageHeader';
 import { Tabs } from './ui/Tabs';
@@ -12,42 +12,130 @@ interface SystemAdminProps {
   onBack: () => void;
 }
 
-const systemMetrics = {
-  uptime: '23d 14h 32m',
-  totalUsers: 15847,
-  activeUsers: 3241,
-  totalSpaces: 2847,
-  totalFiles: 125394,
-  storageUsed: '2.4 TB',
-  storageCapacity: '10 TB',
-  networkThroughput: '1.2 GB/s',
-  avgResponseTime: '12ms',
-  resonanceSystemHealth: 0.94,
-  quantumProcessors: 8,
-  primeGenerators: 16,
-  activeResonanceLocks: 1247,
-  pendingSummons: 43
-};
+interface SystemMetrics {
+  uptime: string;
+  totalUsers: number;
+  activeUsers: number;
+  totalSpaces: number;
+  totalFiles: number;
+  storageUsed: string;
+  storageCapacity: string;
+  networkThroughput: string;
+  avgResponseTime: string;
+  resonanceSystemHealth: number;
+  quantumProcessors: number;
+  primeGenerators: number;
+  activeResonanceLocks: number;
+  pendingSummons: number;
+}
 
-const recentEvents = [
-  { time: '14:32:15', level: 'INFO', system: 'Resonance Engine', message: 'Quantum lock achieved for user_7234 in 0.8s', status: 'success' },
-  { time: '14:31:42', level: 'WARN', system: 'Prime Generator', message: 'Prime pool running low (< 1000 remaining)', status: 'warning' },
-  { time: '14:30:18', level: 'INFO', system: 'File System', message: 'Beacon cache cleaned, freed 2.3GB', status: 'info' },
-  { time: '14:28:55', level: 'ERROR', system: 'Network Layer', message: 'Gossip protocol timeout for node_42', status: 'error' },
-  { time: '14:27:33', level: 'INFO', system: 'User Manager', message: 'New user registered: quantum_researcher_89', status: 'success' },
-  { time: '14:25:17', level: 'INFO', system: 'Space Manager', message: 'Space "AI Research Hub" created by user_3456', status: 'info' }
-];
+interface SystemEvent {
+  time: string;
+  level: string;
+  system: string;
+  message: string;
+  status: string;
+}
 
-const nodeStatus = [
-  { id: 'node-1', region: 'US-East', status: 'healthy', load: 0.23, resonanceOps: 145, uptime: '45d 2h' },
-  { id: 'node-2', region: 'US-West', status: 'healthy', load: 0.34, resonanceOps: 198, uptime: '32d 14h' },
-  { id: 'node-3', region: 'EU-Central', status: 'warning', load: 0.78, resonanceOps: 89, uptime: '12d 8h' },
-  { id: 'node-4', region: 'Asia-Pacific', status: 'healthy', load: 0.45, resonanceOps: 167, uptime: '28d 19h' },
-  { id: 'node-5', region: 'Canada', status: 'maintenance', load: 0.12, resonanceOps: 23, uptime: '3h 12m' }
-];
+interface NodeStatus {
+  id: string;
+  region: string;
+  status: string;
+  load: number;
+  resonanceOps: number;
+  uptime: string;
+}
 
 export function SystemAdmin({ onBack }: SystemAdminProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'nodes' | 'resonance' | 'users' | 'storage' | 'logs' | 'security'>('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
+  const [recentEvents, setRecentEvents] = useState<SystemEvent[]>([]);
+  const [nodeStatus, setNodeStatus] = useState<NodeStatus[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load system metrics
+  useEffect(() => {
+    loadSystemData();
+    // Set up polling for real-time updates
+    const interval = setInterval(loadSystemData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadSystemData = async () => {
+    try {
+      setError(null);
+      
+      // Load system metrics
+      const [metricsRes, eventsRes, nodesRes] = await Promise.all([
+        fetch('/api/admin/system/metrics'),
+        fetch('/api/admin/system/events?limit=10'),
+        fetch('/api/admin/system/nodes')
+      ]);
+
+      if (!metricsRes.ok || !eventsRes.ok || !nodesRes.ok) {
+        throw new Error('Failed to load system data');
+      }
+
+      const [metrics, events, nodes] = await Promise.all([
+        metricsRes.json(),
+        eventsRes.json(),
+        nodesRes.json()
+      ]);
+
+      setSystemMetrics(metrics);
+      setRecentEvents(events);
+      setNodeStatus(nodes);
+    } catch (err) {
+      console.error('Failed to load system data:', err);
+      setError('Failed to load system data. Please check your permissions.');
+      
+      // Set default values on error
+      setSystemMetrics({
+        uptime: '0d 0h 0m',
+        totalUsers: 0,
+        activeUsers: 0,
+        totalSpaces: 0,
+        totalFiles: 0,
+        storageUsed: '0 GB',
+        storageCapacity: '0 GB',
+        networkThroughput: '0 MB/s',
+        avgResponseTime: '0ms',
+        resonanceSystemHealth: 0,
+        quantumProcessors: 0,
+        primeGenerators: 0,
+        activeResonanceLocks: 0,
+        pendingSummons: 0
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadSystemData();
+    setRefreshing(false);
+  };
+
+  const handleNodeAction = async (nodeId: string, action: 'restart' | 'maintenance' | 'deploy') => {
+    try {
+      const response = await fetch(`/api/admin/system/nodes/${nodeId}/${action}`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} node`);
+      }
+      
+      // Reload node status
+      await loadSystemData();
+    } catch (err) {
+      console.error(`Failed to ${action} node:`, err);
+      setError(`Failed to ${action} node. Please try again.`);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'System Overview', icon: BarChart3 },
@@ -71,24 +159,34 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
       <Tabs
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as any)}
+        onTabChange={(tab) => setActiveTab(tab as 'overview' | 'nodes' | 'resonance' | 'users' | 'storage' | 'logs' | 'security')}
         className="mb-8"
       />
 
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* Key Metrics */}
-          <StatsGrid
-            stats={[
-              { label: 'Total Users', value: systemMetrics.totalUsers, icon: Users, color: 'text-cyan-400' },
-              { label: 'Active Spaces', value: systemMetrics.totalSpaces, icon: Globe, color: 'text-purple-400' },
-              { label: 'Files Managed', value: systemMetrics.totalFiles, icon: Database, color: 'text-green-400' },
-              { label: 'System Uptime', value: systemMetrics.uptime, icon: Clock, color: 'text-orange-400' }
-            ]}
-            cols={4}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-red-400">{error}</p>
+            </div>
+          ) : systemMetrics && (
+            <>
+              {/* Key Metrics */}
+              <StatsGrid
+                stats={[
+                  { label: 'Total Users', value: systemMetrics.totalUsers, icon: Users, color: 'text-cyan-400' },
+                  { label: 'Active Spaces', value: systemMetrics.totalSpaces, icon: Globe, color: 'text-purple-400' },
+                  { label: 'Files Managed', value: systemMetrics.totalFiles, icon: Database, color: 'text-green-400' },
+                  { label: 'System Uptime', value: systemMetrics.uptime, icon: Clock, color: 'text-orange-400' }
+                ]}
+                cols={4}
+              />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* System Health */}
             <Card>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
@@ -99,18 +197,18 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Overall Health</span>
                   <span className="text-cyan-400 font-mono text-lg">
-                    {(systemMetrics.resonanceSystemHealth * 100).toFixed(1)}%
+                    {((systemMetrics?.resonanceSystemHealth || 0) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <ResonanceIndicator strength={systemMetrics.resonanceSystemHealth} size="large" animated />
+                <ResonanceIndicator strength={systemMetrics?.resonanceSystemHealth || 0} size="large" animated />
                 
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="text-center p-3 bg-white/5 rounded-lg">
-                    <div className="text-lg font-bold text-white">{systemMetrics.quantumProcessors}</div>
+                    <div className="text-lg font-bold text-white">{systemMetrics?.quantumProcessors || 0}</div>
                     <div className="text-xs text-gray-400">Quantum Processors</div>
                   </div>
                   <div className="text-center p-3 bg-white/5 rounded-lg">
-                    <div className="text-lg font-bold text-white">{systemMetrics.primeGenerators}</div>
+                    <div className="text-lg font-bold text-white">{systemMetrics?.primeGenerators || 0}</div>
                     <div className="text-xs text-gray-400">Prime Generators</div>
                   </div>
                 </div>
@@ -124,10 +222,10 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
               </h3>
               <div className="space-y-4">
                 {[
-                  { label: 'Active Users', value: systemMetrics.activeUsers, color: 'text-green-400' },
-                  { label: 'Active Resonance Locks', value: systemMetrics.activeResonanceLocks, color: 'text-cyan-400' },
-                  { label: 'Pending Summons', value: systemMetrics.pendingSummons, color: 'text-yellow-400' },
-                  { label: 'Network Throughput', value: systemMetrics.networkThroughput, color: 'text-purple-400' }
+                  { label: 'Active Users', value: systemMetrics?.activeUsers || 0, color: 'text-green-400' },
+                  { label: 'Active Resonance Locks', value: systemMetrics?.activeResonanceLocks || 0, color: 'text-cyan-400' },
+                  { label: 'Pending Summons', value: systemMetrics?.pendingSummons || 0, color: 'text-yellow-400' },
+                  { label: 'Network Throughput', value: systemMetrics?.networkThroughput || '0 MB/s', color: 'text-purple-400' }
                 ].map((metric) => (
                   <div key={metric.label} className="flex items-center justify-between">
                     <span className="text-gray-400 text-sm">{metric.label}</span>
@@ -142,8 +240,14 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
           <Card>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-white">Recent System Events</h3>
-              <Button variant="secondary" size="sm" icon={RefreshCw}>
-                Refresh
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RefreshCw}
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>
             <div className="space-y-3">
@@ -172,6 +276,8 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
               ))}
             </div>
           </Card>
+            </>
+          )}
         </div>
       )}
 
@@ -183,11 +289,22 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
               <p className="text-gray-400">Monitor global infrastructure status</p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="success" size="sm" icon={Server}>
+              <Button
+                variant="success"
+                size="sm"
+                icon={Server}
+                onClick={() => handleNodeAction('new', 'deploy')}
+              >
                 Deploy Node
               </Button>
-              <Button variant="secondary" size="sm" icon={RefreshCw}>
-                Refresh All
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RefreshCw}
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh All'}
               </Button>
             </div>
           </div>
@@ -215,7 +332,7 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
                         <h3 className="text-lg font-semibold text-white">{node.id}</h3>
                         <p className="text-sm text-gray-400">{node.region}</p>
                       </div>
-                      <Badge variant={getStatusColor(node.status) as any}>
+                      <Badge variant={getStatusColor(node.status) as 'success' | 'warning' | 'error' | 'info' | 'default'}>
                         {node.status}
                       </Badge>
                     </div>
@@ -287,7 +404,7 @@ export function SystemAdmin({ onBack }: SystemAdminProps) {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Active Locks</span>
-                  <span className="text-cyan-400">{systemMetrics.activeResonanceLocks}</span>
+                  <span className="text-cyan-400">{systemMetrics?.activeResonanceLocks || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Success Rate</span>

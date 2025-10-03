@@ -81,13 +81,9 @@ export function MemberList({ members, userRole }: MemberListProps) {
     return cachedInfo?.username || userId.substring(0, 8);
   };
   
-  const getMemberEmail = (userId: string) => {
-    if (user && userId === user.id) {
-      return 'you@summoned.space';
-    }
-    const cachedInfo = memberInfoCache.get(userId);
-    const username = cachedInfo?.username || userId.substring(0, 8);
-    return `${username}@summoned.space`;
+  const getMemberEmail = () => {
+    // Don't show fake emails - return empty string or fetch real email from API
+    return '';
   };
   return (
     <div className="space-y-6">
@@ -143,7 +139,9 @@ export function MemberList({ members, userRole }: MemberListProps) {
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-400">{getMemberEmail(member.userId)}</div>
+                        {getMemberEmail() && (
+                          <div className="text-sm text-gray-400">{getMemberEmail()}</div>
+                        )}
                       </div>
                     </div>
                     

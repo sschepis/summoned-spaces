@@ -6,6 +6,7 @@ import { AppProvider } from './contexts/AppContext';
 import { Navigation } from './components/Navigation';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 import { AppRoutes } from './routes/AppRoutes';
+import { MessengerButton } from './components/MessengerButton';
 import webSocketService from './services/websocket';
 import { holographicMemoryManager } from './services/holographic-memory';
 import { FollowNotificationMessage } from '../server/protocol';
@@ -141,6 +142,8 @@ const AppContent: React.FC = () => {
         notifications={notifications}
         onDismiss={dismissNotification}
       />
+      
+      {isAuthenticated && <MessengerButton />}
     </div>
   );
 };

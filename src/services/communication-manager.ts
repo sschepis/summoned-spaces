@@ -45,17 +45,16 @@ class SSECommunicationManager implements CommunicationManager {
 
   private setupSSE(): void {
     if (typeof EventSource === 'undefined') {
-      console.warn('[SSE] EventSource not supported, falling back to polling');
-      this.setupPolling();
+      console.warn('[SSE] EventSource not supported in this browser');
       return;
     }
 
-    // In development, use a different approach since /api routes aren't available
+    // In development, SSE won't work but we don't need polling either
+    // The app will work with REST API calls only
     const isDevelopment = import.meta.env.DEV;
     
     if (isDevelopment) {
-      console.log('[SSE] Development mode: Using polling fallback since /api routes not available');
-      this.setupPolling();
+      console.log('[SSE] Development mode: SSE not available, using REST API only');
       return;
     }
     
@@ -88,41 +87,6 @@ class SSECommunicationManager implements CommunicationManager {
     };
   }
 
-  private setupPolling(): void {
-    // Fallback polling mechanism
-    const poll = async () => {
-      if (!this.connected) return;
-      
-      try {
-        const response = await fetch('/api/poll', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sessionToken: this.sessionToken,
-            userId: this.userId
-          })
-        });
-        
-        if (response.ok) {
-          const messages = await response.json();
-          if (messages.length > 0 && this.messageCallback) {
-            messages.forEach((message: CommunicationMessage) => {
-              this.messageCallback!(message);
-            });
-          }
-        }
-      } catch (error) {
-        console.error('[POLL] Polling error:', error);
-      }
-      
-      // Poll every 2 seconds
-      setTimeout(poll, 2000);
-    };
-    
-    poll();
-  }
 
   async send(message: CommunicationMessage): Promise<void> {
     if (!this.connected) {

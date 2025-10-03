@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, MessageCircle, Zap } from 'lucide-react';
+import { Shield, MessageCircle } from 'lucide-react';
 import { PageLayout } from './layouts/PageLayout';
 import { ConversationList, MessageThread, MessageInput } from './common/messaging';
 import type { Conversation, Message } from './common/messaging';
@@ -20,7 +20,7 @@ interface DirectMessagesProps {
 export function DirectMessages({ onBack }: DirectMessagesProps) {
   const { nodes } = useNetworkState();
   const { user: currentUser, pri: currentUserPRI, waitForAuth } = useAuth();
-  const { showMessage, dismissNotification } = useNotifications();
+  const { showMessage } = useNotifications();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationMessages, setConversationMessages] = useState<Map<string, Message[]>>(new Map());
@@ -61,7 +61,7 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
         id: node.userId,
         name: node.username || node.userId.substring(0, 8),
         username: `@${node.username || node.userId.substring(0, 8)}`,
-        avatar: `https://api.dicebear.com/8.x/bottts/svg?seed=${node.userId}`,
+        avatar: `/api/avatar/${node.userId}`,
         isOnline: true,
       },
       lastMessage: {

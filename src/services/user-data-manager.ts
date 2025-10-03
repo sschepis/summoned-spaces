@@ -56,9 +56,21 @@ export class UserDataManager {
             await this.webSocketService.waitForConnection();
             console.log('WebSocket connected, loading user data...');
             
-            // Add a small delay to ensure session restoration completes
-            // This is a temporary fix - ideally we'd have a proper event system
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait for session restoration to complete by checking for session data
+            let retries = 0;
+            const maxRetries = 10;
+            while (retries < maxRetries) {
+                // Check if session is ready by attempting a simple operation
+                if (this.webSocketService.isReady()) {
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                retries++;
+            }
+            
+            if (retries === maxRetries) {
+                console.warn('Session restoration may not have completed, proceeding anyway');
+            }
 
             // Load following list beacon
             const followingBeacon = await beaconCacheManager.getMostRecentBeacon(

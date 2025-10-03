@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import webSocketService from './websocket';
 import { ServerMessage } from '../../server/protocol';
 
@@ -10,16 +11,66 @@ async function safeResolangCall(funcName: string, ...args: any[]) {
       resolangModule = await import('../../resolang/build/resolang.js');
     }
     return resolangModule[funcName](...args);
-  } catch (error) {
-    // Fallback implementations
+  } catch {
+    // Proper fallback implementations
     const fallbacks: any = {
-      generatePrimes: (n: number) => Array.from({length: n}, (_, i) => i * 2 + 3),
-      primeOperator: () => new Map(),
-      factorizationOperator: () => ({ amplitudes: new Map() }),
-      entropyRate: () => Math.random() * 0.5,
-      modExpOptimized: () => BigInt(1)
+      generatePrimes: (n: number) => {
+        // Sieve of Eratosthenes for proper prime generation
+        const primes: number[] = [];
+        const isPrime = new Array(n * 10).fill(true);
+        isPrime[0] = isPrime[1] = false;
+        
+        for (let i = 2; i < isPrime.length && primes.length < n; i++) {
+          if (isPrime[i]) {
+            primes.push(i);
+            for (let j = i * i; j < isPrime.length; j += i) {
+              isPrime[j] = false;
+            }
+          }
+        }
+        
+        return primes.slice(0, n);
+      },
+      primeOperator: () => {
+        // Return a Map with basic prime operations
+        const map = new Map();
+        map.set('identity', 1);
+        map.set('generator', 2);
+        return map;
+      },
+      factorizationOperator: () => ({
+        amplitudes: new Map([[2, 0.5], [3, 0.3], [5, 0.2]]),
+        phase: 0,
+        coherence: 0.8
+      }),
+      entropyRate: () => {
+        // Generate pseudo-random entropy in [0, 1]
+        const base = Math.random();
+        const variation = Math.sin(Date.now() / 1000) * 0.1;
+        return Math.max(0, Math.min(1, base + variation));
+      },
+      modExpOptimized: (base: bigint, exp: bigint, mod: bigint) => {
+        // Fast modular exponentiation
+        if (mod === BigInt(1)) return BigInt(0);
+        let result = BigInt(1);
+        base = base % mod;
+        while (exp > 0) {
+          if (exp % BigInt(2) === BigInt(1)) {
+            result = (result * base) % mod;
+          }
+          exp = exp >> BigInt(1);
+          base = (base * base) % mod;
+        }
+        return result;
+      }
     };
-    return fallbacks[funcName](...args);
+    
+    if (funcName in fallbacks) {
+      console.warn(`Using fallback implementation for ${funcName}`);
+      return fallbacks[funcName](...args);
+    }
+    
+    throw new Error(`No fallback available for ${funcName}`);
   }
 }
 
@@ -113,8 +164,8 @@ class BeaconCacheManager {
    * Get a beacon by ID, using cache if available
    */
   constructor() {
-    // Initialize with fallback primes
-    this.primeCache = Array.from({length: 10000}, (_, i) => i * 2 + 3);
+    // Initialize with proper fallback primes using sieve
+    this.primeCache = this.generateFallbackPrimes(10000);
     
     // Load persisted cache data
     this.loadFromStorage();
@@ -127,6 +178,23 @@ class BeaconCacheManager {
     
     // Auto-save cache periodically
     this.startAutoSave();
+  }
+
+  private generateFallbackPrimes(count: number): number[] {
+    const primes: number[] = [];
+    const isPrime = new Array(count * 15).fill(true); // Larger sieve for enough primes
+    isPrime[0] = isPrime[1] = false;
+    
+    for (let i = 2; i < isPrime.length && primes.length < count; i++) {
+      if (isPrime[i]) {
+        primes.push(i);
+        for (let j = i * i; j < isPrime.length; j += i) {
+          isPrime[j] = false;
+        }
+      }
+    }
+    
+    return primes.slice(0, count);
   }
 
   private normalizeBeacon(raw: RawCachedBeacon | null): CachedBeacon | null {
@@ -152,7 +220,7 @@ class BeaconCacheManager {
   private async initializePrimes() {
     try {
       this.primeCache = await safeResolangCall('generatePrimes', 10000);
-    } catch (error) {
+    } catch {
       console.log('Using fallback primes in beacon cache');
     }
   }
@@ -681,7 +749,7 @@ class BeaconCacheManager {
                 beaconForStorage.originalText = parsed.originalText;
               }
             }
-          } catch (error) {
+          } catch {
             // If metadata isn't valid JSON, preserve as-is
             beaconForStorage.metadata = beacon.metadata;
           }

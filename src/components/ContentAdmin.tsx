@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Users, Flag, Eye, Trash2, CheckCircle, XCircle, MessageCircle, Globe, TrendingUp, AlertTriangle, Megaphone, FileText } from 'lucide-react';
 
 interface ContentAdminProps {
   onBack: () => void;
 }
 
-// TODO: These would be loaded from real moderation systems
-// For now, using empty arrays as these are admin-only features
 interface ReportedContent {
   id: string;
   type: string;
@@ -51,13 +49,14 @@ interface Announcement {
   views: number;
 }
 
-const reportedContent: ReportedContent[] = [];
-const userStats: UserStat[] = [];
-const spaceStats: SpaceStat[] = [];
-const announcements: Announcement[] = [];
-
 export function ContentAdmin({ onBack }: ContentAdminProps) {
   const [activeTab, setActiveTab] = useState<'reports' | 'users' | 'spaces' | 'posts' | 'analytics' | 'announcements' | 'policies'>('reports');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reportedContent, setReportedContent] = useState<ReportedContent[]>([]);
+  const [userStats, setUserStats] = useState<UserStat[]>([]);
+  const [spaceStats, setSpaceStats] = useState<SpaceStat[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   const tabs = [
     { id: 'reports', label: 'Content Reports', icon: Flag },
@@ -69,12 +68,87 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
     { id: 'policies', label: 'Policies', icon: FileText }
   ];
 
-  const handleContentAction = (contentId: string, action: 'approve' | 'remove' | 'flag') => {
-    console.log(`${action} content ${contentId}`);
+  useEffect(() => {
+    loadContentData();
+  }, [activeTab]);
+
+  const loadContentData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      switch (activeTab) {
+        case 'reports': {
+          const reportsRes = await fetch('/api/admin/content/reports');
+          if (reportsRes.ok) {
+            setReportedContent(await reportsRes.json());
+          }
+          break;
+        }
+        case 'users': {
+          const usersRes = await fetch('/api/admin/users/stats');
+          if (usersRes.ok) {
+            setUserStats(await usersRes.json());
+          }
+          break;
+        }
+        case 'spaces': {
+          const spacesRes = await fetch('/api/admin/spaces/stats');
+          if (spacesRes.ok) {
+            setSpaceStats(await spacesRes.json());
+          }
+          break;
+        }
+        case 'announcements': {
+          const announcementsRes = await fetch('/api/admin/announcements');
+          if (announcementsRes.ok) {
+            setAnnouncements(await announcementsRes.json());
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load content data:', err);
+      setError('Failed to load data. Please check your permissions.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUserAction = (userId: string, action: 'verify' | 'suspend' | 'ban') => {
-    console.log(`${action} user ${userId}`);
+  const handleContentAction = async (contentId: string, action: 'approve' | 'remove' | 'flag') => {
+    try {
+      const response = await fetch(`/api/admin/content/${contentId}/${action}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} content`);
+      }
+
+      // Reload content
+      await loadContentData();
+    } catch (err) {
+      console.error(`Failed to ${action} content:`, err);
+      setError(`Failed to ${action} content. Please try again.`);
+    }
+  };
+
+  const handleUserAction = async (userId: string, action: 'verify' | 'suspend' | 'ban') => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/${action}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} user`);
+      }
+
+      // Reload users
+      await loadContentData();
+    } catch (err) {
+      console.error(`Failed to ${action} user:`, err);
+      setError(`Failed to ${action} user. Please try again.`);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -148,8 +222,22 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {reportedContent.map((report) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-red-400">{error}</p>
+            </div>
+          ) : reportedContent.length === 0 ? (
+            <div className="text-center py-12">
+              <Flag className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No reported content to review</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reportedContent.map((report) => (
               <div key={report.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -214,8 +302,9 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -250,8 +339,18 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
               </div>
             </div>
             
-            <div className="divide-y divide-white/10">
-              {userStats.map((user) => {
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : userStats.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400">No user data available</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/10">
+                {userStats.map((user) => {
                 const StatusIcon = getStatusIcon(user.status);
                 return (
                   <div key={user.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
@@ -304,8 +403,9 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
                     </div>
                   </div>
                 );
-              })}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -319,8 +419,18 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            {spaceStats.map((space) => {
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : spaceStats.length === 0 ? (
+            <div className="text-center py-12">
+              <Globe className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No space data available</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {spaceStats.map((space) => {
               const StatusIcon = getStatusIcon(space.status);
               return (
                 <div key={space.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
@@ -364,8 +474,9 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
                   </div>
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -379,8 +490,18 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
             </button>
           </div>
 
-          <div className="space-y-4">
-            {announcements.map((announcement) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-12">
+              <Megaphone className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No announcements yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {announcements.map((announcement) => (
               <div key={announcement.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -412,8 +533,9 @@ export function ContentAdmin({ onBack }: ContentAdminProps) {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

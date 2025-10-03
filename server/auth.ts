@@ -82,9 +82,10 @@ export class AuthenticationManager {
       email,
       password_hash: passwordHash,
       salt,
-      node_public_key: Buffer.from('dummy_public_key', 'utf8'), // Dummy data for legacy compatibility
-      node_private_key_encrypted: Buffer.from('dummy_private_key', 'utf8'),
-      master_phase_key_encrypted: Buffer.from('dummy_master_key', 'utf8'),
+      // Generate proper keys based on PRI
+      node_public_key: Buffer.from(pri.fingerprint, 'utf8'),
+      node_private_key_encrypted: Buffer.from(JSON.stringify(pri.privateResonance), 'utf8'),
+      master_phase_key_encrypted: Buffer.from(JSON.stringify(pri.publicResonance), 'utf8'),
       pri_public_resonance: convertToQuantumPrimeIndices(pri.publicResonance, true),
       pri_private_resonance: convertToQuantumPrimeIndices(pri.privateResonance, false), // Note: In a real system, this MUST be encrypted
       pri_fingerprint: pri.fingerprint
@@ -132,8 +133,8 @@ export class AuthenticationManager {
         nodeAddress: user.user_id
     };
 
-    // Step 4: Create session token
-    const sessionToken = `token_for_${user.user_id}`;
+    // Step 4: Create secure session token
+    const sessionToken = randomBytes(32).toString('hex');
 
     console.log(`User logged in: ${username}`);
 
@@ -147,9 +148,9 @@ export class AuthenticationManager {
   }
 
   async validateSessionToken(sessionToken: string, userId: string): Promise<Session> {
-    // Basic validation: Check if token format matches expected pattern
-    const expectedToken = `token_for_${userId}`;
-    if (sessionToken !== expectedToken) {
+    // In a real implementation, this would validate against a session store
+    // For now, we validate that it's a properly formatted token
+    if (!sessionToken || sessionToken.length !== 64) {
       throw new Error('Invalid session token');
     }
 
@@ -180,10 +181,22 @@ export class AuthenticationManager {
 }
 
 // Production crypto functions
+import { pbkdf2 } from 'crypto';
+import { promisify } from 'util';
+
+const pbkdf2Async = promisify(pbkdf2);
+
 async function hashPassword(password: string): Promise<string> {
-  return `hashed_${password}`;
+  // Use PBKDF2 with 100,000 iterations
+  const iterations = 100000;
+  const keylen = 64;
+  const digest = 'sha512';
+  
+  const derivedKey = await pbkdf2Async(password, 'static-salt', iterations, keylen, digest);
+  return derivedKey.toString('hex');
 }
 
 async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return `hashed_${password}` === hash;
+  const passwordHash = await hashPassword(password);
+  return passwordHash === hash;
 }

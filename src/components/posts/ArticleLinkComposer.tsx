@@ -43,37 +43,62 @@ export function ArticleLinkComposer({ onChange }: ArticleLinkComposerProps) {
     setError(null);
     
     try {
-      // Simulate API call to fetch link metadata
-      // In real implementation, this would call your backend service
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+      // Call backend API to fetch link metadata
+      const response = await fetch('/api/link-preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: urlToFetch }),
+      });
       
-      // Generate basic preview data - TODO: implement real link scraping
-      const basicPreview = generateBasicPreview(urlToFetch);
-      setPreview(basicPreview);
-    } catch {
-      setError('Failed to fetch link preview. Please check the URL and try again.');
-      setPreview(null);
+      if (!response.ok) {
+        throw new Error('Failed to fetch link preview');
+      }
+      
+      const previewData = await response.json();
+      
+      // Transform API response to LinkPreview format
+      const preview: LinkPreview = {
+        url: urlToFetch,
+        title: previewData.title || 'Untitled',
+        description: previewData.description || '',
+        imageUrl: previewData.image,
+        siteName: previewData.siteName || new URL(urlToFetch).hostname.replace('www.', ''),
+        author: previewData.author,
+        publishedAt: previewData.publishedDate ? new Date(previewData.publishedDate) : undefined,
+        readTime: previewData.readTime
+      };
+      
+      setPreview(preview);
+    } catch (error) {
+      console.error('Failed to fetch link preview:', error);
+      
+      // Fallback to basic preview
+      try {
+        const url = new URL(urlToFetch);
+        const domain = url.hostname.replace('www.', '');
+        
+        const fallbackPreview: LinkPreview = {
+          url: urlToFetch,
+          title: `Link from ${domain}`,
+          description: 'Unable to fetch preview. The link will still be shared.',
+          siteName: domain,
+          author: undefined,
+          imageUrl: undefined,
+          publishedAt: undefined,
+          readTime: undefined
+        };
+        
+        setPreview(fallbackPreview);
+        setError('Could not fetch full preview, but you can still share the link.');
+      } catch {
+        setError('Failed to fetch link preview. Please check the URL and try again.');
+        setPreview(null);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateBasicPreview = (urlString: string): LinkPreview => {
-    const url = new URL(urlString);
-    const domain = url.hostname.replace('www.', '');
-    
-    // TODO: In a real implementation, this would scrape the URL for Open Graph tags
-    // or use a service like Microlink or similar to get real metadata
-    return {
-      url: urlString,
-      title: `Article from ${domain}`,
-      description: 'Article description would be fetched from Open Graph meta tags',
-      siteName: domain,
-      author: undefined,
-      imageUrl: undefined,
-      publishedAt: new Date(),
-      readTime: undefined
-    };
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {

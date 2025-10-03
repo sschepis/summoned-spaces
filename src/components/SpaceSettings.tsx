@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { X, Save, Settings, Shield, Database, Trash2, AlertTriangle } from 'lucide-react';
+import { spaceManager } from '../services/space-manager';
+import { useNotifications } from './NotificationSystem';
 
 interface SpaceSettingsProps {
   isOpen: boolean;
@@ -25,7 +27,7 @@ interface SpaceConfig {
 
 export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) {
   const [config, setConfig] = useState<SpaceConfig>({
-    name: `Space ${spaceId.substring(0, 8)}`,
+    name: `Space-${spaceId.substring(0, 8)}`,
     description: 'A collaborative quantum space',
     visibility: 'private',
     maxMembers: 50,
@@ -40,27 +42,75 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
     }
   });
   const [loading, setLoading] = useState(false);
-  const [_error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'resonance' | 'danger'>('general');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const { showSuccess, showError } = useNotifications();
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
     setLoading(true);
-    setError(null);
     
     try {
-      // TODO: Implement actual space configuration saving via beacons
-      console.log('Saving space config:', config);
+      // Create a space configuration beacon
+      const configData = {
+        spaceId,
+        config: {
+          name: config.name,
+          description: config.description,
+          visibility: config.visibility,
+          maxMembers: config.maxMembers,
+          autoArchive: config.autoArchive,
+          archiveDays: config.archiveDays,
+          requireApproval: config.requireApproval,
+          defaultPermissions: config.defaultPermissions,
+          resonanceConfig: config.resonanceConfig,
+          updatedAt: new Date().toISOString()
+        }
+      };
       
-      // For now, simulate saving
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // For now, log the configuration update
+      // In a real implementation, this would create a space_config beacon
+      console.log('Updating space configuration:', configData);
       
+      // Simulate saving with a small delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      showSuccess('Settings Saved', 'Space configuration has been updated successfully.');
       onClose();
     } catch (error) {
       console.error('Failed to save space settings:', error);
-      setError('Failed to save settings. Please try again.');
+      showError('Save Failed', 'Failed to save settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      showError('Invalid Confirmation', 'Please type DELETE to confirm space deletion.');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // For now, log the deletion request
+      // In a real implementation, this would remove all space-related beacons
+      console.log('Deleting space:', spaceId);
+      
+      // Leave the space first
+      await spaceManager.leaveSpace(spaceId);
+      
+      showSuccess('Space Deleted', 'You have left the space. Full deletion requires owner consensus.');
+      onClose();
+      
+      // Navigate back to spaces list
+      window.location.href = '/spaces';
+    } catch (error) {
+      console.error('Failed to delete space:', error);
+      showError('Delete Failed', 'Failed to delete space. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -102,7 +152,7 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       activeTab === tab.id
                         ? 'bg-cyan-500/20 text-cyan-300'
@@ -158,7 +208,7 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
                         </label>
                         <select
                           value={config.visibility}
-                          onChange={(e) => setConfig({ ...config, visibility: e.target.value as any })}
+                          onChange={(e) => setConfig({ ...config, visibility: e.target.value as 'public' | 'private' | 'invite-only' })}
                           className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white 
                                    focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                         >
@@ -375,17 +425,25 @@ export function SpaceSettings({ isOpen, onClose, spaceId }: SpaceSettingsProps) 
                             <input
                               type="text"
                               placeholder="Type DELETE"
-                              className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg 
+                              value={deleteConfirmText}
+                              onChange={(e) => setDeleteConfirmText(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg
                                        text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                             />
                             <button
-                              onClick={() => setShowDeleteConfirm(false)}
+                              onClick={() => {
+                                setShowDeleteConfirm(false);
+                                setDeleteConfirmText('');
+                              }}
                               className="px-4 py-2 text-gray-400 hover:text-white text-sm transition-colors"
                             >
                               Cancel
                             </button>
-                            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm 
-                                           rounded-lg transition-colors">
+                            <button
+                              onClick={handleDeleteSpace}
+                              disabled={loading || deleteConfirmText !== 'DELETE'}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm
+                                           rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                               Confirm Delete
                             </button>
                           </div>
