@@ -49,16 +49,33 @@ class SSECommunicationManager implements CommunicationManager {
       return;
     }
 
-    // In development, SSE won't work but we don't need polling either
-    // The app will work with REST API calls only
+    // Check if we're on Vercel or in a production environment without SSE support
+    const isVercel = import.meta.env.VERCEL === '1' || window.location.hostname.includes('vercel.app');
     const isDevelopment = import.meta.env.DEV;
     
-    if (isDevelopment) {
-      console.log('[SSE] Development mode: SSE not available, using REST API only');
+    if (isDevelopment || isVercel) {
+      console.log('[SSE] SSE not available in this environment, using REST API only');
       return;
     }
     
+    // Only try SSE if we have a proper backend server running
     const sseUrl = `/api/events${this.userId ? `?userId=${this.userId}` : ''}`;
+    
+    // Test if SSE endpoint exists before creating EventSource
+    fetch(sseUrl, { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          this.createEventSource(sseUrl);
+        } else {
+          console.log('[SSE] SSE endpoint not available, using REST API only');
+        }
+      })
+      .catch(() => {
+        console.log('[SSE] SSE endpoint not reachable, using REST API only');
+      });
+  }
+
+  private createEventSource(sseUrl: string): void {
     this.eventSource = new EventSource(sseUrl);
     
     this.eventSource.onopen = () => {
@@ -78,12 +95,11 @@ class SSECommunicationManager implements CommunicationManager {
     
     this.eventSource.onerror = (error) => {
       console.error('[SSE] EventSource error:', error);
-      // Try to reconnect after a delay
-      setTimeout(() => {
-        if (this.connected) {
-          this.setupSSE();
-        }
-      }, 5000);
+      // Don't try to reconnect if SSE isn't available
+      if (this.eventSource) {
+        this.eventSource.close();
+        this.eventSource = null;
+      }
     };
   }
 
