@@ -49,42 +49,31 @@ class SSECommunicationManager implements CommunicationManager {
       return;
     }
 
-    // Check if we're on Vercel or in a production environment without SSE support
-    const isVercel = import.meta.env.VERCEL === '1' || window.location.hostname.includes('vercel.app');
-    const isDevelopment = import.meta.env.DEV;
-    
-    if (isDevelopment || isVercel) {
-      console.log('[SSE] SSE not available in this environment, using REST API only');
-      return;
-    }
-    
-    // Only try SSE if we have a proper backend server running
+    // Always try SSE first, regardless of environment
     const sseUrl = `/api/events${this.userId ? `?userId=${this.userId}` : ''}`;
     
-    // Test if SSE endpoint exists before creating EventSource
-    fetch(sseUrl, { method: 'HEAD' })
-      .then(response => {
-        if (response.ok) {
-          this.createEventSource(sseUrl);
-        } else {
-          console.log('[SSE] SSE endpoint not available, using REST API only');
-        }
-      })
-      .catch(() => {
-        console.log('[SSE] SSE endpoint not reachable, using REST API only');
-      });
+    // Try to create EventSource - it will work on Vercel with the api/events.ts handler
+    try {
+      this.createEventSource(sseUrl);
+      console.log('[SSE] Attempting to establish SSE connection to:', sseUrl);
+    } catch (error) {
+      console.error('[SSE] Failed to create EventSource:', error);
+      console.log('[SSE] Falling back to REST API only mode');
+    }
   }
 
   private createEventSource(sseUrl: string): void {
     this.eventSource = new EventSource(sseUrl);
     
     this.eventSource.onopen = () => {
-      console.log('[SSE] Connected to Server-Sent Events');
+      console.log('[SSE] ✅ Connected to Server-Sent Events');
+      console.log('[SSE] Real-time updates are now active');
     };
     
     this.eventSource.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
+        console.log('[SSE] Received real-time message:', message.kind);
         if (this.messageCallback) {
           this.messageCallback(message);
         }
@@ -93,13 +82,21 @@ class SSECommunicationManager implements CommunicationManager {
       }
     };
     
-    this.eventSource.onerror = (error) => {
-      console.error('[SSE] EventSource error:', error);
-      // Don't try to reconnect if SSE isn't available
+    this.eventSource.onerror = () => {
+      console.error('[SSE] Connection error - attempting reconnect in 5 seconds');
+      
+      // Close the current connection
       if (this.eventSource) {
         this.eventSource.close();
-        this.eventSource = null;
       }
+      
+      // Attempt to reconnect after 5 seconds
+      setTimeout(() => {
+        if (this.connected) {
+          console.log('[SSE] Attempting to reconnect...');
+          this.setupSSE();
+        }
+      }, 5000);
     };
   }
 
