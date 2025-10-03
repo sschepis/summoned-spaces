@@ -21,6 +21,28 @@ interface CommunicationResponse {
   payload: Record<string, unknown>;
 }
 
+// In-memory message queue for polling (in production, use Redis or similar)
+const messageQueues = new Map<string, CommunicationMessage[]>();
+
+function queueMessage(userId: string, message: CommunicationMessage): void {
+  if (!messageQueues.has(userId)) {
+    messageQueues.set(userId, []);
+  }
+  const queue = messageQueues.get(userId)!;
+  queue.push(message);
+  
+  // Keep only last 100 messages per user to prevent memory issues
+  if (queue.length > 100) {
+    queue.shift();
+  }
+}
+
+function getQueuedMessages(userId: string): CommunicationMessage[] {
+  const messages = messageQueues.get(userId) || [];
+  messageQueues.set(userId, []); // Clear after retrieval
+  return messages;
+}
+
 export default async function handler(req: VercelRequest, res: ServerResponse): Promise<void> {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -96,6 +118,9 @@ async function handleMessage(message: CommunicationMessage): Promise<Communicati
     case 'follow':
       return handleFollow(message.payload);
       
+    case 'getQueuedMessages':
+      return handleGetQueuedMessages(message.payload);
+      
     case 'unfollow':
       return handleUnfollow(message.payload);
       
@@ -156,6 +181,19 @@ async function handleFollow(payload: Record<string, unknown>): Promise<Communica
   // 2. Send a real-time notification to the target user
   // 3. Trigger follower count update
   
+  // Queue notification for the target user
+  if (userIdToFollow && userIdToFollow !== userId) {
+    queueMessage(userIdToFollow as string, {
+      kind: 'followNotification',
+      payload: {
+        followerId: userId as string,
+        followerUsername: `user_${(userId as string).substring(0, 8)}`,
+        type: 'follow',
+        timestamp: Date.now()
+      }
+    });
+  }
+  
   // For now, simulate the success response
   return {
     kind: 'followSuccess',
@@ -184,6 +222,19 @@ async function handleUnfollow(payload: Record<string, unknown>): Promise<Communi
   // 1. Remove the database follow relationship
   // 2. Send a real-time notification to the target user
   // 3. Trigger follower count update
+  
+  // Queue notification for the target user
+  if (userIdToUnfollow && userIdToUnfollow !== userId) {
+    queueMessage(userIdToUnfollow as string, {
+      kind: 'followNotification',
+      payload: {
+        followerId: userId as string,
+        followerUsername: `user_${(userId as string).substring(0, 8)}`,
+        type: 'unfollow',
+        timestamp: Date.now()
+      }
+    });
+  }
   
   return {
     kind: 'unfollowSuccess',
@@ -293,11 +344,35 @@ async function handleLikePost(payload: Record<string, unknown>): Promise<Communi
   
   return {
     kind: 'likePostSuccess',
-    payload: { 
+    payload: {
       postBeaconId: postBeaconId as string,
       liked: true,
       user: userId as string,
       message: 'Like action completed (production mode)'
+    }
+  };
+}
+
+async function handleGetQueuedMessages(payload: Record<string, unknown>): Promise<CommunicationResponse> {
+  const { userId } = payload;
+  
+  if (!userId) {
+    return {
+      kind: 'error',
+      payload: {
+        message: 'User ID required for polling messages'
+      }
+    };
+  }
+  
+  const messages = getQueuedMessages(userId as string);
+  
+  return {
+    kind: 'queuedMessages',
+    payload: {
+      messages,
+      count: messages.length,
+      timestamp: Date.now()
     }
   };
 }
