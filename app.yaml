@@ -1,0 +1,57 @@
+# App Engine configuration for Google Cloud
+runtime: nodejs18
+
+# Instance configuration
+instance_class: F2
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.65
+  target_throughput_utilization: 0.65
+
+# Environment variables
+env_variables:
+  NODE_ENV: "production"
+  PORT: "8080"
+
+# Handlers for static files and API
+handlers:
+  # Serve static files from the dist directory
+  - url: /assets
+    static_dir: dist/assets
+    secure: always
+
+  - url: /.*\.(js|css|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
+    static_files: dist/\1
+    upload: dist/.*\.(js|css|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
+    secure: always
+
+  # All other requests go to the Node.js app
+  - url: /.*
+    script: auto
+    secure: always
+
+# Health check configuration
+readiness_check:
+  path: "/health"
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: 300
+
+liveness_check:
+  path: "/health"
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+
+# Network configuration
+network:
+  forwarded_ports:
+    - 8080
+
+# VPC connector (optional - uncomment if using VPC)
+# vpc_access_connector:
+#   name: projects/YOUR_PROJECT_ID/locations/YOUR_REGION/connectors/YOUR_CONNECTOR_NAME
