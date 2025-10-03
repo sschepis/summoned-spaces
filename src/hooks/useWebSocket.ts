@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+// DEPRECATED: WebSocket hooks have been replaced with SSE-based communication
+// This file provides compatibility shims for the migration period
+// All functionality now uses the communication manager with SSE
 
-// WebSocket connection states
-type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+import { useState, useEffect, useCallback } from 'react';
+import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
 
-// WebSocket message types
+// Legacy WebSocket message types for backward compatibility
 interface WebSocketMessage {
   type: string;
   data: any;
@@ -11,7 +13,10 @@ interface WebSocketMessage {
   id?: string;
 }
 
-// WebSocket hook configuration
+// Legacy connection states
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+// Legacy hook configuration
 interface UseWebSocketConfig {
   url: string;
   protocols?: string | string[];
@@ -25,7 +30,7 @@ interface UseWebSocketConfig {
   shouldReconnect?: (closeEvent: CloseEvent) => boolean;
 }
 
-// WebSocket hook return type
+// Legacy hook return type
 interface UseWebSocketReturn {
   connectionState: ConnectionState;
   lastMessage: WebSocketMessage | null;
@@ -38,169 +43,77 @@ interface UseWebSocketReturn {
 }
 
 export function useWebSocket(config: UseWebSocketConfig): UseWebSocketReturn {
-  const {
-    url,
-    protocols,
-    onOpen,
-    onClose,
-    onError,
-    onMessage,
-    reconnectAttempts = 5,
-    reconnectInterval = 3000,
-    heartbeatInterval = 30000,
-    shouldReconnect = (closeEvent) => closeEvent.code !== 1000,
-  } = config;
-
+  console.log('[useWebSocket] DEPRECATED: WebSocket hooks replaced with SSE communication');
+  
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const [reconnectCount, setReconnectCount] = useState(0);
+  const [reconnectCount] = useState(0);
 
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const heartbeatTimeoutRef = useRef<NodeJS.Timeout>();
-  const isMountedRef = useRef(true);
-
-  // Cleanup on unmount
+  // Set up communication manager
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (heartbeatTimeoutRef.current) {
-        clearTimeout(heartbeatTimeoutRef.current);
-      }
-      if (ws.current) {
-        ws.current.close(1000, 'Component unmounted');
-      }
-    };
-  }, []);
-
-  // Heartbeat mechanism
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatTimeoutRef.current) {
-      clearTimeout(heartbeatTimeoutRef.current);
-    }
-
-    heartbeatTimeoutRef.current = setTimeout(() => {
-      if (ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
-        startHeartbeat();
-      }
-    }, heartbeatInterval);
-  }, [heartbeatInterval]);
-
-  // Connect function
-  const connect = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    setConnectionState('connecting');
-
-    try {
-      ws.current = new WebSocket(url, protocols);
-
-      ws.current.onopen = (event) => {
-        if (isMountedRef.current) {
-          setConnectionState('connected');
-          setReconnectCount(0);
-          startHeartbeat();
-          onOpen?.(event);
-        }
-      };
-
-      ws.current.onmessage = (event) => {
-        if (isMountedRef.current) {
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            setLastMessage(message);
-            onMessage?.(message);
-          } catch (error) {
-            console.warn('Failed to parse WebSocket message:', error);
-          }
-        }
-      };
-
-      ws.current.onclose = (event) => {
-        if (isMountedRef.current) {
-          setConnectionState('disconnected');
-          
-          if (heartbeatTimeoutRef.current) {
-            clearTimeout(heartbeatTimeoutRef.current);
-          }
-
-          onClose?.(event);
-
-          // Attempt reconnection if needed
-          if (shouldReconnect(event) && reconnectCount < reconnectAttempts) {
-            setReconnectCount(prev => prev + 1);
-            reconnectTimeoutRef.current = setTimeout(() => {
-              if (isMountedRef.current) {
-                connect();
-              }
-            }, reconnectInterval);
-          }
-        }
-      };
-
-      ws.current.onerror = (event) => {
-        if (isMountedRef.current) {
-          setConnectionState('error');
-          onError?.(event);
-        }
-      };
-    } catch (error) {
-      if (isMountedRef.current) {
-        setConnectionState('error');
-        console.error('WebSocket connection error:', error);
-      }
-    }
-  }, [url, protocols, onOpen, onMessage, onClose, onError, shouldReconnect, reconnectCount, reconnectAttempts, reconnectInterval, startHeartbeat]);
-
-  // Disconnect function
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (heartbeatTimeoutRef.current) {
-      clearTimeout(heartbeatTimeoutRef.current);
-    }
-    if (ws.current) {
-      ws.current.close(1000, 'Manual disconnect');
-    }
-    setConnectionState('disconnected');
-    setReconnectCount(0);
-  }, []);
-
-  // Send message function
-  const sendMessage = useCallback((type: string, data: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      const message: WebSocketMessage = {
-        type,
-        data,
+    const handleMessage = (message: CommunicationMessage) => {
+      const wsMessage: WebSocketMessage = {
+        type: message.kind,
+        data: message.payload,
         timestamp: Date.now(),
         id: Math.random().toString(36).substr(2, 9),
       };
-      ws.current.send(JSON.stringify(message));
-    } else {
-      console.warn('WebSocket is not connected. Message not sent:', { type, data });
-    }
+      
+      setLastMessage(wsMessage);
+      config.onMessage?.(wsMessage);
+    };
+
+    // Connect and set up message handling
+    communicationManager.connect()
+      .then(() => {
+        setConnectionState('connected');
+        config.onOpen?.(new Event('open'));
+      })
+      .catch((error) => {
+        setConnectionState('error');
+        config.onError?.(new Event('error'));
+      });
+
+    communicationManager.onMessage(handleMessage);
+
+    return () => {
+      // Cleanup handled by communication manager
+    };
+  }, [config]);
+
+  const sendMessage = useCallback((type: string, data: any) => {
+    const message: CommunicationMessage = {
+      kind: type,
+      payload: data
+    };
+    
+    communicationManager.send(message).catch(error => {
+      console.error('[useWebSocket] Error sending message:', error);
+    });
   }, []);
 
-  // Send JSON message function
   const sendJsonMessage = useCallback((message: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(message));
-    } else {
-      console.warn('WebSocket is not connected. Message not sent:', message);
-    }
+    const commMessage: CommunicationMessage = {
+      kind: message.type || 'message',
+      payload: message
+    };
+    
+    communicationManager.send(commMessage).catch(error => {
+      console.error('[useWebSocket] Error sending JSON message:', error);
+    });
   }, []);
 
-  // Auto-connect on mount
-  useEffect(() => {
-    connect();
-  }, [connect]);
+  const connect = useCallback(() => {
+    setConnectionState('connecting');
+    communicationManager.connect()
+      .then(() => setConnectionState('connected'))
+      .catch(() => setConnectionState('error'));
+  }, []);
+
+  const disconnect = useCallback(() => {
+    communicationManager.disconnect();
+    setConnectionState('disconnected');
+  }, []);
 
   return {
     connectionState,
@@ -214,59 +127,77 @@ export function useWebSocket(config: UseWebSocketConfig): UseWebSocketReturn {
   };
 }
 
-// Hook for real-time activities
+// Hook for real-time activities - replaced with SSE
 export function useRealtimeActivities() {
+  console.log('[useRealtimeActivities] DEPRECATED: Using SSE-based communication instead');
+  
   const [activities, setActivities] = useState<any[]>([]);
 
-  const { isConnected, lastMessage, sendMessage } = useWebSocket({
-    url: process.env.NODE_ENV === 'development' 
-      ? 'ws://localhost:8080/activities'
-      : 'wss://api.summonedspaces.com/activities',
-    onMessage: (message) => {
-      switch (message.type) {
+  useEffect(() => {
+    const handleMessage = (message: CommunicationMessage) => {
+      switch (message.kind) {
         case 'activity_created':
-          setActivities(prev => [message.data, ...prev]);
+        case 'activityCreated':
+          setActivities(prev => [message.payload, ...prev]);
           break;
         case 'activity_updated':
+        case 'activityUpdated':
           setActivities(prev => 
             prev.map(activity => 
-              activity.id === message.data.id 
-                ? { ...activity, ...message.data.updates }
+              activity.id === (message.payload as any).id 
+                ? { ...activity, ...(message.payload as any).updates }
                 : activity
             )
           );
           break;
         case 'activity_deleted':
+        case 'activityDeleted':
           setActivities(prev => 
-            prev.filter(activity => activity.id !== message.data.id)
+            prev.filter(activity => activity.id !== (message.payload as any).id)
           );
           break;
         case 'activities_batch':
-          setActivities(message.data);
+        case 'activitiesBatch':
+          setActivities(message.payload as any);
           break;
       }
-    },
-  });
+    };
+
+    communicationManager.connect();
+    communicationManager.onMessage(handleMessage);
+  }, []);
 
   const subscribeToSpace = useCallback((spaceId: string) => {
-    sendMessage('subscribe_space', { spaceId });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'subscribe_space',
+      payload: { spaceId }
+    });
+  }, []);
 
   const unsubscribeFromSpace = useCallback((spaceId: string) => {
-    sendMessage('unsubscribe_space', { spaceId });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'unsubscribe_space',
+      payload: { spaceId }
+    });
+  }, []);
 
   const likeActivity = useCallback((activityId: string) => {
-    sendMessage('like_activity', { activityId });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'like_activity',
+      payload: { activityId }
+    });
+  }, []);
 
   const commentOnActivity = useCallback((activityId: string, comment: string) => {
-    sendMessage('comment_activity', { activityId, comment });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'comment_activity',
+      payload: { activityId, comment }
+    });
+  }, []);
 
   return {
     activities,
-    isConnected,
+    isConnected: communicationManager.isConnected(),
     subscribeToSpace,
     unsubscribeFromSpace,
     likeActivity,
@@ -274,77 +205,100 @@ export function useRealtimeActivities() {
   };
 }
 
-// Hook for real-time chat
+// Hook for real-time chat - replaced with SSE
 export function useRealtimeChat(spaceId: string) {
+  console.log('[useRealtimeChat] DEPRECATED: Using SSE-based communication instead');
+  
   const [messages, setMessages] = useState<any[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
-  const { isConnected, sendMessage } = useWebSocket({
-    url: process.env.NODE_ENV === 'development'
-      ? `ws://localhost:8080/chat/${spaceId}`
-      : `wss://api.summonedspaces.com/chat/${spaceId}`,
-    onMessage: (message) => {
-      switch (message.type) {
+  useEffect(() => {
+    const handleMessage = (message: CommunicationMessage) => {
+      switch (message.kind) {
         case 'message_received':
-          setMessages(prev => [...prev, message.data]);
+        case 'messageReceived':
+          setMessages(prev => [...prev, message.payload]);
           break;
         case 'message_updated':
+        case 'messageUpdated':
           setMessages(prev =>
             prev.map(msg =>
-              msg.id === message.data.id
-                ? { ...msg, ...message.data.updates }
+              msg.id === (message.payload as any).id
+                ? { ...msg, ...(message.payload as any).updates }
                 : msg
             )
           );
           break;
         case 'message_deleted':
+        case 'messageDeleted':
           setMessages(prev =>
-            prev.filter(msg => msg.id !== message.data.id)
+            prev.filter(msg => msg.id !== (message.payload as any).id)
           );
           break;
         case 'user_typing':
+        case 'userTyping':
           setTypingUsers(prev => 
-            prev.includes(message.data.userId) 
+            prev.includes((message.payload as any).userId) 
               ? prev 
-              : [...prev, message.data.userId]
+              : [...prev, (message.payload as any).userId]
           );
           break;
         case 'user_stopped_typing':
+        case 'userStoppedTyping':
           setTypingUsers(prev => 
-            prev.filter(userId => userId !== message.data.userId)
+            prev.filter(userId => userId !== (message.payload as any).userId)
           );
           break;
         case 'messages_history':
-          setMessages(message.data);
+        case 'messagesHistory':
+          setMessages(message.payload as any);
           break;
       }
-    },
-  });
+    };
+
+    communicationManager.connect();
+    communicationManager.onMessage(handleMessage);
+  }, [spaceId]);
 
   const sendChatMessage = useCallback((content: string) => {
-    sendMessage('send_message', { content });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'send_message',
+      payload: { content, spaceId }
+    });
+  }, [spaceId]);
 
   const startTyping = useCallback(() => {
-    sendMessage('start_typing', {});
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'start_typing',
+      payload: { spaceId }
+    });
+  }, [spaceId]);
 
   const stopTyping = useCallback(() => {
-    sendMessage('stop_typing', {});
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'stop_typing',
+      payload: { spaceId }
+    });
+  }, [spaceId]);
 
   const editMessage = useCallback((messageId: string, newContent: string) => {
-    sendMessage('edit_message', { messageId, content: newContent });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'edit_message',
+      payload: { messageId, content: newContent, spaceId }
+    });
+  }, [spaceId]);
 
   const deleteMessage = useCallback((messageId: string) => {
-    sendMessage('delete_message', { messageId });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'delete_message',
+      payload: { messageId, spaceId }
+    });
+  }, [spaceId]);
 
   return {
     messages,
     typingUsers,
-    isConnected,
+    isConnected: communicationManager.isConnected(),
     sendMessage: sendChatMessage,
     startTyping,
     stopTyping,
@@ -353,57 +307,68 @@ export function useRealtimeChat(spaceId: string) {
   };
 }
 
-// Hook for real-time resonance updates
+// Hook for real-time resonance updates - replaced with SSE
 export function useRealtimeResonance() {
+  console.log('[useRealtimeResonance] DEPRECATED: Using SSE-based communication instead');
+  
   const [resonanceData, setResonanceData] = useState<Record<string, any>>({});
 
-  const { isConnected, sendMessage } = useWebSocket({
-    url: process.env.NODE_ENV === 'development'
-      ? 'ws://localhost:8080/resonance'
-      : 'wss://api.summonedspaces.com/resonance',
-    onMessage: (message) => {
-      switch (message.type) {
+  useEffect(() => {
+    const handleMessage = (message: CommunicationMessage) => {
+      switch (message.kind) {
         case 'resonance_update':
+        case 'resonanceUpdate':
           setResonanceData((prev: Record<string, any>) => ({
             ...prev,
-            [message.data.id]: message.data.resonance,
+            [(message.payload as any).id]: (message.payload as any).resonance,
           }));
           break;
         case 'resonance_lock':
+        case 'resonanceLock':
           setResonanceData((prev: Record<string, any>) => ({
             ...prev,
-            [message.data.id]: {
-              ...prev[message.data.id],
+            [(message.payload as any).id]: {
+              ...prev[(message.payload as any).id],
               isLocked: true,
-              lockStrength: message.data.strength,
+              lockStrength: (message.payload as any).strength,
             },
           }));
           break;
         case 'resonance_unlock':
+        case 'resonanceUnlock':
           setResonanceData((prev: Record<string, any>) => ({
             ...prev,
-            [message.data.id]: {
-              ...prev[message.data.id],
+            [(message.payload as any).id]: {
+              ...prev[(message.payload as any).id],
               isLocked: false,
               lockStrength: 0,
             },
           }));
           break;
       }
-    },
-  });
+    };
+
+    communicationManager.connect();
+    communicationManager.onMessage(handleMessage);
+  }, []);
 
   const subscribeToResonance = useCallback((entityId: string, entityType: 'space' | 'file' | 'user') => {
-    sendMessage('subscribe_resonance', { entityId, entityType });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'subscribe_resonance',
+      payload: { entityId, entityType }
+    });
+  }, []);
 
   const unsubscribeFromResonance = useCallback((entityId: string) => {
-    sendMessage('unsubscribe_resonance', { entityId });
-  }, [sendMessage]);
+    communicationManager.send({
+      kind: 'unsubscribe_resonance',
+      payload: { entityId }
+    });
+  }, []);
 
   return {
     resonanceData,
-    isConnected,
+    isConnected: communicationManager.isConnected(),
     subscribeToResonance,
     unsubscribeFromResonance,
   };

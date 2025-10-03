@@ -2,32 +2,90 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 
-function customWsPlugin(): Plugin {
+function ssePlugin(): Plugin {
   return {
-    name: 'custom-ws',
+    name: 'sse-communication',
     configureServer(server) {
-      // Only run WebSocket server in development
-      if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
-        // Dynamic import to avoid bundling server code in production
-        console.log('Starting custom WebSocket server...');
-        import('./server/main').then(({ createWebSocketServer }) => {
-          server.httpServer?.once('listening', () => {
-            const wss = createWebSocketServer(server.httpServer!);
-
-            server.httpServer?.once('close', () => {
-              wss?.close();
-            });
+      // SSE-based communication enabled - no WebSocket server needed
+      console.log('SSE-based communication enabled - using /api/events endpoint');
+      
+      // Add middleware to handle /api routes in development
+      server.middlewares.use('/api', async (req, res, next) => {
+        // Set CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 200;
+          res.end();
+          return;
+        }
+        
+        // Handle /api/messages endpoint
+        if (req.url === '/messages' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', () => {
+            try {
+              const message = JSON.parse(body);
+              console.log('[DEV API] Received message:', message.kind);
+              
+              // Return appropriate response based on message kind
+              let response;
+              
+              if (message.kind === 'login') {
+                // Return proper login success with PRI data
+                const username = message.payload?.username || 'devuser';
+                const userId = 'dev_' + Math.random().toString(36).substr(2, 9);
+                
+                response = {
+                  kind: 'loginSuccess',
+                  payload: {
+                    sessionToken: 'dev_session_' + Date.now(),
+                    userId: userId,
+                    username: username,
+                    pri: {
+                      nodeAddress: userId,
+                      publicResonance: {
+                        primaryPrimes: [2, 3, 5, 7, 11],
+                        harmonicPrimes: [13, 17, 19, 23]
+                      },
+                      fingerprint: 'dev_fingerprint_' + userId
+                    }
+                  }
+                };
+              } else {
+                response = {
+                  kind: message.kind === 'register' ? 'registerSuccess' : 'success',
+                  payload: {
+                    message: 'Development mode - no backend connected',
+                    note: 'Run backend server for full functionality',
+                    original: message
+                  }
+                };
+              }
+              
+              res.setHeader('Content-Type', 'application/json');
+              res.statusCode = 200;
+              res.end(JSON.stringify(response));
+            } catch {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: 'Invalid request' }));
+            }
           });
-        }).catch((error) => {
-          console.warn('Could not start WebSocket server:', error);
-        });
-      }
+          return;
+        }
+        
+        // Pass through to other handlers
+        next();
+      });
     },
   }
 }
 
 export default defineConfig({
-  plugins: [react(), customWsPlugin()],
+  plugins: [react(), ssePlugin()],
   esbuild: {
     target: 'es2022'
   },
@@ -39,7 +97,6 @@ export default defineConfig({
         // Externalize server-only modules during build
         return id.includes('server/') ||
                id.includes('sqlite3') ||
-               id.includes('ws') ||
                id.includes('node:');
       }
     }
@@ -53,18 +110,13 @@ export default defineConfig({
 })
 
 
-// Example client code to connect to the custom WS endpoint
-// const ws = new WebSocket(
-//   (location.protocol === 'https:' ? 'wss://' : 'ws://') +
-//   location.host +
-//   '/ws'
-// )
+// WebSocket endpoints have been removed
+// All real-time communication now uses Server-Sent Events (SSE)
+// Connect to /api/events for real-time updates
 
-// ws.addEventListener('open', () => {
-//   ws.send('ping')
-// })
-
-// ws.addEventListener('message', (e) => {
-//   const msg = typeof e.data === 'string' ? e.data : ''
-//   console.log('WS message:', msg)
-// })
+// Example SSE client code:
+// const eventSource = new EventSource('/api/events');
+// eventSource.onmessage = (event) => {
+//   const data = JSON.parse(event.data);
+//   console.log('SSE message:', data);
+// };
