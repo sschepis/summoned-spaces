@@ -1,9 +1,9 @@
-import { Users, TrendingUp, Star, Zap, MessageCircle, UserCheck, Clock } from 'lucide-react';
+import { Users, TrendingUp, Star, MessageCircle, UserCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { userDataManager } from '../services/user-data';
 
-interface Connection {
+export interface Connection {
   name: string;
   avatar: string;
   isFollowing: boolean;
@@ -98,7 +98,7 @@ export function UserNetworkSidebar() {
         <h3 className="text-lg font-semibold text-white mb-4">Your Top Spaces</h3>
         
         <div className="space-y-3">
-          {networkStats.topSpaces.map((space, index) => (
+          {networkStats.topSpaces.map((space) => (
             <div key={space.name} className="flex items-center justify-between">
               <div>
                 <div className="text-white text-sm font-medium">{space.name}</div>

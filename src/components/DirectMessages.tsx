@@ -286,7 +286,8 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
     
     webSocketService.addMessageListener(handleP2PMessage);
     return () => webSocketService.removeMessageListener(handleP2PMessage);
-  }, [selectedConversation, currentUser?.id]);
+  }, [selectedConversation, currentUser?.id, nodes, showMessage]);
+
 
   const handleSendMessage = async (content: string) => {
     if (!selectedConversation || !currentUser?.id) return;

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Holographic Memory Decoder
  * Handles decoding of holographic resonant fragments back to text

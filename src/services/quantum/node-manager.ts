@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Quantum Node Management
  * Handles creation and management of quantum nodes

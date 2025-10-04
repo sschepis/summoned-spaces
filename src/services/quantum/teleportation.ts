@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Quantum Memory Teleportation
  * Handles teleportation of memory fragments between entangled nodes
