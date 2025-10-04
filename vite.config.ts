@@ -77,6 +77,55 @@ function ssePlugin(): Plugin {
           return;
         }
         
+        // Handle /api/events endpoint for SSE
+        if (req.url?.startsWith('/events')) {
+          console.log('[DEV API] SSE client connected to /api/events');
+          
+          // Set SSE headers
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          
+          // Send initial connection message
+          const connectionMessage = {
+            kind: 'connected',
+            payload: {
+              message: 'SSE connection established (dev mode)',
+              timestamp: Date.now()
+            }
+          };
+          
+          res.write(`data: ${JSON.stringify(connectionMessage)}\n\n`);
+          
+          // Send periodic ping messages
+          const pingInterval = setInterval(() => {
+            const pingMessage = {
+              kind: 'ping',
+              payload: { timestamp: Date.now() }
+            };
+            
+            try {
+              res.write(`data: ${JSON.stringify(pingMessage)}\n\n`);
+            } catch (error) {
+              console.error('[DEV API] Error sending SSE ping:', error);
+              clearInterval(pingInterval);
+            }
+          }, 30000); // Every 30 seconds
+          
+          // Clean up on disconnect
+          req.on('close', () => {
+            console.log('[DEV API] SSE client disconnected');
+            clearInterval(pingInterval);
+          });
+          
+          req.on('error', (error) => {
+            console.error('[DEV API] SSE connection error:', error);
+            clearInterval(pingInterval);
+          });
+          
+          return; // Don't call next()
+        }
+        
         // Pass through to other handlers
         next();
       });

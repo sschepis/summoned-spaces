@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Action types for the entire application
 export const ACTION_TYPES = {
   // Authentication Actions
