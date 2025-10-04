@@ -149,10 +149,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             console.log('[AUTH] Starting service initialization for user:', user.id);
             
-            // Initialize services first
-            Promise.all([
-              userDataManager.loadUserData(),
-              beaconCacheManager.preloadUserBeacons(user.id)
+            // Initialize services with timeout to prevent hanging
+            const initTimeout = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Service initialization timeout after 10 seconds')), 10000);
+            });
+            
+            const initPromise = Promise.all([
+              userDataManager.loadUserData().catch(e => { console.error('[AUTH] loadUserData failed:', e); throw e; }),
+              beaconCacheManager.preloadUserBeacons(user.id).catch(e => { console.error('[AUTH] preloadUserBeacons failed:', e); throw e; })
             ]).then(() => {
               console.log('[AUTH] User data and beacons loaded successfully');
               return spaceManager.initializeForUser(user.id);
@@ -161,7 +165,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
               console.log('[AUTH] Service initialization complete');
-            }).catch((error: Error) => {
+            });
+            
+            Promise.race([initPromise, initTimeout]).catch((error: Error) => {
               console.error('[AUTH] SERVICE INITIALIZATION FAILED:', error);
               console.error('[AUTH] Error stack:', error.stack);
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
