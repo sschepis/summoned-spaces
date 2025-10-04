@@ -7,13 +7,19 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export function ProtectedRoute({ 
-  children, 
-  redirectTo = '/login' 
+export function ProtectedRoute({
+  children,
+  redirectTo = '/login'
 }: ProtectedRouteProps) {
   const { isAuthenticated, loading, sessionRestoring } = useAuth();
   const location = useLocation();
-  
+
+  console.log('[ProtectedRoute] Checking auth, path:', location.pathname, {
+    isAuthenticated,
+    loading,
+    sessionRestoring
+  });
+
   // Show loading state while checking authentication or restoring session
   if (loading || sessionRestoring) {
     return (

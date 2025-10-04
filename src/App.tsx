@@ -26,6 +26,14 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, location.pathname, navigate]);
 
+  // Redirect non-authenticated users to login page (for logout)
+  React.useEffect(() => {
+    if (!isAuthenticated && !loading && !sessionRestoring && location.pathname !== '/login' && location.pathname !== '/register' && location.pathname !== '/forgot-password') {
+      console.log('[App] Redirecting non-authenticated user to login page');
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, loading, sessionRestoring, location.pathname, navigate]);
+
   // Listen for follow notifications from WebSocket
   React.useEffect(() => {
     const handleFollowNotification = (notification: FollowNotificationMessage) => {

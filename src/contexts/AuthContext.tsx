@@ -428,7 +428,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = (): void => {
+    console.log('[AUTH] Logging out user, current state:', {
+      isAuthenticated: state.isAuthenticated,
+      user: state.user?.id,
+      token: !!state.token
+    });
+
+    // Clear communication manager session
+    communicationManager.disconnect();
+
+    // Clear holographic memory manager
+    // holographicMemoryManager.clearCurrentUser(); // Method doesn't exist
+
+    // Clear user data manager
+    // userDataManager.clearCurrentUser(); // Method doesn't exist
+
+    // Clear space manager
+    spaceManager.clearCache();
+
+    // Clear beacon cache
+    beaconCacheManager.clearCache();
+
+    // Clear localStorage
+    try {
+      localStorage.removeItem('holographic_session');
+      localStorage.removeItem('summoned_spaces_session');
+      console.log('[AUTH] Cleared localStorage');
+    } catch (error) {
+      console.error('[AUTH] Failed to clear localStorage during logout:', error);
+    }
+
+    // Dispatch logout action
+    console.log('[AUTH] Dispatching LOGOUT action');
     dispatch({ type: 'LOGOUT' });
+
+    console.log('[AUTH] User logged out successfully');
   };
 
   const updateUser = (updates: Partial<User>): void => {

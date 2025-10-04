@@ -114,8 +114,10 @@ export function Navigation() {
   ];
 
   const handleLogout = () => {
+    console.log('[Navigation] handleLogout called, user:', user?.id);
     logout();
-    navigate('/login');
+    // Don't navigate here - let the ProtectedRoute handle it when isAuthenticated becomes false
+    console.log('[Navigation] logout() called, auth state should change and ProtectedRoute will redirect');
   };
 
   return (
