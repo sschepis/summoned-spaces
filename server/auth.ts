@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomBytes } from 'crypto';
-import { getDatabase } from './database';
-import { generateNodeIdentity, PrimeResonanceIdentity, PublicResonance, PrivateResonance } from './identity';
+import { getDatabase } from './database.js';
+import { generateNodeIdentity, PrimeResonanceIdentity, PublicResonance, PrivateResonance } from './identity.js';
 import type { CreateUserData, QuantumPrimeIndices } from '../lib/database/types.js';
 
 // Converter functions between identity types and database types

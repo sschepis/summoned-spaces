@@ -3,8 +3,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeDatabaseForEnvironment } from '../../server/database';
-import { AuthenticationManager } from '../../server/auth';
+import { initializeDatabaseForEnvironment } from '../../server/database.js';
+import { AuthenticationManager } from '../../server/auth.js';
 
 let authManager: AuthenticationManager;
 let initialized = false;
