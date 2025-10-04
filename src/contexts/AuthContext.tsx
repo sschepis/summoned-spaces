@@ -302,7 +302,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
     };
-  }, []); // Empty array: run ONLY ONCE on mount
+  }, [restoreSession, state.isAuthenticated]); // Empty array: run ONLY ONCE on mount
 
   // Save session to localStorage whenever auth state changes
   useEffect(() => {
@@ -379,18 +379,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Initialize user data manager
       userDataManager.setCurrentUser(user.id);
-      
+
       // Critical: Load beacon data FIRST during login too
       await Promise.all([
         userDataManager.loadUserData(),
         beaconCacheManager.preloadUserBeacons(user.id)
       ]);
-      
+
       console.log('[AUTH] User data and beacons loaded after login');
-      
+
       // Initialize SpaceManager after beacon data is ready
+      console.log('[AUTH] Initializing SpaceManager with user ID:', user.id);
       await spaceManager.initializeForUser(user.id);
-      console.log('[AUTH] SpaceManager initialized after login');
+      console.log('[AUTH] SpaceManager initialized after login, current user should be:', spaceManager['currentUserId']);
       
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Login failed' });

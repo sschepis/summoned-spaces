@@ -161,7 +161,9 @@ class SpaceManager {
    * Create a new space and initialize its member list beacon
    */
   async createSpace(name: string, description: string, isPublic: boolean): Promise<string> {
+    console.log('[SpaceManager] createSpace called, currentUserId:', this.currentUserId);
     if (!this.currentUserId) {
+      console.error('[SpaceManager] User not authenticated - currentUserId is null');
       throw new Error('User not authenticated');
     }
 
