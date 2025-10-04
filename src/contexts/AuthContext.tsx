@@ -68,7 +68,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         pri: action.payload.pri,
         loading: false,
         sessionRestoring: false,
-        servicesInitializing: false,
+        // Don't automatically set servicesInitializing to false
+        // It will be set by SERVICES_INIT_COMPLETE
         error: null,
       };
     case 'AUTH_FAILURE':
