@@ -8,8 +8,8 @@ import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
 import { messagingService } from '../services/messaging';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import { quantumNetworkOps } from '../services/quantum-network-operations-safe';
-import { userDataManager } from '../services/user-data-manager';
+import { quantumNetworkOps } from '../services/quantum';
+import { userDataManager } from '../services/user-data';
 import webSocketService from '../services/websocket';
 import { useNotifications } from './NotificationSystem';
 

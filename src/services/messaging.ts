@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { holographicMemoryManager } from './holographic-memory';
 import webSocketService from './websocket';
-import { quantumNetworkOps } from './quantum-network-operations-safe';
+import { quantumNetworkOps } from './quantum';
 import { BEACON_TYPES } from '../constants/beaconTypes';
 
 /**

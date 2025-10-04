@@ -1,7 +1,7 @@
 import { Users, TrendingUp, Star, Zap, MessageCircle, UserCheck, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 
 interface Connection {
   name: string;

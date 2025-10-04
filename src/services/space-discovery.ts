@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beaconCacheManager, CachedBeacon } from './beacon-cache';
 import { holographicMemoryManager } from './holographic-memory';
 import { SpaceMember } from './space-manager';
