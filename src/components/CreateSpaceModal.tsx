@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Zap, Clock, Users, Globe, Loader2 } from 'lucide-react';
 import { spaceManager } from '../services/space-manager';
 import { useNotifications } from './NotificationSystem';
@@ -19,42 +19,8 @@ export function CreateSpaceModal({ isOpen, onClose, onSpaceCreated }: CreateSpac
     maxMembers: 50
   });
   const [isCreating, setIsCreating] = useState(false);
-  const [servicesReady, setServicesReady] = useState(false);
   const { showError } = useNotifications();
-  const { user } = useAuth();
-
-  // Check if services are ready
-  useEffect(() => {
-    if (isOpen && user) {
-      const checkReady = () => {
-        const ready = spaceManager.isReady();
-        setServicesReady(ready);
-        if (!ready) {
-          console.log('[CreateSpaceModal] Services not ready, checking again...');
-        }
-      };
-      
-      // Initial check
-      checkReady();
-      
-      // Poll for readiness if not ready
-      const interval = setInterval(checkReady, 500);
-      
-      // Clear interval after 10 seconds
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        if (!spaceManager.isReady()) {
-          console.warn('[CreateSpaceModal] Services initialization timed out');
-          setServicesReady(true); // Allow creation anyway, will show error if it fails
-        }
-      }, 10000);
-      
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [isOpen, user]);
+  const { user, servicesInitializing } = useAuth();
 
   if (!isOpen) return null;
 
@@ -99,7 +65,7 @@ export function CreateSpaceModal({ isOpen, onClose, onSpaceCreated }: CreateSpac
       }
       
       // Check if services are ready
-      if (!spaceManager.isReady()) {
+      if (servicesInitializing) {
         showError('System Initializing', 'The system is still initializing. Please wait a moment and try again.');
         setIsCreating(false);
         return;
@@ -266,13 +232,13 @@ export function CreateSpaceModal({ isOpen, onClose, onSpaceCreated }: CreateSpac
               </button>
               <button
                 type="submit"
-                disabled={isCreating || !servicesReady}
+                disabled={isCreating || servicesInitializing}
                 className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white
                          rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all
                          duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50
                          disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {!servicesReady ? (
+                {servicesInitializing ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Initializing...

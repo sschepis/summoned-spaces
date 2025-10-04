@@ -2,10 +2,11 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { User } from '../types/common';
 import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
 import { holographicMemoryManager, PrimeResonanceIdentity } from '../services/holographic-memory';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 import { spaceManager } from '../services/space-manager';
 import { beaconCacheManager } from '../services/beacon-cache';
 import { useCallback } from 'react';
+import { serviceEventEmitter } from '../services/utils/event-emitter';
 
 // Auth State Types
 interface AuthState {
@@ -244,7 +245,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               return spaceManager.initializeForUser(user.id);
             }).then(() => {
               console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
-              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+              serviceEventEmitter.once('services-ready', () => {
+               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+              });
             }).catch(error => {
               console.error('[AUTH] Failed to initialize user data/SpaceManager:', error);
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
@@ -409,7 +412,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('[AUTH] SpaceManager initialized successfully, isReady:', spaceManager.isReady());
         
         // Mark services initialization complete
-        dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+        serviceEventEmitter.once('services-ready', () => {
+         dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+        });
       } catch (serviceError) {
         console.error('[AUTH] Failed to initialize services:', serviceError);
         dispatch({ type: 'SERVICES_INIT_COMPLETE' });
