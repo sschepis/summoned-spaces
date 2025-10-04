@@ -28,6 +28,12 @@ class SSECommunicationManager implements CommunicationManager {
   private baseReconnectDelay = 5000; // 5 seconds
 
   async connect(): Promise<void> {
+    // Don't reconnect if already connected
+    if (this.connected && this.eventSource) {
+      console.log('[SSE] Already connected, skipping duplicate connection');
+      return;
+    }
+    
     console.log('[SSE] Initializing SSE + REST communication');
     
     // Try to restore session from localStorage
