@@ -147,6 +147,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Mark services as initializing
             dispatch({ type: 'SERVICES_INIT_START' });
             
+            console.log('[AUTH] Starting service initialization for user:', user.id);
+            
             // Initialize services first
             Promise.all([
               userDataManager.loadUserData(),
@@ -158,8 +160,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+              console.log('[AUTH] Service initialization complete');
             }).catch((error: Error) => {
-              console.error('[AUTH] Failed to initialize services:', error);
+              console.error('[AUTH] SERVICE INITIALIZATION FAILED:', error);
+              console.error('[AUTH] Error stack:', error.stack);
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             });
