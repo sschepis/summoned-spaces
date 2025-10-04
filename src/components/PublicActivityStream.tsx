@@ -8,18 +8,18 @@ import { ActivityItem } from '../types/common';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 
 export function PublicActivityStream() {
   const { recentBeacons } = useNetworkState();
-  const { user } = useAuth();
+  useAuth();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [viewMode, setViewMode] = useState<'card' | 'compact' | 'minimal'>('card');
 
   // Convert beacons to activity items
   useEffect(() => {
     const convertedActivities: ActivityItem[] = recentBeacons.map((beaconInfo) => {
-      const decodedContent = holographicMemoryManager.decodeMemory(beaconInfo.beacon as any);
+      const decodedContent = holographicMemoryManager.decodeMemory(beaconInfo.beacon);
       const followingList = userDataManager.getFollowingList();
       
       return {
@@ -42,10 +42,6 @@ export function PublicActivityStream() {
     setActivities(convertedActivities);
   }, [recentBeacons]);
   
-  const handleNewPost = () => {
-    // New posts are handled by ContentComposer sending beacons to the network
-    // They will appear in the feed when received back through the network
-  };
 
   const handleFollow = (userId: string) => {
     setActivities(prev => 

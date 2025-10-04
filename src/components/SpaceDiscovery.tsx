@@ -11,7 +11,7 @@ import { CreateSpaceModal } from './CreateSpaceModal';
 import webSocketService from '../services/websocket';
 import { ServerMessage } from '../../server/protocol';
 import { useAuth } from '../contexts/AuthContext';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 import { useNotifications } from './NotificationSystem';
 import { spaceManager } from '../services/space-manager';
 

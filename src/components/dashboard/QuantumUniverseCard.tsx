@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Star, Settings, Users, Globe, TrendingUp, Activity, Eye, EyeOff } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { userDataManager } from '../../services/user-data-manager';
+import { userDataManager } from '../../services/user-data';
 import { Space } from '../../types/common';
 
 interface QuantumUniverseCardProps {

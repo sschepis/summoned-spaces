@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ResonanceIndicator } from './ResonanceIndicator';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 
 export function Navigation() {
   const navigate = useNavigate();

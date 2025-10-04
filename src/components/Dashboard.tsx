@@ -6,7 +6,7 @@ import { Post, PostType, RichTextPost, BinaryFilePost } from '../types/posts';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 import { quaternionicChatService } from '../services/quaternionic-chat';
 import webSocketService from '../services/websocket';
 import { ServerMessage } from '../../server/protocol';

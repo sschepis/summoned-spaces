@@ -8,7 +8,7 @@ import { User } from '../types/common';
 import { StatsGrid } from './common/StatsGrid';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
-import { userDataManager } from '../services/user-data-manager';
+import { userDataManager } from '../services/user-data';
 import webSocketService from '../services/websocket';
 import { useNotifications } from './NotificationSystem';
 import { ServerMessage, FollowNotificationMessage } from '../../server/protocol';

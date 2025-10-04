@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useNetworkState } from '../contexts/NetworkContext';
-import { userDataManager } from '../services/user-data-manager';
+import { useNetworkState, NetworkNode } from '../contexts/NetworkContext';
+import { userDataManager } from '../services/user-data';
 
 export function NetworkTopology() {
   const { nodes } = useNetworkState();
@@ -9,7 +9,7 @@ export function NetworkTopology() {
 
   const nodePositions = useMemo(() => {
     // Deduplicate nodes by userId to prevent showing the same user multiple times
-    const uniqueNodes = nodes.reduce((acc: any[], node) => {
+    const uniqueNodes = nodes.reduce((acc: NetworkNode[], node) => {
       if (!acc.find(n => n.userId === node.userId)) {
         acc.push(node);
       }

@@ -4,7 +4,7 @@ import { ServerMessage } from '../../server/protocol';
 import { PublicResonance } from '../services/holographic-memory';
 
 // State Types
-interface NetworkNode {
+export interface NetworkNode {
     userId: string;
     username: string;
     publicResonance: PublicResonance;
