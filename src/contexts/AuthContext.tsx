@@ -246,13 +246,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Mark session as restoring
             dispatch({ type: 'SESSION_RESTORE_START' });
             
+            // Set a timeout for session restoration to prevent infinite loading
+            const sessionTimeout = setTimeout(() => {
+              console.warn('[AUTH] Session restoration timed out after 10 seconds');
+              dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+            }, 10000); // 10 second timeout
+            
             // Wait for communication manager connection then restore session on server
             console.log('[AUTH] Waiting for communication manager connection...');
             communicationManager.connect().then(() => {
               console.log('[AUTH] Communication manager connected, restoring server session...');
               restoreSession();
+              
+              // Add another timeout specifically for the server response
+              setTimeout(() => {
+                console.warn('[AUTH] Server session restoration timed out, completing anyway');
+                clearTimeout(sessionTimeout);
+                dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+              }, 5000); // 5 seconds for server to respond
             }).catch((error: Error) => {
               console.error('[AUTH] Failed to connect communication manager:', error);
+              clearTimeout(sessionTimeout);
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             });
           } catch (error) {

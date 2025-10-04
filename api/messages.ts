@@ -5,6 +5,24 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
+import { initializeDatabaseForEnvironment } from '../server/database.js';
+import { AuthenticationManager } from '../server/auth.js';
+
+let authManager: AuthenticationManager;
+let initialized = false;
+
+async function initialize() {
+  if (initialized) return;
+  try {
+    await initializeDatabaseForEnvironment();
+    authManager = new AuthenticationManager();
+    initialized = true;
+    console.log('[API] Authentication manager initialized');
+  } catch (error) {
+    console.error('[API] Failed to initialize auth manager:', error);
+    throw error;
+  }
+}
 
 interface VercelRequest extends IncomingMessage {
   query: Record<string, string | string[]>;
@@ -102,15 +120,10 @@ async function handleMessage(message: CommunicationMessage): Promise<Communicati
       };
       
     case 'login':
+      return await handleLogin(message.payload);
+      
     case 'register':
-      // Auth messages should be handled by dedicated auth endpoint
-      return {
-        kind: 'redirect',
-        payload: { 
-          endpoint: '/api/auth',
-          message: 'Please use dedicated auth endpoint for authentication'
-        }
-      };
+      return await handleRegister(message.payload);
       
     case 'submitPostBeacon':
       return handleSubmitPostBeacon(message.payload);
@@ -375,4 +388,81 @@ async function handleGetQueuedMessages(payload: Record<string, unknown>): Promis
       timestamp: Date.now()
     }
   };
+}
+
+async function handleLogin(payload: Record<string, unknown>): Promise<CommunicationResponse> {
+  const { username, password } = payload;
+  
+  if (!username || !password) {
+    return {
+      kind: 'error',
+      payload: {
+        requestKind: 'login',
+        message: 'Username and password are required'
+      }
+    };
+  }
+  
+  try {
+    await initialize();
+    const session = await authManager.loginUser(username as string, password as string);
+    
+    return {
+      kind: 'loginSuccess',
+      payload: {
+        sessionToken: session.sessionToken,
+        userId: session.userId,
+        username: username,
+        pri: session.pri,
+      }
+    };
+  } catch (error) {
+    console.error('[API] Login error:', error);
+    return {
+      kind: 'error',
+      payload: {
+        requestKind: 'login',
+        message: error instanceof Error ? error.message : 'Login failed'
+      }
+    };
+  }
+}
+
+async function handleRegister(payload: Record<string, unknown>): Promise<CommunicationResponse> {
+  const { username, email, password } = payload;
+  
+  if (!username || !email || !password) {
+    return {
+      kind: 'error',
+      payload: {
+        requestKind: 'register',
+        message: 'Username, email, and password are required'
+      }
+    };
+  }
+  
+  try {
+    await initialize();
+    const result = await authManager.registerUser(
+      username as string,
+      email as string,
+      password as string
+    );
+    
+    return {
+      kind: 'registerSuccess',
+      payload: {
+        userId: result.userId
+      }
+    };
+  } catch (error) {
+    console.error('[API] Registration error:', error);
+    return {
+      kind: 'error',
+      payload: {
+        requestKind: 'register',
+        message: error instanceof Error ? error.message : 'Registration failed'
+      }
+    };
+  }
 }
