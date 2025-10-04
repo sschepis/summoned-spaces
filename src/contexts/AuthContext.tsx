@@ -230,55 +230,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Initialize user data manager
             userDataManager.setCurrentUser(user.id);
 
-            // Mark services as initializing
+            // Don't initialize services here - wait for session restoration to complete first
+
+            console.log('[AUTH] Client-side session restored for user:', user.username);
+
+            // Mark services as initializing AND session as restoring
             dispatch({ type: 'SERVICES_INIT_START' });
+            dispatch({ type: 'SESSION_RESTORE_START' });
             
-            // Critical: Load beacon data FIRST, then initialize SpaceManager
-            // This prevents race conditions that cause membership loss
+            // Initialize services first, then restore server session
             Promise.all([
               userDataManager.loadUserData(),
               beaconCacheManager.preloadUserBeacons(user.id)
             ]).then(() => {
               console.log('[AUTH] User data and beacons loaded successfully');
-
-              // Only initialize SpaceManager after beacon data is available
               return spaceManager.initializeForUser(user.id);
             }).then(() => {
               console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
-            }).catch(error => {
-              console.error('[AUTH] Failed to initialize user data/SpaceManager:', error);
-              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
-              // Don't fail the session restore completely, just log the error
-              console.warn('[AUTH] Services initialization failed but user session is restored');
-            });
-
-            console.log('[AUTH] Client-side session restored for user:', user.username);
-
-            // Mark session as restoring
-            dispatch({ type: 'SESSION_RESTORE_START' });
-
-            // Set a timeout for session restoration to prevent infinite loading
-            const sessionTimeout = setTimeout(() => {
-              console.warn('[AUTH] Session restoration timed out after 10 seconds');
-              dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-            }, 10000); // 10 second timeout
-
-            // Wait for communication manager connection then restore session on server
-            console.log('[AUTH] Waiting for communication manager connection...');
-            communicationManager.connect().then(() => {
+              
+              // Now restore server session
+              return communicationManager.connect();
+            }).then(() => {
               console.log('[AUTH] Communication manager connected, restoring server session...');
-              restoreSession();
-
-              // Add another timeout specifically for the server response
+              return restoreSession();
+            }).then(() => {
+              // Set a timeout for server response
               setTimeout(() => {
-                console.warn('[AUTH] Server session restoration timed out, completing anyway');
-                clearTimeout(sessionTimeout);
+                console.log('[AUTH] Server session restoration timeout, completing anyway');
                 dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-              }, 5000); // 5 seconds for server to respond
+              }, 5000);
             }).catch((error: Error) => {
-              console.error('[AUTH] Failed to connect communication manager:', error);
-              clearTimeout(sessionTimeout);
+              console.error('[AUTH] Failed to initialize services or restore session:', error);
+              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             });
           } catch (error) {
