@@ -33,6 +33,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Add detailed logging for debugging
+    console.log('[AUTH] Received request:', {
+      action: req.body?.action,
+      hasUsername: !!req.body?.username,
+      hasEmail: !!req.body?.email,
+      hasPassword: !!req.body?.password,
+      env: {
+        hasDbUrl: !!(process.env.DATABASE_URL || process.env.NEON_DATABASE_URL),
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: process.env.VERCEL
+      }
+    });
+    
     await initialize();
 
     const { action, username, email, password } = req.body;
@@ -80,9 +93,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
   } catch (error) {
+    console.error('[AUTH] Error processing request:', error);
+    console.error('[AUTH] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Internal server error'
+      error: error instanceof Error ? error.message : 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      } : undefined
     });
   }
 }
