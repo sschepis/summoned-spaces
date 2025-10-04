@@ -87,6 +87,24 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
     }
 
     console.log('[API] Received message:', message.kind);
+    
+    // Check database configuration for auth operations
+    if ((message.kind === 'login' || message.kind === 'register') &&
+        !process.env.DATABASE_URL && !process.env.NEON_DATABASE_URL) {
+      console.error('[API] Database not configured for authentication');
+      const errorResponse: CommunicationResponse = {
+        kind: 'error',
+        payload: {
+          requestKind: message.kind,
+          message: 'Database not configured. Please set DATABASE_URL environment variable in Vercel settings.',
+          details: 'See VERCEL_SETUP.md for configuration instructions'
+        }
+      };
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(errorResponse));
+      return;
+    }
 
     // Route messages to appropriate handlers
     const response = await handleMessage(message);
@@ -96,11 +114,13 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
     res.end(JSON.stringify(response));
   } catch (error) {
     console.error('[API] Error handling message:', error);
+    console.error('[API] Error stack:', error instanceof Error ? error.stack : 'No stack');
     
     const errorResponse: CommunicationResponse = {
       kind: 'error',
       payload: {
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: error instanceof Error ? error.message : 'Internal server error',
+        details: error instanceof Error ? error.stack : undefined
       }
     };
     
@@ -393,7 +413,10 @@ async function handleGetQueuedMessages(payload: Record<string, unknown>): Promis
 async function handleLogin(payload: Record<string, unknown>): Promise<CommunicationResponse> {
   const { username, password } = payload;
   
+  console.log('[API] handleLogin called with username:', username ? 'provided' : 'missing');
+  
   if (!username || !password) {
+    console.error('[API] Missing credentials');
     return {
       kind: 'error',
       payload: {
@@ -404,8 +427,12 @@ async function handleLogin(payload: Record<string, unknown>): Promise<Communicat
   }
   
   try {
+    console.log('[API] Initializing auth manager...');
     await initialize();
+    console.log('[API] Auth manager initialized, attempting login...');
+    
     const session = await authManager.loginUser(username as string, password as string);
+    console.log('[API] Login successful for user:', session.userId);
     
     return {
       kind: 'loginSuccess',
@@ -418,11 +445,17 @@ async function handleLogin(payload: Record<string, unknown>): Promise<Communicat
     };
   } catch (error) {
     console.error('[API] Login error:', error);
+    console.error('[API] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('[API] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('[API] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    
     return {
       kind: 'error',
       payload: {
         requestKind: 'login',
-        message: error instanceof Error ? error.message : 'Login failed'
+        message: error instanceof Error ? error.message : 'Login failed',
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+        errorDetails: String(error)
       }
     };
   }
