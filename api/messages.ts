@@ -4,30 +4,11 @@
  * TypeScript version with proper typing for quantum beacon operations
  */
 
-import type { IncomingMessage, ServerResponse } from 'http';
-import { initializeDatabaseForEnvironment } from '../server/database.js';
-import { AuthenticationManager } from '../server/auth.js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-let authManager: AuthenticationManager;
-let initialized = false;
-
-async function initialize() {
-  if (initialized) return;
-  try {
-    await initializeDatabaseForEnvironment();
-    authManager = new AuthenticationManager();
-    initialized = true;
-    console.log('[API] Authentication manager initialized');
-  } catch (error) {
-    console.error('[API] Failed to initialize auth manager:', error);
-    throw error;
-  }
-}
-
-interface VercelRequest extends IncomingMessage {
-  query: Record<string, string | string[]>;
-  body?: CommunicationMessage;
-}
+// For now, authentication is handled by dedicated /api/auth/login endpoint
+// This file handles other message types
+const initialized = false;
 
 interface CommunicationMessage {
   kind: string;
@@ -61,7 +42,7 @@ function getQueuedMessages(userId: string): CommunicationMessage[] {
   return messages;
 }
 
-export default async function handler(req: VercelRequest, res: ServerResponse): Promise<void> {
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -140,10 +121,16 @@ async function handleMessage(message: CommunicationMessage): Promise<Communicati
       };
       
     case 'login':
-      return await handleLogin(message.payload);
-      
     case 'register':
-      return await handleRegister(message.payload);
+      // Auth messages should use dedicated auth endpoint
+      return {
+        kind: 'error',
+        payload: {
+          requestKind: message.kind,
+          message: 'Please use /api/auth/login for authentication',
+          redirect: '/api/auth/login'
+        }
+      };
       
     case 'submitPostBeacon':
       return handleSubmitPostBeacon(message.payload);
@@ -410,92 +397,4 @@ async function handleGetQueuedMessages(payload: Record<string, unknown>): Promis
   };
 }
 
-async function handleLogin(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { username, password } = payload;
-  
-  console.log('[API] handleLogin called with username:', username ? 'provided' : 'missing');
-  
-  if (!username || !password) {
-    console.error('[API] Missing credentials');
-    return {
-      kind: 'error',
-      payload: {
-        requestKind: 'login',
-        message: 'Username and password are required'
-      }
-    };
-  }
-  
-  try {
-    console.log('[API] Initializing auth manager...');
-    await initialize();
-    console.log('[API] Auth manager initialized, attempting login...');
-    
-    const session = await authManager.loginUser(username as string, password as string);
-    console.log('[API] Login successful for user:', session.userId);
-    
-    return {
-      kind: 'loginSuccess',
-      payload: {
-        sessionToken: session.sessionToken,
-        userId: session.userId,
-        username: username,
-        pri: session.pri,
-      }
-    };
-  } catch (error) {
-    console.error('[API] Login error:', error);
-    console.error('[API] Error type:', error instanceof Error ? error.constructor.name : typeof error);
-    console.error('[API] Error message:', error instanceof Error ? error.message : String(error));
-    console.error('[API] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    
-    return {
-      kind: 'error',
-      payload: {
-        requestKind: 'login',
-        message: error instanceof Error ? error.message : 'Login failed',
-        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-        errorDetails: String(error)
-      }
-    };
-  }
-}
-
-async function handleRegister(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { username, email, password } = payload;
-  
-  if (!username || !email || !password) {
-    return {
-      kind: 'error',
-      payload: {
-        requestKind: 'register',
-        message: 'Username, email, and password are required'
-      }
-    };
-  }
-  
-  try {
-    await initialize();
-    const result = await authManager.registerUser(
-      username as string,
-      email as string,
-      password as string
-    );
-    
-    return {
-      kind: 'registerSuccess',
-      payload: {
-        userId: result.userId
-      }
-    };
-  } catch (error) {
-    console.error('[API] Registration error:', error);
-    return {
-      kind: 'error',
-      payload: {
-        requestKind: 'register',
-        message: error instanceof Error ? error.message : 'Registration failed'
-      }
-    };
-  }
-}
+// Auth functions removed - use /api/auth/login instead

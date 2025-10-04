@@ -332,78 +332,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'AUTH_START' });
     
     try {
-      // Set up message handler
-      let loginResolve: () => void;
-      let loginReject: (error: Error) => void;
-      const loginPromise = new Promise<void>((resolve, reject) => {
-        loginResolve = resolve;
-        loginReject = reject;
+      // Use dedicated auth endpoint
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'login', username, password })
       });
       
-      const handleAuthMessage = (message: CommunicationMessage) => {
-        if (message.kind === 'loginSuccess') {
-          const payload = message.payload as Record<string, unknown>;
-          const user: User = {
-            id: payload.userId as string,
-            name: username,
-            username: `@${username}`,
-            avatar: payload.avatar as string || '', // Use server-provided avatar or empty string
-            bio: payload.bio as string || '',
-            isFollowing: false,
-            stats: payload.stats as User['stats'] || { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
-            recentActivity: payload.recentActivity as string || 'Just logged in',
-            tags: payload.tags as string[] || [],
-          };
-          
-          dispatch({
-            type: 'AUTH_SUCCESS',
-            payload: {
-              user,
-              token: payload.sessionToken as string,
-              pri: payload.pri as PrimeResonanceIdentity
-            },
-          });
-          
-          // Initialize the HolographicMemoryManager with the user's PRI
-          holographicMemoryManager.setCurrentUser(payload.pri as PrimeResonanceIdentity);
-
-          // Initialize user data manager
-          userDataManager.setCurrentUser(user.id);
-          
-          // Critical: Load beacon data FIRST during login too
-          Promise.all([
-            userDataManager.loadUserData(),
-            beaconCacheManager.preloadUserBeacons(user.id)
-          ]).then(() => {
-            console.log('[AUTH] User data and beacons loaded after login');
-            
-            // Initialize SpaceManager after beacon data is ready
-            return spaceManager.initializeForUser(user.id);
-          }).then(() => {
-            console.log('[AUTH] SpaceManager initialized after login');
-          }).catch((error: Error) => {
-            console.error('[AUTH] Failed to initialize user services after login:', error);
-            // Don't fail silently - show error to user
-            dispatch({
-              type: 'AUTH_FAILURE',
-              payload: 'Failed to initialize user services. Please try logging in again.'
-            });
-          });
-
-          loginResolve();
-        } else if (message.kind === 'error') {
-          const payload = message.payload as Record<string, unknown>;
-          if (payload.requestKind === 'login' || !payload.requestKind) {
-            dispatch({ type: 'AUTH_FAILURE', payload: payload.message as string });
-            loginReject(new Error(payload.message as string));
-          }
-        }
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Login failed');
+      }
+      
+      const payload = result.payload;
+      const user: User = {
+        id: payload.userId as string,
+        name: username,
+        username: `@${username}`,
+        avatar: payload.avatar as string || '',
+        bio: payload.bio as string || '',
+        isFollowing: false,
+        stats: payload.stats as User['stats'] || { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
+        recentActivity: payload.recentActivity as string || 'Just logged in',
+        tags: payload.tags as string[] || [],
       };
       
-      communicationManager.onMessage(handleAuthMessage);
-      await communicationManager.send({ kind: 'login', payload: { username, password } });
+      dispatch({
+        type: 'AUTH_SUCCESS',
+        payload: {
+          user,
+          token: payload.sessionToken as string,
+          pri: payload.pri as PrimeResonanceIdentity
+        },
+      });
       
-      return loginPromise;
+      // Initialize the HolographicMemoryManager with the user's PRI
+      holographicMemoryManager.setCurrentUser(payload.pri as PrimeResonanceIdentity);
+
+      // Initialize user data manager
+      userDataManager.setCurrentUser(user.id);
+      
+      // Critical: Load beacon data FIRST during login too
+      await Promise.all([
+        userDataManager.loadUserData(),
+        beaconCacheManager.preloadUserBeacons(user.id)
+      ]);
+      
+      console.log('[AUTH] User data and beacons loaded after login');
+      
+      // Initialize SpaceManager after beacon data is ready
+      await spaceManager.initializeForUser(user.id);
+      console.log('[AUTH] SpaceManager initialized after login');
+      
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Login failed' });
       throw error;
@@ -414,31 +397,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'AUTH_START' });
     
     try {
-      // Set up message handler
-      let registerResolve: () => void;
-      let registerReject: (error: Error) => void;
-      const registerPromise = new Promise<void>((resolve, reject) => {
-        registerResolve = resolve;
-        registerReject = reject;
+      // Use dedicated auth endpoint
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'register', username, email, password })
       });
       
-      const handleRegisterMessage = (message: CommunicationMessage) => {
-        if (message.kind === 'registerSuccess') {
-          // Automatically log in after successful registration
-          login(username, password).then(registerResolve).catch(registerReject);
-        } else if (message.kind === 'error') {
-          const payload = message.payload as Record<string, unknown>;
-          if (payload.requestKind === 'register') {
-            dispatch({ type: 'AUTH_FAILURE', payload: payload.message as string });
-            registerReject(new Error(payload.message as string));
-          }
-        }
-      };
+      const result = await response.json();
       
-      communicationManager.onMessage(handleRegisterMessage);
-      await communicationManager.send({ kind: 'register', payload: { username, email, password } });
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Registration failed');
+      }
       
-      return registerPromise;
+      // Automatically log in after successful registration
+      await login(username, password);
+      
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Registration failed' });
       throw error;
