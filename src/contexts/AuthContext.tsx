@@ -6,7 +6,6 @@ import { userDataManager } from '../services/user-data';
 import { spaceManager } from '../services/space-manager';
 import { beaconCacheManager } from '../services/beacon-cache';
 import { useCallback } from 'react';
-import { serviceEventEmitter } from '../services/utils/event-emitter';
 
 // Auth State Types
 interface AuthState {
@@ -245,9 +244,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               return spaceManager.initializeForUser(user.id);
             }).then(() => {
               console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
-              serviceEventEmitter.once('services-ready', () => {
-               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
-              });
+              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
             }).catch(error => {
               console.error('[AUTH] Failed to initialize user data/SpaceManager:', error);
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
@@ -412,9 +409,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('[AUTH] SpaceManager initialized successfully, isReady:', spaceManager.isReady());
         
         // Mark services initialization complete
-        serviceEventEmitter.once('services-ready', () => {
-         dispatch({ type: 'SERVICES_INIT_COMPLETE' });
-        });
+        dispatch({ type: 'SERVICES_INIT_COMPLETE' });
       } catch (serviceError) {
         console.error('[AUTH] Failed to initialize services:', serviceError);
         dispatch({ type: 'SERVICES_INIT_COMPLETE' });

@@ -7,7 +7,6 @@
 import webSocketService from '../websocket';
 import { beaconCacheManager } from '../beacon-cache';
 import { holographicMemoryManager } from '../holographic-memory';
-import { serviceEventEmitter } from '../utils/event-emitter';
 import { quantumNetworkOps } from '../quantum';
 import { userDataManager } from '../user-data';
 import { parseJsonWithRepair } from '../utils/json-repair';
@@ -84,7 +83,6 @@ class SpaceManager {
         
         this.isInitialized = true;
         console.log(`[SpaceManager] Successfully initialized for user ${userId}`);
-        serviceEventEmitter.emit('services-ready');
       } catch (error) {
         console.error(`[SpaceManager] Failed to initialize for user ${userId}:`, error);
         this.isInitialized = false;
