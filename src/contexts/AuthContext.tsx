@@ -166,7 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AUTH] Failed to access localStorage during restore:', error);
       dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
     }
-  }, [state.isAuthenticated, state.loading, state.sessionRestoring]);
+  }, []);
 
   // Set up message handler for session restoration
   useEffect(() => {
@@ -298,7 +298,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
     };
-  }, [restoreSession, state.isAuthenticated]); // Empty array: run ONLY ONCE on mount
+  }, []); // Empty array: run ONLY ONCE on mount - removing state.isAuthenticated to prevent double-run
 
   // Save session to localStorage whenever auth state changes
   useEffect(() => {
