@@ -31,6 +31,8 @@ class SpaceManager {
   private spaceMemberLists: Map<string, SpaceMember[]> = new Map();
   private spaceMetadata: Map<string, SpaceMetadata> = new Map();
   private spaceQuantumNodes: Map<string, QuantumNode> = new Map(); // Space quantum nodes
+  private initializationPromise: Promise<void> | null = null;
+  private isInitialized: boolean = false;
 
   /**
    * Initialize with current user ID
@@ -52,19 +54,68 @@ class SpaceManager {
    */
   async initializeForUser(userId: string): Promise<void> {
     console.log(`[SpaceManager] Initializing for user: ${userId}`);
+    
+    // If already initializing for this user, return the existing promise
+    if (this.initializationPromise && this.currentUserId === userId) {
+      console.log(`[SpaceManager] Already initializing for user ${userId}, waiting...`);
+      return this.initializationPromise;
+    }
+    
+    // If already initialized for this user, return immediately
+    if (this.isInitialized && this.currentUserId === userId) {
+      console.log(`[SpaceManager] Already initialized for user ${userId}`);
+      return Promise.resolve();
+    }
+    
+    // Reset initialization state for new user
+    this.isInitialized = false;
     this.setCurrentUser(userId);
     
-    try {
-      // CRITICAL FIX: Add delay to ensure beacon cache is populated first
-      // This prevents race conditions that lose membership data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Pre-load user's space memberships
-      await this.loadUserSpaces(userId);
-      console.log(`[SpaceManager] Successfully initialized for user ${userId}`);
-    } catch (error) {
-      console.error(`[SpaceManager] Failed to initialize for user ${userId}:`, error);
+    // Create and store the initialization promise
+    this.initializationPromise = (async () => {
+      try {
+        // CRITICAL FIX: Add delay to ensure beacon cache is populated first
+        // This prevents race conditions that lose membership data
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Pre-load user's space memberships
+        await this.loadUserSpaces(userId);
+        
+        this.isInitialized = true;
+        console.log(`[SpaceManager] Successfully initialized for user ${userId}`);
+      } catch (error) {
+        console.error(`[SpaceManager] Failed to initialize for user ${userId}:`, error);
+        this.isInitialized = false;
+        throw error; // Re-throw to let caller handle the error
+      } finally {
+        this.initializationPromise = null;
+      }
+    })();
+    
+    return this.initializationPromise;
+  }
+
+  /**
+   * Wait for SpaceManager to be initialized
+   */
+  async waitForInitialization(): Promise<void> {
+    if (this.isInitialized) {
+      return Promise.resolve();
     }
+    
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+    
+    // Not initialized and no initialization in progress
+    throw new Error('SpaceManager not initialized. Call initializeForUser() first.');
+  }
+
+  /**
+   * Check if SpaceManager is ready to use
+   */
+  isReady(): boolean {
+    return this.isInitialized && this.currentUserId !== null;
   }
 
   /**
@@ -160,11 +211,29 @@ class SpaceManager {
   /**
    * Create a new space and initialize its member list beacon
    */
-  async createSpace(name: string, description: string, isPublic: boolean): Promise<string> {
-    console.log('[SpaceManager] createSpace called, currentUserId:', this.currentUserId);
+  async createSpace(name: string, description: string, isPublic: boolean, userId?: string): Promise<string> {
+    // Wait for initialization to complete before proceeding
+    try {
+      await this.waitForInitialization();
+    } catch (error) {
+      console.error('[SpaceManager] Cannot create space - SpaceManager not initialized:', error);
+      throw new Error('System is still initializing. Please wait a moment and try again.');
+    }
+    
+    // Use provided userId or fall back to currentUserId
+    const effectiveUserId = userId || this.currentUserId;
+    
+    console.log('[SpaceManager] createSpace called, userId param:', userId, 'currentUserId:', this.currentUserId, 'effectiveUserId:', effectiveUserId);
+    
+    if (!effectiveUserId) {
+      console.error('[SpaceManager] User not authenticated - currentUserId:', this.currentUserId);
+      throw new Error('User not authenticated. Please log in and try again.');
+    }
+    
+    // Ensure currentUserId is set for this operation
     if (!this.currentUserId) {
-      console.error('[SpaceManager] User not authenticated - currentUserId is null');
-      throw new Error('User not authenticated');
+      console.log('[SpaceManager] Setting currentUserId from parameter:', effectiveUserId);
+      this.setCurrentUser(effectiveUserId);
     }
 
     // Wait for WebSocket connection
@@ -191,13 +260,13 @@ class SpaceManager {
 
           // Initialize member list with creator as owner
           const initialMembers: SpaceMember[] = [{
-            userId: this.currentUserId!,
+            userId: effectiveUserId,
             role: 'owner',
             joinedAt: new Date().toISOString()
           }];
 
           // Create quantum entanglement between user and space
-          this.createUserSpaceEntanglement(this.currentUserId!, spaceId).then(async () => {
+          this.createUserSpaceEntanglement(effectiveUserId, spaceId).then(async () => {
             // Submit initial member list beacon with quantum encoding
             await this.submitSpaceMemberBeacon(spaceId, initialMembers);
             this.spaceMemberLists.set(spaceId, initialMembers);
@@ -666,8 +735,20 @@ class SpaceManager {
    * Clear all cached data
    */
   clearCache(): void {
+    this.currentUserId = null;
     this.spaceMemberLists.clear();
     this.spaceMetadata.clear();
+    this.spaceQuantumNodes.clear();
+    this.isInitialized = false;
+    this.initializationPromise = null;
+    console.log('[SpaceManager] Cache cleared and initialization reset');
+  }
+  
+  /**
+   * Get current user ID (for debugging and verification)
+   */
+  getCurrentUserId(): string | null {
+    return this.currentUserId;
   }
 }
 

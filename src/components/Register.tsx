@@ -105,6 +105,7 @@ export function RegisterRefactored({
           icon={User}
           placeholder="your_username"
           required
+          autoComplete="username"
         />
         
         <FormField
@@ -118,6 +119,7 @@ export function RegisterRefactored({
           icon={Mail}
           placeholder="your@email.com"
           required
+          autoComplete="email"
         />
         
         <FormField
@@ -132,6 +134,7 @@ export function RegisterRefactored({
           placeholder="••••••••"
           helperText="Must be at least 8 characters"
           required
+          autoComplete="new-password"
         />
         
         <FormField
@@ -145,6 +148,7 @@ export function RegisterRefactored({
           icon={Lock}
           placeholder="••••••••"
           required
+          autoComplete="new-password"
         />
       </FormGroup>
       

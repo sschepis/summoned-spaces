@@ -16,6 +16,7 @@ interface FormFieldProps {
   disabled?: boolean;
   helperText?: string;
   className?: string;
+  autoComplete?: string;
 }
 
 export function FormField({
@@ -31,7 +32,8 @@ export function FormField({
   required = false,
   disabled = false,
   helperText,
-  className = ''
+  className = '',
+  autoComplete
 }: FormFieldProps) {
   return (
     <div className={`space-y-2 ${className}`}>
@@ -54,6 +56,7 @@ export function FormField({
         placeholder={placeholder}
         disabled={disabled}
         helperText={helperText}
+        autoComplete={autoComplete}
       />
     </div>
   );

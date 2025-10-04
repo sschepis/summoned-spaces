@@ -123,6 +123,7 @@ export function Login({
           icon={Lock}
           placeholder="••••••••"
           required
+          autoComplete="current-password"
         />
       </FormGroup>
     </AuthFormLayout>

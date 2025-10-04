@@ -13,6 +13,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   sessionRestoring: boolean; // New flag for session restoration
+  servicesInitializing: boolean; // New flag for service layer initialization
   error: string | null;
   token: string | null;
   pri: PrimeResonanceIdentity | null;
@@ -25,6 +26,8 @@ type AuthAction =
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'SESSION_RESTORE_START' }
   | { type: 'SESSION_RESTORE_COMPLETE' }
+  | { type: 'SERVICES_INIT_START' }
+  | { type: 'SERVICES_INIT_COMPLETE' }
   | { type: 'LOGOUT' }
   | { type: 'UPDATE_USER'; payload: Partial<User> }
   | { type: 'CLEAR_ERROR' };
@@ -45,6 +48,7 @@ const initialState: AuthState = {
   user: null,
   loading: true, // Start with loading true to handle session restoration
   sessionRestoring: false,
+  servicesInitializing: false,
   error: null,
   token: null,
   pri: null,
@@ -64,16 +68,21 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         pri: action.payload.pri,
         loading: false,
         sessionRestoring: false,
+        servicesInitializing: false,
         error: null,
       };
     case 'AUTH_FAILURE':
-      return { ...state, isAuthenticated: false, user: null, token: null, pri: null, loading: false, sessionRestoring: false, error: action.payload };
+      return { ...state, isAuthenticated: false, user: null, token: null, pri: null, loading: false, sessionRestoring: false, servicesInitializing: false, error: action.payload };
     case 'SESSION_RESTORE_START':
       return { ...state, sessionRestoring: true };
     case 'SESSION_RESTORE_COMPLETE':
       return { ...state, loading: false, sessionRestoring: false };
+    case 'SERVICES_INIT_START':
+      return { ...state, servicesInitializing: true };
+    case 'SERVICES_INIT_COMPLETE':
+      return { ...state, servicesInitializing: false };
     case 'LOGOUT':
-      return { ...initialState, loading: false, sessionRestoring: false };
+      return { ...initialState, loading: false, sessionRestoring: false, servicesInitializing: false };
     case 'UPDATE_USER':
       return { ...state, user: state.user ? { ...state.user, ...action.payload } : null };
     case 'CLEAR_ERROR':
@@ -220,6 +229,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Initialize user data manager
             userDataManager.setCurrentUser(user.id);
 
+            // Mark services as initializing
+            dispatch({ type: 'SERVICES_INIT_START' });
+            
             // Critical: Load beacon data FIRST, then initialize SpaceManager
             // This prevents race conditions that cause membership loss
             Promise.all([
@@ -231,14 +243,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // Only initialize SpaceManager after beacon data is available
               return spaceManager.initializeForUser(user.id);
             }).then(() => {
-              console.log('[AUTH] SpaceManager initialized after beacon data load');
+              console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
+              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
             }).catch(error => {
               console.error('[AUTH] Failed to initialize user data/SpaceManager:', error);
-              // Don't fail silently - show error to user
-              dispatch({
-                type: 'AUTH_FAILURE',
-                payload: 'Failed to load user data. Please try refreshing the page.'
-              });
+              dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+              // Don't fail the session restore completely, just log the error
+              console.warn('[AUTH] Services initialization failed but user session is restored');
             });
 
             console.log('[AUTH] Client-side session restored for user:', user.username);
@@ -374,24 +385,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
       
-      // Initialize the HolographicMemoryManager with the user's PRI
-      holographicMemoryManager.setCurrentUser(payload.pri as PrimeResonanceIdentity);
+      // Mark services as initializing
+      dispatch({ type: 'SERVICES_INIT_START' });
+      
+      try {
+        // Initialize the HolographicMemoryManager with the user's PRI
+        holographicMemoryManager.setCurrentUser(payload.pri as PrimeResonanceIdentity);
 
-      // Initialize user data manager
-      userDataManager.setCurrentUser(user.id);
+        // Initialize user data manager
+        userDataManager.setCurrentUser(user.id);
 
-      // Critical: Load beacon data FIRST during login too
-      await Promise.all([
-        userDataManager.loadUserData(),
-        beaconCacheManager.preloadUserBeacons(user.id)
-      ]);
+        // Critical: Load beacon data FIRST during login too
+        await Promise.all([
+          userDataManager.loadUserData(),
+          beaconCacheManager.preloadUserBeacons(user.id)
+        ]);
 
-      console.log('[AUTH] User data and beacons loaded after login');
+        console.log('[AUTH] User data and beacons loaded after login');
 
-      // Initialize SpaceManager after beacon data is ready
-      console.log('[AUTH] Initializing SpaceManager with user ID:', user.id);
-      await spaceManager.initializeForUser(user.id);
-      console.log('[AUTH] SpaceManager initialized after login, current user should be:', spaceManager['currentUserId']);
+        // Initialize SpaceManager after beacon data is ready with explicit error handling
+        console.log('[AUTH] Initializing SpaceManager with user ID:', user.id);
+        await spaceManager.initializeForUser(user.id);
+        console.log('[AUTH] SpaceManager initialized successfully, isReady:', spaceManager.isReady());
+        
+        // Mark services initialization complete
+        dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+      } catch (serviceError) {
+        console.error('[AUTH] Failed to initialize services:', serviceError);
+        dispatch({ type: 'SERVICES_INIT_COMPLETE' });
+        // Don't fail the login, but log the error
+        // The user can still use basic features
+      }
       
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: error instanceof Error ? error.message : 'Login failed' });
@@ -476,22 +500,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   };
 
-  // Wait for authentication to be ready (not loading or restoring session)
+  // Wait for authentication to be ready (not loading, restoring, or initializing services)
   const waitForAuth = (): Promise<void> => {
     return new Promise((resolve) => {
-      // If not loading and not restoring, resolve immediately
-      if (!state.loading && !state.sessionRestoring) {
+      // If not loading, not restoring, and not initializing services, resolve immediately
+      if (!state.loading && !state.sessionRestoring && !state.servicesInitializing) {
         resolve();
         return;
       }
       
       // Otherwise, poll until ready
       const checkInterval = setInterval(() => {
-        if (!state.loading && !state.sessionRestoring) {
+        if (!state.loading && !state.sessionRestoring && !state.servicesInitializing) {
           clearInterval(checkInterval);
           resolve();
         }
       }, 100);
+      
+      // Add timeout to prevent infinite waiting
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        console.warn('[AUTH] waitForAuth timed out after 30 seconds');
+        resolve();
+      }, 30000);
     });
   };
 
