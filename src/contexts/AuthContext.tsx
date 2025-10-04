@@ -188,38 +188,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Load session from localStorage on mount (ONLY ONCE)
   useEffect(() => {
     let mounted = true;
-    
+
     console.log('[AUTH] Initial session restoration on mount');
-    
+
     // Safari fix: Ensure localStorage is accessible
     const loadSession = () => {
       if (!mounted) return;
-      
+
       try {
         const savedSession = localStorage.getItem('holographic_session');
         console.log('[AUTH] LocalStorage session exists:', !!savedSession);
-        
+
         if (savedSession && mounted) {
           try {
             const session = JSON.parse(savedSession);
             const user: User = session.user;
             const pri: PrimeResonanceIdentity = session.pri;
-            
+
             if (!mounted) return;
-            
+
             console.log('[AUTH] Restoring client-side auth state for user:', user.username);
-            
+
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: { user, token: session.token, pri },
             });
-            
+
             // Re-initialize the HolographicMemoryManager
             holographicMemoryManager.setCurrentUser(pri);
-            
+
             // Initialize user data manager
             userDataManager.setCurrentUser(user.id);
-            
+
             // Critical: Load beacon data FIRST, then initialize SpaceManager
             // This prevents race conditions that cause membership loss
             Promise.all([
@@ -227,7 +227,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               beaconCacheManager.preloadUserBeacons(user.id)
             ]).then(() => {
               console.log('[AUTH] User data and beacons loaded successfully');
-              
+
               // Only initialize SpaceManager after beacon data is available
               return spaceManager.initializeForUser(user.id);
             }).then(() => {
@@ -240,24 +240,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 payload: 'Failed to load user data. Please try refreshing the page.'
               });
             });
-            
+
             console.log('[AUTH] Client-side session restored for user:', user.username);
-            
+
             // Mark session as restoring
             dispatch({ type: 'SESSION_RESTORE_START' });
-            
+
             // Set a timeout for session restoration to prevent infinite loading
             const sessionTimeout = setTimeout(() => {
               console.warn('[AUTH] Session restoration timed out after 10 seconds');
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             }, 10000); // 10 second timeout
-            
+
             // Wait for communication manager connection then restore session on server
             console.log('[AUTH] Waiting for communication manager connection...');
             communicationManager.connect().then(() => {
               console.log('[AUTH] Communication manager connected, restoring server session...');
               restoreSession();
-              
+
               // Add another timeout specifically for the server response
               setTimeout(() => {
                 console.warn('[AUTH] Server session restoration timed out, completing anyway');
@@ -290,10 +290,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
     };
-    
-    // Load session immediately
-    loadSession();
-    
+
+    // Only load session if we're not already authenticated (i.e., just logged in)
+    if (!state.isAuthenticated) {
+      loadSession();
+    } else {
+      console.log('[AUTH] Skipping session restoration - user already authenticated');
+      dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
+    }
+
     return () => {
       mounted = false;
     };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import { AppProvider } from './contexts/AppContext';
@@ -15,6 +15,16 @@ import { FollowNotificationMessage } from '../server/protocol';
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading, sessionRestoring, user: currentUser } = useAuth();
   const { notifications, dismissNotification, showFollow, showUnfollow, showMessage } = useNotifications();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users away from auth pages
+  React.useEffect(() => {
+    if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password')) {
+      console.log('[App] Redirecting authenticated user from auth page to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, location.pathname, navigate]);
 
   // Listen for follow notifications from WebSocket
   React.useEffect(() => {
