@@ -61,23 +61,9 @@ export class UserDataManager {
     }
 
     try {
-      await this.webSocketService.waitForConnection();
-      console.log('WebSocket connected, loading user data...');
-      
-      // Wait for session restoration
-      let retries = 0;
-      const maxRetries = 10;
-      while (retries < maxRetries) {
-        if (this.webSocketService.isReady()) {
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-        retries++;
-      }
-      
-      if (retries === maxRetries) {
-        console.warn('Session restoration may not have completed, proceeding anyway');
-      }
+      // The WebSocket service is deprecated, we're using SSE now
+      // Just proceed with loading the data
+      console.log('[UserDataManager] Loading user data for:', this.currentUserId);
 
       // Load following list
       await this.loadFollowingList();
@@ -85,8 +71,11 @@ export class UserDataManager {
       // Load spaces list
       await this.loadSpacesList();
       
+      console.log('[UserDataManager] User data loaded successfully');
+      
     } catch (error) {
-      console.error('Failed to load user data:', error);
+      console.error('[UserDataManager] Failed to load user data:', error);
+      throw error;
     }
   }
 

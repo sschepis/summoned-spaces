@@ -243,14 +243,14 @@ export class BeaconCacheCore {
 
   /**
    * Pre-load user beacons
+   * NOTE: This is deprecated with the move to SSE. The beacon cache is now populated
+   * via SSE events rather than WebSocket requests. Keeping this as a no-op for
+   * backward compatibility.
    */
   async preloadUserBeacons(userId: string): Promise<void> {
-    try {
-      await this.getBeaconsByUser(userId);
-      console.log(`Pre-loaded beacons for user ${userId}`);
-    } catch (error) {
-      console.error(`Failed to pre-load beacons for user ${userId}:`, error);
-    }
+    console.log(`[BeaconCache] Skipping preload for user ${userId} (SSE handles beacon loading)`);
+    // No-op: SSE will populate the cache via real-time events
+    return Promise.resolve();
   }
 
   /**

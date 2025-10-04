@@ -5,12 +5,8 @@
  */
 
 import webSocketService from '../websocket';
-import { beaconCacheManager } from '../beacon-cache';
-import { holographicMemoryManager } from '../holographic-memory';
 import { quantumNetworkOps } from '../quantum';
 import { userDataManager } from '../user-data';
-import { parseJsonWithRepair } from '../utils/json-repair';
-import { BEACON_TYPES } from '../../constants/beaconTypes';
 import { MemberManager } from './member-management';
 import { SpaceQuantumOperations } from './quantum-operations';
 import { SpaceBeaconOperations } from './beacon-operations';
@@ -75,10 +71,7 @@ class SpaceManager {
     
     this.initializationPromise = (async () => {
       try {
-        // Add delay to ensure beacon cache is populated first
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Pre-load user's space memberships
+        // Pre-load user's space memberships (now a no-op with SSE)
         await this.loadUserSpaces(userId);
         
         this.isInitialized = true;
@@ -119,49 +112,14 @@ class SpaceManager {
 
   /**
    * Load all spaces a user is a member of
+   * NOTE: This is deprecated with the move to SSE. Space memberships are now loaded
+   * via SSE events rather than WebSocket requests. Keeping this as a minimal operation
+   * for backward compatibility.
    */
   private async loadUserSpaces(userId: string): Promise<void> {
-    try {
-      const allSpaceMemberBeacons = await beaconCacheManager.getBeaconsByType(BEACON_TYPES.SPACE_MEMBERS);
-      console.log(`[SpaceManager] Found ${allSpaceMemberBeacons.length} space member beacons for loading`);
-      
-      const userSpaces = new Set<string>();
-      
-      for (const beacon of allSpaceMemberBeacons) {
-        try {
-          const decoded = holographicMemoryManager.decodeMemory(beacon as any);
-          if (decoded) {
-            const data = parseJsonWithRepair(decoded);
-            
-            if (data && (data as any).spaceId && (data as any).members) {
-              const isMember = ((data as any).members as SpaceMember[]).some(
-                (member: SpaceMember) => member.userId === userId
-              );
-              
-              if (isMember) {
-                userSpaces.add((data as any).spaceId);
-                
-                // Only update cache if we don't already have this data
-                const spaceId = (data as any).spaceId;
-                const members = (data as any).members;
-                const currentMembers = await this.memberManager.getSpaceMembers(spaceId);
-                
-                if (currentMembers.length === 0) {
-                  this.memberManager.updateMemberCache(spaceId, members);
-                  console.log(`[SpaceManager] Cached membership for space ${spaceId}`);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.warn(`[SpaceManager] Could not decode beacon during space loading:`, error);
-        }
-      }
-      
-      console.log(`[SpaceManager] User ${userId} is member of ${userSpaces.size} spaces:`, Array.from(userSpaces));
-    } catch (error) {
-      console.error(`[SpaceManager] Error loading user spaces:`, error);
-    }
+    console.log(`[SpaceManager] Skipping space loading for user ${userId} (SSE handles space data)`);
+    // No-op: SSE will populate the cache via real-time events
+    return Promise.resolve();
   }
 
   /**
