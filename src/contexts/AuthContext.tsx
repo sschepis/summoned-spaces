@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { User } from '../types/common';
-import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
+import { communicationManager } from '../services/communication-manager';
 import { holographicMemoryManager, PrimeResonanceIdentity } from '../services/holographic-memory';
 import { userDataManager } from '../services/user-data';
 import { spaceManager } from '../services/space-manager';
 import { beaconCacheManager } from '../services/beacon-cache';
-import { useCallback } from 'react';
 
 // Auth State Types
 interface AuthState {
@@ -105,95 +104,6 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Session restoration function
-  const restoreSession = useCallback(async () => {
-    console.log('[AUTH] restoreSession called');
-    console.log('[AUTH] state.isAuthenticated:', state.isAuthenticated);
-    console.log('[AUTH] state.loading:', state.loading);
-    console.log('[AUTH] state.sessionRestoring:', state.sessionRestoring);
-    
-    try {
-      const savedSession = localStorage.getItem('holographic_session');
-      console.log('[AUTH] Saved session exists:', !!savedSession);
-      
-      if (savedSession) {
-        try {
-          const session = JSON.parse(savedSession);
-          console.log('[AUTH] Parsed session data:', {
-            hasToken: !!session.token,
-            userId: session.user?.id,
-            hasPri: !!session.pri
-          });
-          
-          // Ensure communication manager is ready before sending
-          if (!communicationManager.isConnected()) {
-            console.log('[AUTH] Communication manager not ready, connecting...');
-            await communicationManager.connect();
-          }
-          
-          // Add a small delay to ensure WebSocket connection is established
-          // This is more reliable than browser-specific hacks
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Mark session as restoring BEFORE sending the message
-          dispatch({ type: 'SESSION_RESTORE_START' });
-          
-          // Re-authenticate with the server using stored session token
-          console.log('[AUTH] Sending restoreSession message to server...');
-          await communicationManager.send({
-            kind: 'restoreSession',
-            payload: {
-              sessionToken: session.token,
-              userId: session.user.id,
-              pri: session.pri
-            }
-          });
-          
-        } catch (error) {
-          console.error('[AUTH] Failed to restore session on reconnection:', error);
-          // Clear invalid session data
-          try {
-            localStorage.removeItem('holographic_session');
-          } catch (e) {
-            console.error('[AUTH] Failed to clear localStorage:', e);
-          }
-          dispatch({ type: 'LOGOUT' });
-        }
-      } else {
-        console.log('[AUTH] No saved session to restore');
-      }
-    } catch (error) {
-      console.error('[AUTH] Failed to access localStorage during restore:', error);
-      dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-    }
-  }, []);
-
-  // Set up message handler for session restoration
-  useEffect(() => {
-    const handleMessage = (message: CommunicationMessage) => {
-      if (message.kind === 'sessionRestored') {
-        console.log('[AUTH] Received sessionRestored message:', message.payload);
-        const payload = message.payload as Record<string, unknown>;
-        if (payload.success) {
-          console.log('[AUTH] Server session restored successfully for user:', payload.userId);
-          // Add a small delay to ensure server-side state is synchronized
-          // This prevents race conditions across all browsers
-          setTimeout(() => {
-            dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-          }, 50);
-        } else {
-          console.log('[AUTH] Server session restoration failed, logging out');
-          localStorage.removeItem('holographic_session');
-          dispatch({ type: 'LOGOUT' });
-        }
-      }
-    };
-
-    communicationManager.onMessage(handleMessage);
-    
-    // Note: SSE doesn't have explicit reconnection events, reconnection is automatic
-    // If needed, session restoration will happen through the initial connection
-  }, [state.isAuthenticated]); // Re-run when auth state changes
 
   // Load session from localStorage on mount (ONLY ONCE)
   useEffect(() => {
@@ -234,11 +144,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             console.log('[AUTH] Client-side session restored for user:', user.username);
 
-            // Mark services as initializing AND session as restoring
+            // Mark services as initializing
             dispatch({ type: 'SERVICES_INIT_START' });
-            dispatch({ type: 'SESSION_RESTORE_START' });
             
-            // Initialize services first, then restore server session
+            // Initialize services first
             Promise.all([
               userDataManager.loadUserData(),
               beaconCacheManager.preloadUserBeacons(user.id)
@@ -248,20 +157,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }).then(() => {
               console.log('[AUTH] SpaceManager initialized after beacon data load, isReady:', spaceManager.isReady());
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
-              
-              // Now restore server session
-              return communicationManager.connect();
-            }).then(() => {
-              console.log('[AUTH] Communication manager connected, restoring server session...');
-              return restoreSession();
-            }).then(() => {
-              // Set a timeout for server response
-              setTimeout(() => {
-                console.log('[AUTH] Server session restoration timeout, completing anyway');
-                dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
-              }, 5000);
+              dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             }).catch((error: Error) => {
-              console.error('[AUTH] Failed to initialize services or restore session:', error);
+              console.error('[AUTH] Failed to initialize services:', error);
               dispatch({ type: 'SERVICES_INIT_COMPLETE' });
               dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
             });
