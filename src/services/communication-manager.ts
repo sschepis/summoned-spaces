@@ -22,6 +22,10 @@ class SSECommunicationManager implements CommunicationManager {
   private connected = false;
   private sessionToken: string | null = null;
   private userId: string | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectTimeout: number | null = null;
+  private baseReconnectDelay = 5000; // 5 seconds
 
   async connect(): Promise<void> {
     console.log('[SSE] Initializing SSE + REST communication');
@@ -63,11 +67,19 @@ class SSECommunicationManager implements CommunicationManager {
   }
 
   private createEventSource(sseUrl: string): void {
+    // Clean up any existing EventSource
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+    
     this.eventSource = new EventSource(sseUrl);
     
     this.eventSource.onopen = () => {
       console.log('[SSE] ✅ Connected to Server-Sent Events');
       console.log('[SSE] Real-time updates are now active');
+      // Reset reconnection attempts on successful connection
+      this.reconnectAttempts = 0;
     };
     
     this.eventSource.onmessage = (event) => {
@@ -83,20 +95,39 @@ class SSECommunicationManager implements CommunicationManager {
     };
     
     this.eventSource.onerror = () => {
-      console.error('[SSE] Connection error - attempting reconnect in 5 seconds');
+      // Increment reconnection attempts
+      this.reconnectAttempts++;
       
       // Close the current connection
       if (this.eventSource) {
         this.eventSource.close();
+        this.eventSource = null;
       }
       
-      // Attempt to reconnect after 5 seconds
-      setTimeout(() => {
+      // Clear any existing reconnection timeout
+      if (this.reconnectTimeout !== null) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
+      
+      // Check if we've exceeded max reconnection attempts
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error(`[SSE] Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection.`);
+        console.log('[SSE] Operating in REST-only mode. Real-time updates disabled.');
+        return;
+      }
+      
+      // Calculate exponential backoff delay
+      const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      console.error(`[SSE] Connection error - attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay/1000} seconds`);
+      
+      // Attempt to reconnect with exponential backoff
+      this.reconnectTimeout = window.setTimeout(() => {
         if (this.connected) {
           console.log('[SSE] Attempting to reconnect...');
           this.setupSSE();
         }
-      }, 5000);
+      }, delay);
     };
   }
 
@@ -160,10 +191,20 @@ class SSECommunicationManager implements CommunicationManager {
   disconnect(): void {
     this.connected = false;
     
+    // Clear any pending reconnection timeout
+    if (this.reconnectTimeout !== null) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    // Close EventSource
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
     }
+    
+    // Reset reconnection attempts
+    this.reconnectAttempts = 0;
   }
 
   isConnected(): boolean {
