@@ -294,7 +294,33 @@ export function Dashboard({
       }
     };
 
+    // Listen for space creation events
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleSpaceCreation = (message: any) => {
+      if (message.kind === 'createSpaceSuccess') {
+        console.log('[Dashboard] Received createSpaceSuccess event:', message.payload);
+        
+        // Reload user's spaces
+        const userSpaces = userDataManager.getSpacesList().map(s => ({
+          id: s.spaceId,
+          name: `Space-${s.spaceId.substring(0, 8)}`,
+          description: `Member since ${new Date(s.joinedAt).toLocaleDateString()}`,
+          isPublic: true,
+          isJoined: true,
+          memberCount: 1,
+          tags: ['quantum-space'],
+          resonanceStrength: 0.5 + (Math.random() * 0.5),
+          recentActivity: 'Active',
+        }));
+        setSpaces(userSpaces);
+        
+        // Request updated public spaces list
+        communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
+      }
+    };
+
     communicationManager.onMessage(handleServerResponse);
+    communicationManager.onMessage(handleSpaceCreation);
     
     // Listen for follow notifications to update follower count in real-time
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

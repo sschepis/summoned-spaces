@@ -82,6 +82,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { action, username, email, password } = req.body;
+    
+    // Log the incoming request for debugging
+    console.log('[AUTH] Request:', { action, username, hasPassword: !!password });
+    
+    // Validate required fields
+    if (!action) {
+      throw new Error('Action is required');
+    }
+    
     const db = getPool();
 
     switch (action) {
@@ -151,12 +160,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const user = result.rows[0];
 
         // Verify password with the user's salt
-        const userSalt = Buffer.from(user.salt);
+        // Note: PostgreSQL returns bytea as Buffer already
+        const userSalt = Buffer.isBuffer(user.salt) ? user.salt : Buffer.from(user.salt);
+        
+        console.log('[AUTH] Verifying password for user:', username);
+        console.log('[AUTH] Salt type:', typeof user.salt, 'isBuffer:', Buffer.isBuffer(user.salt));
+        
         const passwordValid = await verifyPassword(
           password,
           userSalt,
           user.password_hash
         );
+        
+        console.log('[AUTH] Password valid:', passwordValid);
 
         if (!passwordValid) {
           throw new Error('Invalid credentials');

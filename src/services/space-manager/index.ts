@@ -183,29 +183,45 @@ class SpaceManager {
           }];
 
           // Create quantum node for the space
+          console.log(`[SpaceManager] Step 1: Creating quantum node for space ${spaceId}`);
           this.quantumOps.createSpaceQuantumNode(spaceId).then(() => {
+            console.log(`[SpaceManager] Step 2: Creating user-space entanglement`);
             // Create quantum entanglement
             return this.quantumOps.createUserSpaceEntanglement(effectiveUserId, spaceId);
           }).then(() => {
+            console.log(`[SpaceManager] Step 3: Submitting member beacon`);
             // Submit initial member list beacon
             return this.beaconOps.submitSpaceMemberBeacon(spaceId, initialMembers);
           }).then(() => {
+            console.log(`[SpaceManager] Step 4: Updating member cache`);
             this.memberManager.updateMemberCache(spaceId, initialMembers);
             
+            console.log(`[SpaceManager] Step 5: Adding space to user's local list`);
             // Add to user's personal spaces list with owner role
             return userDataManager.joinSpace(spaceId, 'owner');
           }).then(() => {
-            console.log(`[SpaceManager] Space ${spaceId} created successfully with server ID`);
+            console.log(`[SpaceManager] Step 6: Space ${spaceId} fully initialized`);
+            console.log(`[SpaceManager] User's spaces list now:`, userDataManager.getSpacesList());
             
             // Forward the createSpaceSuccess message to original handler for UI update
+            console.log(`[SpaceManager] Step 7: Forwarding createSpaceSuccess to UI`);
             if (originalHandler) {
               originalHandler(message);
             }
             
             resolve(spaceId);
           }).catch(error => {
-            console.error('[SpaceManager] Error during space initialization:', error);
-            reject(error);
+            console.error('[SpaceManager] Error during space initialization at step:', error);
+            console.error('[SpaceManager] Error stack:', error.stack);
+            
+            // Still forward the message so UI can at least show the space was created
+            console.log(`[SpaceManager] Despite error, forwarding message to UI`);
+            if (originalHandler) {
+              originalHandler(message);
+            }
+            
+            // Don't reject - space was created successfully on server
+            resolve(spaceId);
           });
         } else if (!resolved && message.kind === 'error' && message.payload.requestKind === 'createSpace') {
           resolved = true;
@@ -226,6 +242,13 @@ class SpaceManager {
       communicationManager.onMessage(wrapperHandler);
 
       // Send create space request
+      console.log('[SpaceManager] Creating space with payload:', {
+        name,
+        description,
+        isPublic,
+        userId: effectiveUserId
+      });
+      
       communicationManager.send({
         kind: 'createSpace',
         payload: { name, description, isPublic, userId: effectiveUserId }

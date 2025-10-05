@@ -77,12 +77,90 @@ export function Navigation() {
   const followingCount = userDataManager.getFollowingList().length;
   const activeConnections = Math.max(0, nodes.length - 1);
   
+  // Calculate phase alignment from network synchronization
+  // Phase alignment represents how well-synchronized the network is based on recent beacon activity
+  const calculatePhaseAlignment = (): number => {
+    if (recentBeacons.length < 2) return 0;
+    
+    // Calculate variance in beacon timing (lower variance = better phase alignment)
+    const recentTimes = recentBeacons.slice(0, 10).map(b => b.receivedAt);
+    if (recentTimes.length < 2) return 0;
+    
+    const intervals = recentTimes.slice(0, -1).map((t, i) => recentTimes[i + 1] - t);
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const variance = intervals.reduce((sum, interval) => {
+      return sum + Math.pow(interval - avgInterval, 2);
+    }, 0) / intervals.length;
+    
+    // Convert variance to alignment score (0-1, where 1 is perfectly synchronized)
+    const normalizedVariance = Math.min(1, variance / 1000000); // Normalize to 0-1 range
+    return Math.max(0, 1 - normalizedVariance);
+  };
+  
   const quantumMetrics = {
     resonanceScore: Math.min(1.0, (followingCount * 0.1) + (activeConnections * 0.2) + 0.2),
-    phaseAlignment: activeConnections > 0 ? 0.75 : 0,
+    phaseAlignment: calculatePhaseAlignment(),
     connections: activeConnections,
     entropy: Math.max(0.1, followingCount > 0 ? Math.log2(followingCount + 1) / 10 : 0.1)
   };
+  
+  // Calculate historical phase alignment for sparkline (last 5 time windows)
+  const phaseHistory = (() => {
+    const history: number[] = [];
+    const windowSize = 5; // number of beacons per window
+    
+    for (let i = 0; i < 5; i++) {
+      const windowStart = i * windowSize;
+      const windowBeacons = recentBeacons.slice(windowStart, windowStart + windowSize);
+      
+      if (windowBeacons.length < 2) {
+        history.push(quantumMetrics.phaseAlignment);
+        continue;
+      }
+      
+      const times = windowBeacons.map(b => b.receivedAt);
+      const intervals = times.slice(0, -1).map((t, idx) => times[idx + 1] - t);
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      const variance = intervals.reduce((sum, interval) => {
+        return sum + Math.pow(interval - avgInterval, 2);
+      }, 0) / intervals.length;
+      
+      const normalizedVariance = Math.min(1, variance / 1000000);
+      history.push(Math.max(0, 1 - normalizedVariance));
+    }
+    
+    return history.reverse(); // oldest to newest
+  })();
+  
+  // Calculate network growth history (connections over time windows)
+  const networkGrowthHistory = (() => {
+    const history: number[] = [];
+    const totalWindows = 8;
+    const beaconsPerWindow = Math.max(1, Math.floor(recentBeacons.length / totalWindows));
+    
+    for (let i = 0; i < totalWindows; i++) {
+      const windowStart = i * beaconsPerWindow;
+      const windowBeacons = recentBeacons.slice(windowStart, windowStart + beaconsPerWindow);
+      
+      // Count unique authors in this window
+      const uniqueAuthors = new Set(windowBeacons.map(b => b.authorId));
+      const windowConnections = uniqueAuthors.size;
+      
+      // Normalize to 0-1 range based on current connections
+      const normalized = activeConnections > 0
+        ? Math.min(1, windowConnections / activeConnections)
+        : 0.3;
+      
+      history.push(normalized);
+    }
+    
+    // Ensure we have 8 values, fill with current level if needed
+    while (history.length < 8) {
+      history.unshift(0.3);
+    }
+    
+    return history.slice(-8); // keep last 8
+  })();
 
   const networkStats = {
     spaces: userDataManager.getSpacesList().length,
@@ -284,7 +362,7 @@ export function Navigation() {
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-12 h-4 bg-white/5 rounded overflow-hidden flex items-end">
-                  {[0.7, 0.9, 0.6, 0.8, quantumMetrics.phaseAlignment].map((h, i) => (
+                  {phaseHistory.map((h, i) => (
                     <div key={i} className="flex-1 bg-cyan-400/70 mx-px" style={{ height: `${h * 100}%` }} />
                   ))}
                 </div>
@@ -307,7 +385,7 @@ export function Navigation() {
                   <span className="text-gray-400">Network Growth</span>
                 </div>
                 <div className="w-12 h-4 bg-white/5 rounded flex items-end space-x-px overflow-hidden">
-                  {[0.3, 0.6, 0.4, 0.8, 0.9, 0.7, 1.0, 0.8].map((height, i) => (
+                  {networkGrowthHistory.map((height, i) => (
                     <div
                       key={i}
                       className="flex-1 bg-green-400/70 transition-all duration-300"

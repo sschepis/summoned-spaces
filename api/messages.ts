@@ -6,10 +6,19 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { queueMessage as sseQueueMessage } from './events';
+import { DatabaseFactory } from '../lib/database/database-factory';
+import type { DatabaseAdapter } from '../lib/database/abstract-adapter';
 
 // For now, authentication is handled by dedicated /api/auth/login endpoint
 // This file handles other message types
-const initialized = false;
+let dbInstance: DatabaseAdapter | null = null;
+
+async function getDatabase(): Promise<DatabaseAdapter> {
+  if (!dbInstance) {
+    dbInstance = await DatabaseFactory.createFromEnvironment();
+  }
+  return dbInstance;
+}
 
 interface CommunicationMessage {
   kind: string;
@@ -39,9 +48,9 @@ interface StoredSpace {
   memberBeaconId?: string;
 }
 
-// In-memory storage (in production, use database)
+// In-memory storage for beacons and message queues only
+// Spaces are now stored in the database
 const beaconStore = new Map<string, StoredBeacon>();
-const spaceStore = new Map<string, StoredSpace>();
 const messageQueues = new Map<string, CommunicationMessage[]>();
 
 function queueMessage(userId: string, message: CommunicationMessage): void {
@@ -221,7 +230,8 @@ async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise
   beaconStore.set(beaconId, storedBeacon);
   console.log(`[API] Stored beacon ${beaconId} of type ${beaconType} for user ${userId}`);
   
-  // If it's a space member beacon, link it to the space
+  // If it's a space member beacon, we could update the space metadata in the database
+  // For now, just log it - member count will be calculated from beacons when needed
   if (beaconType === 'SPACE_MEMBERS' && beacon && typeof beacon === 'object') {
     const beaconData = beacon as Record<string, unknown>;
     // Extract spaceId from signature if available
@@ -235,11 +245,8 @@ async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise
         const data = JSON.parse(originalText) as { spaceId?: string };
         
         if (data.spaceId) {
-          const space = spaceStore.get(data.spaceId);
-          if (space) {
-            space.memberBeaconId = beaconId;
-            console.log(`[API] Linked beacon ${beaconId} to space ${data.spaceId}`);
-          }
+          console.log(`[API] Space member beacon ${beaconId} linked to space ${data.spaceId}`);
+          // TODO: Could update space metadata in database here if needed
         }
       } catch (error) {
         console.error('[API] Error parsing beacon signature:', error);
@@ -379,113 +386,112 @@ async function handleSearch(payload: Record<string, unknown>): Promise<Communica
 }
 
 async function handleGetPublicSpaces(): Promise<CommunicationResponse> {
-  // Get all public spaces from store
-  const publicSpaces = Array.from(spaceStore.values())
-    .filter(space => space.isPublic)
-    .map(space => {
-      let memberCount = 1; // Owner counts as 1 member
-      
-      // Try to get member count from beacon if available
-      if (space.memberBeaconId) {
-        const memberBeacon = beaconStore.get(space.memberBeaconId);
-        if (memberBeacon && memberBeacon.data && typeof memberBeacon.data === 'object') {
-          try {
-            const beaconData = memberBeacon.data as Record<string, unknown>;
-            if ('signature' in beaconData && beaconData.signature) {
-              const signature = beaconData.signature as number[];
-              const textLength = new DataView(new Uint8Array(signature.slice(0, 4)).buffer).getUint32(0, true);
-              const textBytes = signature.slice(4, 4 + textLength);
-              const originalText = new TextDecoder().decode(new Uint8Array(textBytes));
-              const data = JSON.parse(originalText) as { members?: unknown[] };
-              
-              if (data.members && Array.isArray(data.members)) {
-                memberCount = data.members.length;
-              }
-            }
-          } catch (error) {
-            console.error('[API] Error decoding member beacon:', error);
-          }
-        }
+  try {
+    const db = await getDatabase();
+    
+    // Get all public spaces from database
+    const spaces = await db.getPublicSpaces(100); // Limit to 100 for now
+    
+    const publicSpaces = spaces.map(space => ({
+      space_id: space.space_id,
+      name: space.name,
+      description: space.description,
+      is_public: space.is_public ? 1 : 0,
+      member_count: 1, // TODO: Calculate from member beacons
+      created_at: space.created_at,
+      owner: space.owner_id
+    }));
+    
+    console.log(`[API] Returning ${publicSpaces.length} public spaces from database`);
+    
+    return {
+      kind: 'publicSpacesResponse',
+      payload: {
+        spaces: publicSpaces,
+        totalSpaces: publicSpaces.length,
+        page: 1,
+        hasMore: false
       }
-      
-      return {
-        space_id: space.spaceId,
-        name: space.name,
-        description: space.description,
-        is_public: space.isPublic ? 1 : 0,
-        member_count: memberCount,
-        created_at: space.createdAt,
-        owner: space.owner
-      };
-    });
-  
-  console.log(`[API] Returning ${publicSpaces.length} public spaces`);
-  
-  return {
-    kind: 'publicSpacesResponse',
-    payload: {
-      spaces: publicSpaces,
-      totalSpaces: publicSpaces.length,
-      page: 1,
-      hasMore: false
-    }
-  };
+    };
+  } catch (error) {
+    console.error('[API] Error getting public spaces:', error);
+    return {
+      kind: 'error',
+      payload: {
+        message: 'Failed to retrieve public spaces',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }
+    };
+  }
 }
 
 async function handleCreateSpace(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { name, description, isPublic, userId } = payload;
-  
-  // Generate a unique space ID
-  const spaceId = `space_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  
-  console.log(`[API] Creating space: ${name} with ID: ${spaceId} for user: ${userId}`);
-  
-  // Store space in memory
-  const newSpace: StoredSpace = {
-    spaceId,
-    name: name as string,
-    description: description as string,
-    isPublic: isPublic as boolean,
-    owner: userId as string,
-    createdAt: new Date().toISOString()
-  };
-  
-  spaceStore.set(spaceId, newSpace);
-  console.log(`[API] Stored space ${spaceId} in memory`);
-  
-  // Queue the success notification for SSE delivery
-  if (userId) {
-    const createSpaceMessage: CommunicationMessage = {
-      kind: 'createSpaceSuccess',
-      payload: {
-        spaceId,
-        name: name as string,
-        description: description as string,
-        isPublic: isPublic as boolean,
-        owner: userId as string,
-        createdAt: new Date().toISOString(),
-        memberCount: 1,
-        role: 'owner'
-      }
-    };
+  try {
+    const { name, description, isPublic, userId } = payload;
     
-    queueMessage(userId as string, createSpaceMessage);
-  }
-  
-  return {
-    kind: 'createSpaceSuccess',
-    payload: {
-      spaceId,
+    // Generate a unique space ID
+    const spaceId = `space_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    console.log(`[API] Creating space: ${name} with ID: ${spaceId} for user: ${userId}, isPublic: ${isPublic}`);
+    
+    const db = await getDatabase();
+    
+    // Store space in database
+    const newSpace = await db.createSpace({
+      space_id: spaceId,
       name: name as string,
       description: description as string,
-      isPublic: isPublic as boolean,
-      owner: userId as string,
-      createdAt: new Date().toISOString(),
-      memberCount: 1,
-      role: 'owner',
-      message: 'Space created successfully'
+      is_public: isPublic as boolean,
+      owner_id: userId as string,
+      metadata: {}
+    });
+    
+    console.log(`[API] Space created in database:`, newSpace);
+    
+    // Queue the success notification for SSE delivery
+    if (userId) {
+      const createSpaceMessage: CommunicationMessage = {
+        kind: 'createSpaceSuccess',
+        payload: {
+          spaceId: newSpace.space_id,
+          name: newSpace.name,
+          description: newSpace.description,
+          isPublic: newSpace.is_public,
+          owner: newSpace.owner_id,
+          createdAt: newSpace.created_at,
+          memberCount: 1,
+          role: 'owner'
+        }
+      };
+      
+      console.log(`[API] Queueing createSpaceSuccess message for user ${userId}`);
+      queueMessage(userId as string, createSpaceMessage);
     }
-  };
+    
+    return {
+      kind: 'createSpaceSuccess',
+      payload: {
+        spaceId: newSpace.space_id,
+        name: newSpace.name,
+        description: newSpace.description,
+        isPublic: newSpace.is_public,
+        owner: newSpace.owner_id,
+        createdAt: newSpace.created_at,
+        memberCount: 1,
+        role: 'owner',
+        message: 'Space created successfully in database'
+      }
+    };
+  } catch (error) {
+    console.error('[API] Error creating space:', error);
+    return {
+      kind: 'error',
+      payload: {
+        message: 'Failed to create space',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }
+    };
+  }
 }
 
 async function handleSubmitCommentBeacon(payload: Record<string, unknown>): Promise<CommunicationResponse> {
