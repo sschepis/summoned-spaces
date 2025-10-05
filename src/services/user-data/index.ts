@@ -38,6 +38,7 @@ export class UserDataManager {
    */
   setCurrentUser(userId: string): void {
     this.currentUserId = userId;
+    this.spacesManager.setCurrentUser(userId);
   }
 
   /**

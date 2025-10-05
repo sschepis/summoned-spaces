@@ -32,17 +32,17 @@ function getPool(): Pool {
   return pool;
 }
 
-// Password hashing
-async function hashPassword(password: string): Promise<string> {
+// Password hashing with proper salt usage
+async function hashPassword(password: string, salt: Buffer): Promise<string> {
   const iterations = 100000;
   const keylen = 64;
   const digest = 'sha512';
-  const derivedKey = await pbkdf2Async(password, 'static-salt', iterations, keylen, digest);
+  const derivedKey = await pbkdf2Async(password, salt, iterations, keylen, digest);
   return derivedKey.toString('hex');
 }
 
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const passwordHash = await hashPassword(password);
+async function verifyPassword(password: string, salt: Buffer, hash: string): Promise<boolean> {
+  const passwordHash = await hashPassword(password, salt);
   return passwordHash === hash;
 }
 
@@ -90,9 +90,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pri = generatePRI();
         const userId = pri.nodeAddress;
 
-        // Hash password
+        // Generate salt and hash password
         const salt = randomBytes(32);
-        const passwordHash = await hashPassword(password + salt.toString());
+        const passwordHash = await hashPassword(password, salt);
 
         // Insert user
         await db.query(`
@@ -150,9 +150,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const user = result.rows[0];
 
-        // Verify password
+        // Verify password with the user's salt
+        const userSalt = Buffer.from(user.salt);
         const passwordValid = await verifyPassword(
-          password + Buffer.from(user.salt).toString(),
+          password,
+          userSalt,
           user.password_hash
         );
 

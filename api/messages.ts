@@ -5,6 +5,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { queueMessage as sseQueueMessage } from './events';
 
 // For now, authentication is handled by dedicated /api/auth/login endpoint
 // This file handles other message types
@@ -20,7 +21,27 @@ interface CommunicationResponse {
   payload: Record<string, unknown>;
 }
 
-// In-memory message queue for polling (in production, use Redis or similar)
+interface StoredBeacon {
+  beaconId: string;
+  beaconType: string;
+  authorId: string;
+  data: unknown;
+  createdAt: string;
+}
+
+interface StoredSpace {
+  spaceId: string;
+  name: string;
+  description: string;
+  isPublic: boolean;
+  owner: string;
+  createdAt: string;
+  memberBeaconId?: string;
+}
+
+// In-memory storage (in production, use database)
+const beaconStore = new Map<string, StoredBeacon>();
+const spaceStore = new Map<string, StoredSpace>();
 const messageQueues = new Map<string, CommunicationMessage[]>();
 
 function queueMessage(userId: string, message: CommunicationMessage): void {
@@ -33,6 +54,13 @@ function queueMessage(userId: string, message: CommunicationMessage): void {
   // Keep only last 100 messages per user to prevent memory issues
   if (queue.length > 100) {
     queue.shift();
+  }
+  
+  // Also queue for SSE delivery
+  try {
+    sseQueueMessage(userId, message);
+  } catch (error) {
+    console.error('[API] Failed to queue message for SSE:', error);
   }
 }
 
@@ -177,16 +205,54 @@ async function handleMessage(message: CommunicationMessage): Promise<Communicati
 // Individual message handlers with proper typing
 
 async function handleSubmitPostBeacon(payload: Record<string, unknown>): Promise<CommunicationResponse> {
-  const { userId } = payload;
-  // sessionToken validation will be implemented with production database
+  const { userId, beacon, beaconType } = payload;
   
-  // In production, validate session and store to Neon database
+  const beaconId = `beacon_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Store beacon in memory
+  const storedBeacon: StoredBeacon = {
+    beaconId,
+    beaconType: beaconType as string,
+    authorId: userId as string,
+    data: beacon,
+    createdAt: new Date().toISOString()
+  };
+  
+  beaconStore.set(beaconId, storedBeacon);
+  console.log(`[API] Stored beacon ${beaconId} of type ${beaconType} for user ${userId}`);
+  
+  // If it's a space member beacon, link it to the space
+  if (beaconType === 'SPACE_MEMBERS' && beacon && typeof beacon === 'object') {
+    const beaconData = beacon as Record<string, unknown>;
+    // Extract spaceId from signature if available
+    if ('signature' in beaconData && beaconData.signature) {
+      try {
+        // Decode signature to get original text
+        const signature = beaconData.signature as number[];
+        const textLength = new DataView(new Uint8Array(signature.slice(0, 4)).buffer).getUint32(0, true);
+        const textBytes = signature.slice(4, 4 + textLength);
+        const originalText = new TextDecoder().decode(new Uint8Array(textBytes));
+        const data = JSON.parse(originalText) as { spaceId?: string };
+        
+        if (data.spaceId) {
+          const space = spaceStore.get(data.spaceId);
+          if (space) {
+            space.memberBeaconId = beaconId;
+            console.log(`[API] Linked beacon ${beaconId} to space ${data.spaceId}`);
+          }
+        }
+      } catch (error) {
+        console.error('[API] Error parsing beacon signature:', error);
+      }
+    }
+  }
+  
   return {
     kind: 'submitPostSuccess',
-    payload: { 
-      message: 'Post beacon submitted (production mode)',
+    payload: {
+      message: 'Post beacon submitted and stored',
       timestamp: Date.now(),
-      beaconId: `beacon_${Math.random().toString(36).substring(2, 15)}`,
+      beaconId,
       userId: userId as string
     }
   };
@@ -313,13 +379,53 @@ async function handleSearch(payload: Record<string, unknown>): Promise<Communica
 }
 
 async function handleGetPublicSpaces(): Promise<CommunicationResponse> {
-  // In production, this would query the Neon database for public spaces
-  // For now, return empty array with proper structure
+  // Get all public spaces from store
+  const publicSpaces = Array.from(spaceStore.values())
+    .filter(space => space.isPublic)
+    .map(space => {
+      let memberCount = 1; // Owner counts as 1 member
+      
+      // Try to get member count from beacon if available
+      if (space.memberBeaconId) {
+        const memberBeacon = beaconStore.get(space.memberBeaconId);
+        if (memberBeacon && memberBeacon.data && typeof memberBeacon.data === 'object') {
+          try {
+            const beaconData = memberBeacon.data as Record<string, unknown>;
+            if ('signature' in beaconData && beaconData.signature) {
+              const signature = beaconData.signature as number[];
+              const textLength = new DataView(new Uint8Array(signature.slice(0, 4)).buffer).getUint32(0, true);
+              const textBytes = signature.slice(4, 4 + textLength);
+              const originalText = new TextDecoder().decode(new Uint8Array(textBytes));
+              const data = JSON.parse(originalText) as { members?: unknown[] };
+              
+              if (data.members && Array.isArray(data.members)) {
+                memberCount = data.members.length;
+              }
+            }
+          } catch (error) {
+            console.error('[API] Error decoding member beacon:', error);
+          }
+        }
+      }
+      
+      return {
+        space_id: space.spaceId,
+        name: space.name,
+        description: space.description,
+        is_public: space.isPublic ? 1 : 0,
+        member_count: memberCount,
+        created_at: space.createdAt,
+        owner: space.owner
+      };
+    });
+  
+  console.log(`[API] Returning ${publicSpaces.length} public spaces`);
+  
   return {
     kind: 'publicSpacesResponse',
     payload: {
-      spaces: [],
-      totalSpaces: 0,
+      spaces: publicSpaces,
+      totalSpaces: publicSpaces.length,
       page: 1,
       hasMore: false
     }
@@ -328,17 +434,56 @@ async function handleGetPublicSpaces(): Promise<CommunicationResponse> {
 
 async function handleCreateSpace(payload: Record<string, unknown>): Promise<CommunicationResponse> {
   const { name, description, isPublic, userId } = payload;
-  // sessionToken validation will be implemented with production database
+  
+  // Generate a unique space ID
+  const spaceId = `space_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
+  console.log(`[API] Creating space: ${name} with ID: ${spaceId} for user: ${userId}`);
+  
+  // Store space in memory
+  const newSpace: StoredSpace = {
+    spaceId,
+    name: name as string,
+    description: description as string,
+    isPublic: isPublic as boolean,
+    owner: userId as string,
+    createdAt: new Date().toISOString()
+  };
+  
+  spaceStore.set(spaceId, newSpace);
+  console.log(`[API] Stored space ${spaceId} in memory`);
+  
+  // Queue the success notification for SSE delivery
+  if (userId) {
+    const createSpaceMessage: CommunicationMessage = {
+      kind: 'createSpaceSuccess',
+      payload: {
+        spaceId,
+        name: name as string,
+        description: description as string,
+        isPublic: isPublic as boolean,
+        owner: userId as string,
+        createdAt: new Date().toISOString(),
+        memberCount: 1,
+        role: 'owner'
+      }
+    };
+    
+    queueMessage(userId as string, createSpaceMessage);
+  }
   
   return {
     kind: 'createSpaceSuccess',
-    payload: { 
-      spaceId: `space_${Math.random().toString(36).substring(2, 15)}`,
+    payload: {
+      spaceId,
       name: name as string,
       description: description as string,
       isPublic: isPublic as boolean,
       owner: userId as string,
-      message: 'Space created (production mode)'
+      createdAt: new Date().toISOString(),
+      memberCount: 1,
+      role: 'owner',
+      message: 'Space created successfully'
     }
   };
 }

@@ -8,7 +8,7 @@ import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import { Space, SpaceRole } from '../types/common';
 import { CreateSpaceModal } from './CreateSpaceModal';
-import { communicationManager } from '../services/communication-manager';
+import { communicationManager, CommunicationMessage } from '../services/communication-manager';
 import { useAuth } from '../contexts/AuthContext';
 import { userDataManager } from '../services/user-data';
 import { useNotifications } from './NotificationSystem';
@@ -16,6 +16,16 @@ import { spaceManager } from '../services/space-manager';
 
 interface SpaceDiscoveryProps {
   onViewSpace: (spaceId: string) => void;
+}
+
+interface ApiSpace {
+  space_id: string;
+  name: string;
+  description: string;
+  is_public: number;
+  member_count?: number;
+  created_at?: string;
+  owner?: string;
 }
 
 export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
@@ -26,69 +36,13 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
   const { waitForAuth, user } = useAuth();
 
   useEffect(() => {
-    // Request public spaces on mount after auth is ready
-    const fetchSpaces = async () => {
+    const loadAllSpaces = async () => {
       await waitForAuth();
-      communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
-    };
-    
-    fetchSpaces();
+      if (!user) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleMessage = async (message: any) => {
-      if (message.kind === 'publicSpacesResponse') {
-        // Get user's current space memberships from userDataManager
+      // Load user's spaces - defined as a named function for reusability
+      const loadUserSpaces = async () => {
         const userSpacesList = userDataManager.getSpacesList();
-        const userSpaceMap = new Map(userSpacesList.map(s => [s.spaceId, s]));
-        
-        // Load member data for each space to get user roles
-        const mappedSpaces = await Promise.all(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          message.payload.spaces.map(async (space: any) => {
-            const userSpaceData = userSpaceMap.get(space.space_id);
-            let userRole: SpaceRole | undefined = undefined;
-            
-            // If user is a member, get their actual role from SpaceManager
-            if (userSpaceData && user) {
-              try {
-                const role = await spaceManager.getUserRole(space.space_id, user.id);
-                userRole = role || userSpaceData.role as SpaceRole;
-              } catch (error) {
-                console.warn(`Could not get user role for space ${space.space_id}:`, error);
-                userRole = userSpaceData.role as SpaceRole;
-              }
-            }
-            
-            return {
-              id: space.space_id,
-              name: space.name,
-              description: space.description || '',
-              isPublic: space.is_public === 1,
-              isJoined: !!userSpaceData,
-              memberCount: 0,
-              tags: [],
-              resonanceStrength: 0.8,
-              recentActivity: 'Active',
-              role: userRole,
-            };
-          })
-        );
-        
-        setSpaces(mappedSpaces);
-      }
-    };
-
-    communicationManager.onMessage(handleMessage);
-    return () => {}; // SSE cleanup handled automatically
-  }, [user]);
-
-  // Load user's spaces from userDataManager and get actual roles
-  useEffect(() => {
-    const loadUserSpaces = async () => {
-      if (user) {
-        const userSpacesList = userDataManager.getSpacesList();
-        
-        // Get actual role data from SpaceManager for each space
         const spacesWithRoles = await Promise.all(
           userSpacesList.map(async (s) => {
             let actualRole: SpaceRole = s.role as SpaceRole;
@@ -113,67 +67,155 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
             };
           })
         );
-        
         setUserSpaces(spacesWithRoles);
-      }
+        return userSpacesList;
+      };
+
+      // Initial load
+      await loadUserSpaces();
+
+      // Now handle public spaces and space creation events
+      const handleMessage = async (message: CommunicationMessage) => {
+        if (message.kind === 'publicSpacesResponse') {
+          // Get fresh user spaces list each time
+          const currentUserSpacesList = userDataManager.getSpacesList();
+          const userSpaceMap = new Map(currentUserSpacesList.map(s => [s.spaceId, s]));
+          
+          const mappedSpaces = await Promise.all(
+            (message.payload.spaces as ApiSpace[]).map(async (space) => {
+              const userSpaceData = userSpaceMap.get(space.space_id);
+              let userRole: SpaceRole | undefined = undefined;
+              
+              if (userSpaceData && user) {
+                try {
+                  const role = await spaceManager.getUserRole(space.space_id, user.id);
+                  userRole = role || userSpaceData.role as SpaceRole;
+                } catch (error) {
+                  console.warn(`Could not get user role for space ${space.space_id}:`, error);
+                  userRole = userSpaceData.role as SpaceRole;
+                }
+              }
+              
+              return {
+                id: space.space_id,
+                name: space.name,
+                description: space.description || '',
+                isPublic: space.is_public === 1,
+                isJoined: !!userSpaceData,
+                memberCount: space.member_count || 0,
+                tags: [],
+                resonanceStrength: 0.8,
+                recentActivity: 'Active',
+                role: userRole,
+              };
+            })
+          );
+          
+          setSpaces(mappedSpaces);
+        } else if (message.kind === 'createSpaceSuccess') {
+          // Handle successful space creation
+          console.log('[SpaceDiscovery] Received createSpaceSuccess event:', message.payload);
+          
+          // Reload user spaces to include the newly created space
+          await loadUserSpaces();
+          
+          // Request updated public spaces list
+          communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
+        }
+      };
+
+      communicationManager.onMessage(handleMessage);
+      communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
     };
-    
-    loadUserSpaces();
-  }, [user]);
+
+    loadAllSpaces();
+
+    return () => {
+      // Cleanup if necessary, though onMessage might handle it
+    };
+  }, [user, waitForAuth]);
 
   const handleJoinLeave = async (spaceId: string) => {
+    console.log('[SpaceDiscovery] handleJoinLeave called for space:', spaceId);
+    
     try {
       const space = spaces.find(s => s.id === spaceId);
-      if (!space) return;
+      if (!space) {
+        console.error('[SpaceDiscovery] Space not found:', spaceId);
+        showError('Error', 'Space not found');
+        return;
+      }
+
+      console.log('[SpaceDiscovery] Space found:', { id: space.id, isJoined: space.isJoined, role: space.role });
 
       if (space.isJoined) {
-        // Leave space
-        console.log('Leaving space:', spaceId);
+        console.log('[SpaceDiscovery] Leaving space:', spaceId);
         await spaceManager.leaveSpace(spaceId);
         
-        // Update UI - remove role when leaving
         setSpaces(prev => prev.map(s =>
-          s.id === spaceId ? { ...s, isJoined: false, role: undefined } : s
+          s.id === spaceId ? {
+            ...s,
+            isJoined: false,
+            role: undefined,
+            memberCount: Math.max(0, (s.memberCount || 0) - 1)
+          } : s
         ));
         
-        // Update user spaces list
         setUserSpaces(prev => prev.filter(s => s.id !== spaceId));
         
         showSuccess('Left Space', `You have left ${space.name}`);
-      } else {
-        // Join space
-        console.log('Joining space:', spaceId);
-        await spaceManager.joinSpace(spaceId);
         
-        // Get the user's actual role after joining
+        // Refresh public spaces to get updated member count from server
+        communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
+      } else {
+        console.log('[SpaceDiscovery] Joining space:', spaceId);
+        
+        try {
+          await spaceManager.joinSpace(spaceId);
+          console.log('[SpaceDiscovery] Join successful, getting role...');
+        } catch (joinError) {
+          console.error('[SpaceDiscovery] Join failed:', joinError);
+          throw joinError;
+        }
+        
         let userRole: SpaceRole = 'member';
         if (user) {
           try {
             const role = await spaceManager.getUserRole(spaceId, user.id);
             userRole = role || 'member';
+            console.log('[SpaceDiscovery] User role:', userRole);
           } catch (error) {
-            console.warn('Could not get user role after joining:', error);
+            console.warn('[SpaceDiscovery] Could not get user role after joining:', error);
           }
         }
         
-        // Update UI with role information
+        console.log('[SpaceDiscovery] Updating UI state...');
         setSpaces(prev => prev.map(s =>
-          s.id === spaceId ? { ...s, isJoined: true, role: userRole } : s
+          s.id === spaceId ? {
+            ...s,
+            isJoined: true,
+            role: userRole,
+            memberCount: (s.memberCount || 0) + 1
+          } : s
         ));
         
-        // Add to user spaces list
         const newUserSpace = {
           ...space,
           isJoined: true,
-          role: userRole
+          role: userRole,
+          memberCount: (space.memberCount || 0) + 1
         };
         setUserSpaces(prev => [...prev, newUserSpace]);
         
+        console.log('[SpaceDiscovery] Join complete, refreshing spaces...');
         showSuccess('Joined Space', `Welcome to ${space.name}!`);
+        
+        // Refresh public spaces to get updated member count from server
+        communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
       }
     } catch (error) {
-      console.error('Error joining/leaving space:', error);
-      showError('Error', 'Failed to update space membership');
+      console.error('[SpaceDiscovery] Error in handleJoinLeave:', error);
+      showError('Error', error instanceof Error ? error.message : 'Failed to update space membership');
     }
   };
 
@@ -182,43 +224,10 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
   const handleSpaceCreated = async (spaceId: string) => {
     console.log('New space created:', spaceId);
     setIsCreateModalOpen(false);
-    showSuccess('Space Created!', `Your new space is ready.`);
+    showSuccess('Space Created!', `Your new space is ready with ID: ${spaceId}`);
     
-    // Wait a moment for space creation to complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Refresh both spaces lists to show the new space with owner role
-    communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
-    
-    // Reload user spaces to include the newly created space
-    if (user) {
-      const userSpacesList = userDataManager.getSpacesList();
-      const spacesWithRoles = await Promise.all(
-        userSpacesList.map(async (s) => {
-          let actualRole: SpaceRole = s.role as SpaceRole;
-          try {
-            const role = await spaceManager.getUserRole(s.spaceId, user.id);
-            actualRole = role || (s.role as SpaceRole);
-          } catch (error) {
-            console.warn(`Could not get role for space ${s.spaceId}:`, error);
-          }
-          
-          return {
-            id: s.spaceId,
-            name: `Space-${s.spaceId.substring(0, 8)}`,
-            description: `Role: ${actualRole} • Joined ${new Date(s.joinedAt).toLocaleDateString()}`,
-            isPublic: true,
-            isJoined: true,
-            memberCount: 1,
-            tags: ['quantum-space'],
-            resonanceStrength: Math.random() * 0.5 + 0.5,
-            recentActivity: 'Active',
-            role: actualRole
-          };
-        })
-      );
-      setUserSpaces(spacesWithRoles);
-    }
+    // The createSpaceSuccess event handler in useEffect will automatically
+    // refresh the spaces lists, so we don't need to do it manually here
   };
 
   const filteredSpaces = spaces.filter(space => {

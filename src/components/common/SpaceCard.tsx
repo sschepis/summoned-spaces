@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Clock, Globe, Lock, Plus } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -89,25 +90,17 @@ export function SpaceCard({
             </div>
           </div>
           
-          {showJoinButton && onJoin && (
+          {showJoinButton && onJoin && space.role !== 'owner' && (
             <Button
               size="sm"
-              variant={
-                space.role === 'owner' ? 'primary' :
-                space.isJoined ? 'success' :
-                'secondary'
-              }
-              icon={space.isJoined || space.role === 'owner' ? undefined : Plus}
-              disabled={space.role === 'owner'}
+              variant={space.isJoined ? 'success' : 'secondary'}
+              icon={space.isJoined ? undefined : Plus}
               onClick={(e) => {
                 e.stopPropagation();
-                if (space.role !== 'owner') {
-                  onJoin(space.id);
-                }
+                onJoin(space.id);
               }}
-              className={space.role === 'owner' ? 'cursor-not-allowed opacity-75' : ''}
             >
-              {space.role === 'owner' ? 'Owner' : space.isJoined ? 'Joined' : 'Join'}
+              {space.isJoined ? 'Joined' : 'Join'}
             </Button>
           )}
         </div>

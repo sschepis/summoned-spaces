@@ -141,52 +141,117 @@ class SpaceManager {
     // Ensure communication manager is connected
     await communicationManager.connect();
 
-    try {
-      // Send create space request - response comes back from send()
-      await communicationManager.send({
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      
+      // Store the original message handler
+      const originalHandler = (communicationManager as any)._messageCallback;
+      
+      // Create a wrapper that handles both the createSpace response and forwards other messages
+      const wrapperHandler = (message: any) => {
+        if (!resolved && message.kind === 'createSpaceSuccess') {
+          const { spaceId, owner } = message.payload;
+          resolved = true;
+          
+          // Restore original handler FIRST
+          if (originalHandler) {
+            communicationManager.onMessage(originalHandler);
+          }
+          
+          // Verify ownership
+          if (owner !== effectiveUserId) {
+            console.warn(`[SpaceManager] Owner mismatch: expected ${effectiveUserId}, got ${owner}`);
+          }
+          
+          // Initialize space metadata with server-provided ID
+          this.spaceMetadata.set(spaceId, {
+            spaceId,
+            name,
+            description,
+            isPublic,
+            createdAt: new Date().toISOString()
+          });
+
+          // Initialize member list with creator as owner
+          const initialMembers: SpaceMember[] = [{
+            userId: effectiveUserId,
+            role: 'owner',
+            joinedAt: new Date().toISOString()
+          }];
+
+          // Create quantum node for the space
+          this.quantumOps.createSpaceQuantumNode(spaceId).then(() => {
+            // Create quantum entanglement
+            return this.quantumOps.createUserSpaceEntanglement(effectiveUserId, spaceId);
+          }).then(() => {
+            // Submit initial member list beacon
+            return this.beaconOps.submitSpaceMemberBeacon(spaceId, initialMembers);
+          }).then(() => {
+            this.memberManager.updateMemberCache(spaceId, initialMembers);
+            
+            // Add to user's personal spaces list with owner role
+            return userDataManager.joinSpace(spaceId, 'owner');
+          }).then(() => {
+            console.log(`[SpaceManager] Space ${spaceId} created successfully with server ID`);
+            
+            // Forward the createSpaceSuccess message to original handler for UI update
+            if (originalHandler) {
+              originalHandler(message);
+            }
+            
+            resolve(spaceId);
+          }).catch(error => {
+            console.error('[SpaceManager] Error during space initialization:', error);
+            reject(error);
+          });
+        } else if (!resolved && message.kind === 'error' && message.payload.requestKind === 'createSpace') {
+          resolved = true;
+          
+          // Restore original handler
+          if (originalHandler) {
+            communicationManager.onMessage(originalHandler);
+          }
+          
+          reject(new Error(message.payload.message || 'Failed to create space'));
+        } else if (originalHandler) {
+          // Forward all other messages to the original handler
+          originalHandler(message);
+        }
+      };
+
+      // Register the wrapper handler
+      communicationManager.onMessage(wrapperHandler);
+
+      // Send create space request
+      communicationManager.send({
         kind: 'createSpace',
-        payload: { name, description, isPublic }
+        payload: { name, description, isPublic, userId: effectiveUserId }
+      }).catch(error => {
+        resolved = true;
+        
+        // Restore original handler
+        if (originalHandler) {
+          communicationManager.onMessage(originalHandler);
+        }
+        
+        console.error('[SpaceManager] Failed to send create space request:', error);
+        reject(error);
       });
 
-      // For now, generate a temporary space ID
-      // The actual space creation will be handled by the server and sent via SSE
-      const tempSpaceId = `space_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      
-      // Initialize space metadata
-      this.spaceMetadata.set(tempSpaceId, {
-        spaceId: tempSpaceId,
-        name,
-        description,
-        isPublic,
-        createdAt: new Date().toISOString()
-      });
-
-      // Initialize member list with creator as owner
-      const initialMembers: SpaceMember[] = [{
-        userId: effectiveUserId,
-        role: 'owner',
-        joinedAt: new Date().toISOString()
-      }];
-
-      // Create quantum node for the space
-      await this.quantumOps.createSpaceQuantumNode(tempSpaceId);
-
-      // Create quantum entanglement
-      await this.quantumOps.createUserSpaceEntanglement(effectiveUserId, tempSpaceId);
-      
-      // Submit initial member list beacon
-      await this.beaconOps.submitSpaceMemberBeacon(tempSpaceId, initialMembers);
-      this.memberManager.updateMemberCache(tempSpaceId, initialMembers);
-      
-      // Add to user's personal spaces list
-      await userDataManager.joinSpace(tempSpaceId, 'owner');
-      
-      console.log(`[SpaceManager] Space ${tempSpaceId} created`);
-      return tempSpaceId;
-    } catch (error) {
-      console.error('[SpaceManager] Failed to create space:', error);
-      throw error;
-    }
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          
+          // Restore original handler
+          if (originalHandler) {
+            communicationManager.onMessage(originalHandler);
+          }
+          
+          reject(new Error('Space creation timed out'));
+        }
+      }, 30000);
+    });
   }
 
   /**

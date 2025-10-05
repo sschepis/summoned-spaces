@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { User } from '../types/common';
 import { communicationManager } from '../services/communication-manager';
 import { holographicMemoryManager, PrimeResonanceIdentity } from '../services/holographic-memory';
@@ -104,6 +104,12 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
+  // Ref to hold the latest state for callbacks that need it
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
 
   // Load session from localStorage on mount (ONLY ONCE)
   useEffect(() => {
@@ -116,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!mounted) return;
 
       try {
-        const savedSession = localStorage.getItem('holographic_session');
+        const savedSession = localStorage.getItem('summoned_spaces_session');
         console.log('[AUTH] LocalStorage session exists:', !!savedSession);
 
         if (savedSession && mounted) {
@@ -175,7 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           } catch (error) {
             console.error('[AUTH] Failed to restore session:', error);
-            localStorage.removeItem('holographic_session');
+            localStorage.removeItem('summoned_spaces_session');
             // Set loading to false when session restoration fails
             dispatch({ type: 'SESSION_RESTORE_COMPLETE' });
           }
@@ -206,7 +212,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
     };
-  }, []); // Empty array: run ONLY ONCE on mount - removing state.isAuthenticated to prevent double-run
+  }, [state.isAuthenticated]);
 
   // Save session to localStorage whenever auth state changes
   useEffect(() => {
@@ -221,16 +227,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Safari fix: Ensure localStorage write completes
         const sessionString = JSON.stringify(session);
-        localStorage.setItem('holographic_session', sessionString);
+        localStorage.setItem('summoned_spaces_session', sessionString);
         
         // Verify the write (Safari sometimes fails silently)
-        const verified = localStorage.getItem('holographic_session');
+        const verified = localStorage.getItem('summoned_spaces_session');
         if (verified !== sessionString) {
           console.error('[AUTH] localStorage write verification failed');
         }
       } else {
         console.log('[AUTH] Clearing session from localStorage');
-        localStorage.removeItem('holographic_session');
+        localStorage.removeItem('summoned_spaces_session');
       }
     } catch (error) {
       console.error('[AUTH] Failed to save session to localStorage:', error);
@@ -368,7 +374,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Clear localStorage
     try {
-      localStorage.removeItem('holographic_session');
       localStorage.removeItem('summoned_spaces_session');
       console.log('[AUTH] Cleared localStorage');
     } catch (error) {
@@ -394,30 +399,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Wait for authentication to be ready (not loading, restoring, or initializing services)
-  const waitForAuth = (): Promise<void> => {
+  // Memoize waitForAuth to make it stable and prevent re-renders in consumers
+  const waitForAuth = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
-      // If not loading, not restoring, and not initializing services, resolve immediately
-      if (!state.loading && !state.sessionRestoring && !state.servicesInitializing) {
+      // Use ref to get the most up-to-date state inside the promise
+      const checkState = () => {
+        const currentState = stateRef.current;
+        return !currentState.loading && !currentState.sessionRestoring && !currentState.servicesInitializing;
+      };
+
+      if (checkState()) {
         resolve();
         return;
       }
       
-      // Otherwise, poll until ready
       const checkInterval = setInterval(() => {
-        if (!state.loading && !state.sessionRestoring && !state.servicesInitializing) {
+        if (checkState()) {
           clearInterval(checkInterval);
           resolve();
         }
       }, 100);
       
-      // Add timeout to prevent infinite waiting
       setTimeout(() => {
         clearInterval(checkInterval);
-        console.warn('[AUTH] waitForAuth timed out after 30 seconds');
-        resolve();
+        if (!checkState()) {
+          console.warn('[AUTH] waitForAuth timed out after 30 seconds');
+        }
+        resolve(); // Resolve anyway to prevent hangs
       }, 30000);
     });
-  };
+  }, []); // Empty dependency array ensures the function is stable
 
   const value: AuthContextType = {
     ...state,

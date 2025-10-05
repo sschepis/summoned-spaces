@@ -104,6 +104,36 @@ class SSECommunicationManager implements CommunicationManager {
     };
     
     this.eventSource.onerror = () => {
+      // Check the readyState to determine if we should reconnect
+      const readyState = this.eventSource?.readyState;
+      
+      // EventSource.CONNECTING (0) - still trying to connect, wait
+      // EventSource.OPEN (1) - connection is open, this is a transient error
+      // EventSource.CLOSED (2) - connection is closed, need to reconnect
+      
+      if (readyState === EventSource.CONNECTING) {
+        // Still attempting initial connection, don't interfere
+        console.log('[SSE] Connecting to SSE endpoint...');
+        return;
+      }
+      
+      if (readyState === EventSource.OPEN) {
+        // Connection is still open, just a transient error - ignore it
+        console.log('[SSE] Transient error on open connection, ignoring');
+        return;
+      }
+      
+      // Check if we're intentionally disconnecting
+      if (!this.connected) {
+        // We're disconnecting on purpose (e.g., component unmount, logout)
+        console.log('[SSE] Disconnecting as requested');
+        return;
+      }
+      
+      // Connection is closed (readyState === EventSource.CLOSED)
+      // This is normal during page navigation/refresh - don't treat as error
+      console.log('[SSE] Connection closed');
+      
       // Increment reconnection attempts
       this.reconnectAttempts++;
       
@@ -121,14 +151,14 @@ class SSECommunicationManager implements CommunicationManager {
       
       // Check if we've exceeded max reconnection attempts
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error(`[SSE] Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection.`);
+        console.warn(`[SSE] Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection.`);
         console.log('[SSE] Operating in REST-only mode. Real-time updates disabled.');
         return;
       }
       
       // Calculate exponential backoff delay
       const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      console.error(`[SSE] Connection error - attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay/1000} seconds`);
+      console.log(`[SSE] Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay/1000} seconds`);
       
       // Attempt to reconnect with exponential backoff
       this.reconnectTimeout = window.setTimeout(() => {

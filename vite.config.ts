@@ -2,6 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 
+// Development mode space storage
+const devSpaces: Array<{
+  space_id: string;
+  name: string;
+  description: string;
+  is_public: number;
+  created_at: string;
+}> = [];
+
 function ssePlugin(): Plugin {
   return {
     name: 'sse-communication',
@@ -23,6 +32,7 @@ function ssePlugin(): Plugin {
         }
         
         // Handle /v1/auth/login endpoint
+        // In dev mode, just use simple in-memory auth for testing
         if (req.url === '/auth/login' && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => { body += chunk.toString(); });
@@ -101,6 +111,40 @@ function ssePlugin(): Plugin {
                     }
                   }
                 };
+              } else if (message.kind === 'getPublicSpaces') {
+                // Return spaces in production API format
+                response = {
+                  kind: 'publicSpacesResponse',
+                  payload: {
+                    spaces: devSpaces,
+                    totalSpaces: devSpaces.length,
+                    page: 1,
+                    hasMore: false
+                  }
+                };
+              } else if (message.kind === 'createSpace') {
+                // Store created space in dev spaces array
+                const newSpace = {
+                  space_id: `space_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                  name: message.payload.name,
+                  description: message.payload.description,
+                  is_public: message.payload.isPublic ? 1 : 0,
+                  created_at: new Date().toISOString()
+                };
+                devSpaces.push(newSpace);
+                
+                console.log(`[DEV API] Created space: ${newSpace.space_id}, total spaces: ${devSpaces.length}`);
+                
+                response = {
+                  kind: 'createSpaceSuccess',
+                  payload: {
+                    spaceId: newSpace.space_id,
+                    name: newSpace.name,
+                    description: newSpace.description,
+                    isPublic: message.payload.isPublic,
+                    message: 'Space created successfully'
+                  }
+                };
               } else {
                 response = {
                   kind: message.kind === 'register' ? 'registerSuccess' : 'success',
@@ -131,6 +175,12 @@ function ssePlugin(): Plugin {
           res.setHeader('Content-Type', 'text/event-stream');
           res.setHeader('Cache-Control', 'no-cache');
           res.setHeader('Connection', 'keep-alive');
+          res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering for SSE
+          
+          // Prevent the response from timing out
+          res.socket?.setTimeout(0);
+          res.socket?.setNoDelay(true);
+          res.socket?.setKeepAlive(true);
           
           // Send initial connection message
           const connectionMessage = {
@@ -151,7 +201,12 @@ function ssePlugin(): Plugin {
             };
             
             try {
-              res.write(`data: ${JSON.stringify(pingMessage)}\n\n`);
+              // Check if connection is still writable before writing
+              if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify(pingMessage)}\n\n`);
+              } else {
+                clearInterval(pingInterval);
+              }
             } catch (error) {
               console.error('[DEV API] Error sending SSE ping:', error);
               clearInterval(pingInterval);
@@ -164,11 +219,18 @@ function ssePlugin(): Plugin {
             clearInterval(pingInterval);
           });
           
-          req.on('error', (error) => {
-            console.error('[DEV API] SSE connection error:', error);
+          req.on('error', (error: Error & { code?: string }) => {
+            // ECONNRESET is normal when client navigates away or refreshes
+            // Don't log it as an error
+            if (error.code === 'ECONNRESET') {
+              console.log('[DEV API] SSE client connection reset (normal during navigation/refresh)');
+            } else {
+              console.error('[DEV API] SSE connection error:', error);
+            }
             clearInterval(pingInterval);
           });
           
+          // Don't end the response - keep it open for SSE
           return; // Don't call next()
         }
         
