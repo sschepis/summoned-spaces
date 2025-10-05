@@ -33,6 +33,21 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, loading, sessionRestoring, location.pathname, navigate]);
 
+  // Initialize SSE connection when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      communicationManager.connect().catch(error => {
+        console.error('[App] Failed to connect SSE:', error);
+      });
+    }
+    
+    return () => {
+      if (isAuthenticated) {
+        communicationManager.disconnect();
+      }
+    };
+  }, [isAuthenticated]);
+
   // Listen for follow notifications via SSE
   React.useEffect(() => {
     const handleFollowNotification = (message: CommunicationMessage) => {
