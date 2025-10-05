@@ -1,10 +1,9 @@
 /**
  * Core Beacon Cache Operations
  * Main cache logic coordinating all cache components
+ * NOTE: This cache is now populated via SSE events, not active fetching
  */
 
-import webSocketService from '../websocket';
-import { ServerMessage } from '../../../server/protocol';
 import { generatePrimes } from '../utils/prime-utils';
 import { PrimeIndexer } from './prime-indexing';
 import { HealthMonitor } from './health-monitoring';
@@ -51,13 +50,14 @@ export class BeaconCacheCore {
   }
 
   /**
-   * Get beacon by ID with caching
+   * Get beacon by ID from cache only (no fetching)
+   * Beacons are populated via SSE events
    */
   async getBeaconById(beaconId: string): Promise<CachedBeacon | null> {
-    // Check cache first with prime-based optimization
+    // Check cache only - no active fetching with SSE
     if (this.cache[beaconId]) {
       this.healthMonitor.updateHealth(beaconId, 1.0); // Cache hit
-      console.log(`Beacon ${beaconId} found in cache`);
+      console.log(`[BeaconCache] Beacon ${beaconId} found in cache`);
       return this.cache[beaconId];
     }
 
@@ -65,125 +65,81 @@ export class BeaconCacheCore {
     const relatedBeacons = this.primeIndexer.findRelatedBeacons(beaconId);
     for (const relatedId of relatedBeacons) {
       if (this.cache[relatedId]) {
-        console.log(`Found related beacon ${relatedId} for ${beaconId}`);
+        console.log(`[BeaconCache] Found related beacon ${relatedId} for ${beaconId}`);
+        return this.cache[relatedId];
       }
     }
 
-    // Check if there's already a pending request
-    if (this.pendingRequests.has(beaconId)) {
-      console.log(`Waiting for pending request for beacon ${beaconId}`);
-      return this.pendingRequests.get(beaconId)!;
-    }
-
-    // Create new request
-    const promise = this.fetchBeaconById(beaconId);
-    this.pendingRequests.set(beaconId, promise);
-
-    try {
-      const beacon = await promise;
-      if (beacon) {
-        this.optimizeBeaconStorage(beacon);
-      }
-      return beacon;
-    } finally {
-      this.pendingRequests.delete(beaconId);
-    }
+    console.log(`[BeaconCache] Beacon ${beaconId} not in cache (will be loaded via SSE)`);
+    return null;
   }
 
   /**
-   * Get all beacons for a user
+   * Get all beacons for a user from cache only (no fetching)
+   * Beacons are populated via SSE events
    */
   async getBeaconsByUser(userId: string, beaconType?: string): Promise<CachedBeacon[]> {
-    return new Promise((resolve, reject) => {
-      const handleMessage = (message: ServerMessage) => {
-        if (message.kind === 'beaconsResponse') {
-          const rawBeacons = message.payload.beacons as RawCachedBeacon[];
-          const normalized = rawBeacons
-            .map(beacon => this.persistence.normalizeBeacon(beacon))
-            .filter((beacon): beacon is CachedBeacon => Boolean(beacon));
+    const userBeaconIds = this.userBeacons.get(userId);
+    if (!userBeaconIds) {
+      console.log(`[BeaconCache] No beacons cached for user ${userId}`);
+      return [];
+    }
 
-          let hasNewBeacons = false;
-          normalized.forEach(beacon => {
-            if (!this.cache[beacon.beacon_id]) {
-              hasNewBeacons = true;
-            }
-            this.cache[beacon.beacon_id] = beacon;
+    const beacons = Array.from(userBeaconIds)
+      .map(id => this.cache[id])
+      .filter((beacon): beacon is CachedBeacon => Boolean(beacon));
 
-            if (!this.userBeacons.has(userId)) {
-              this.userBeacons.set(userId, new Set());
-            }
-            this.userBeacons.get(userId)!.add(beacon.beacon_id);
-          });
+    if (beaconType) {
+      return beacons.filter(beacon => beacon.beacon_type === beaconType);
+    }
 
-          if (hasNewBeacons) {
-            this.saveToStorage();
-          }
-
-          webSocketService.removeMessageListener(handleMessage);
-          resolve(normalized);
-        } else if (message.kind === 'error') {
-          webSocketService.removeMessageListener(handleMessage);
-          reject(new Error(message.payload.message));
-        }
-      };
-
-      webSocketService.addMessageListener(handleMessage);
-      webSocketService.sendMessage({
-        kind: 'getBeaconsByUser',
-        payload: { userId, beaconType }
-      });
-    });
+    return beacons;
   }
 
   /**
-   * Get all beacons of a specific type
+   * Get all beacons of a specific type from cache only (no fetching)
    */
   async getBeaconsByType(beaconType: string): Promise<CachedBeacon[]> {
-    return this.getBeaconsByUser('*', beaconType);
+    return Object.values(this.cache).filter(
+      beacon => beacon.beacon_type === beaconType
+    );
   }
 
   /**
-   * Get most recent beacon
+   * Get most recent beacon from cache only (no fetching)
    */
   async getMostRecentBeacon(userId: string, beaconType: string): Promise<CachedBeacon | null> {
     const beacons = await this.getBeaconsByUser(userId, beaconType);
-    return beacons.length > 0 ? beacons[0] : null;
+    if (beacons.length === 0) {
+      return null;
+    }
+    
+    // Sort by created_at descending and return the first one
+    return beacons.sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      return timeB - timeA;
+    })[0];
   }
 
   /**
-   * Fetch single beacon from server
+   * Add beacon to cache (called when beacon arrives via SSE)
    */
-  private fetchBeaconById(beaconId: string): Promise<CachedBeacon | null> {
-    return new Promise((resolve, reject) => {
-      const handleMessage = (message: ServerMessage) => {
-        if (message.kind === 'beaconResponse') {
-          const beacon = this.persistence.normalizeBeacon(message.payload.beacon as RawCachedBeacon | null);
+  addBeacon(beacon: CachedBeacon | RawCachedBeacon): void {
+    const normalized = this.persistence.normalizeBeacon(beacon as RawCachedBeacon);
+    if (!normalized) return;
 
-          if (beacon) {
-            this.cache[beacon.beacon_id] = beacon;
+    this.cache[normalized.beacon_id] = normalized;
 
-            if (!this.userBeacons.has(beacon.author_id)) {
-              this.userBeacons.set(beacon.author_id, new Set());
-            }
-            this.userBeacons.get(beacon.author_id)!.add(beacon.beacon_id);
-            
-            this.saveToStorage();
-          }
-
-          webSocketService.removeMessageListener(handleMessage);
-          resolve(beacon);
-        } else if (message.kind === 'error') {
-          webSocketService.removeMessageListener(handleMessage);
-          reject(new Error(message.payload.message));
-        }
-      };
-
-      webSocketService.addMessageListener(handleMessage);
-      webSocketService.sendMessage({
-        kind: 'getBeaconById',
-        payload: { beaconId }
-      });
-    });
+    if (!this.userBeacons.has(normalized.author_id)) {
+      this.userBeacons.set(normalized.author_id, new Set());
+    }
+    this.userBeacons.get(normalized.author_id)!.add(normalized.beacon_id);
+    
+    this.optimizeBeaconStorage(normalized);
+    this.saveToStorage();
+    
+    console.log(`[BeaconCache] Added beacon ${normalized.beacon_id} to cache`);
   }
 
   /**

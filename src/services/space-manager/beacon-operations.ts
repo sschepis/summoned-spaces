@@ -4,7 +4,7 @@
  * Handles beacon submission for space member lists
  */
 
-import webSocketService from '../websocket';
+import { communicationManager } from '../communication-manager';
 import { holographicMemoryManager } from '../holographic-memory';
 import { serializeBeacon } from '../utils/beacon-serializer';
 import { BEACON_TYPES } from '../../constants/beaconTypes';
@@ -36,22 +36,23 @@ export class SpaceBeaconOperations {
         epoch: serializableBeacon.epoch
       });
 
-      // Ensure we're connected before sending
-      if (webSocketService.isReady()) {
-        webSocketService.sendMessage({
+      // Send via communication manager (SSE)
+      try {
+        await communicationManager.send({
           kind: 'submitPostBeacon',
           payload: {
             beacon: serializableBeacon as any,
             beaconType: BEACON_TYPES.SPACE_MEMBERS
           }
         });
-      } else {
-        console.error('[SpaceBeaconOps] WebSocket not ready, cannot send beacon');
+        console.log(`[SpaceBeaconOps] Submitted membership beacon for space ${spaceId}`);
+      } catch (error) {
+        console.error('[SpaceBeaconOps] Failed to send beacon:', error);
+        throw error;
       }
-
-      console.log(`[SpaceBeaconOps] Submitted membership beacon for space ${spaceId}`);
     } else {
       console.error(`[SpaceBeaconOps] Failed to encode beacon for space ${spaceId}`);
+      throw new Error('Failed to encode beacon');
     }
   }
 }

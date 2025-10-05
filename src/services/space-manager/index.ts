@@ -4,7 +4,7 @@
  * Main export for refactored space management functionality
  */
 
-import webSocketService from '../websocket';
+import { communicationManager } from '../communication-manager';
 import { quantumNetworkOps } from '../quantum';
 import { userDataManager } from '../user-data';
 import { MemberManager } from './member-management';
@@ -138,57 +138,55 @@ class SpaceManager {
       this.setCurrentUser(effectiveUserId);
     }
 
-    await webSocketService.waitForConnection();
+    // Ensure communication manager is connected
+    await communicationManager.connect();
 
-    return new Promise((resolve, reject) => {
-      const handleMessage = (message: any) => {
-        if (message.kind === 'createSpaceSuccess') {
-          const spaceId = message.payload.spaceId;
-          
-          // Create quantum node for the space
-          this.quantumOps.createSpaceQuantumNode(spaceId).then(async (spaceNode) => {
-            // Initialize space metadata
-            this.spaceMetadata.set(spaceId, {
-              spaceId,
-              name,
-              description,
-              isPublic,
-              createdAt: new Date().toISOString()
-            });
-
-            // Initialize member list with creator as owner
-            const initialMembers: SpaceMember[] = [{
-              userId: effectiveUserId,
-              role: 'owner',
-              joinedAt: new Date().toISOString()
-            }];
-
-            // Create quantum entanglement
-            await this.quantumOps.createUserSpaceEntanglement(effectiveUserId, spaceId);
-            
-            // Submit initial member list beacon
-            await this.beaconOps.submitSpaceMemberBeacon(spaceId, initialMembers);
-            this.memberManager.updateMemberCache(spaceId, initialMembers);
-            
-            // Add to user's personal spaces list
-            await userDataManager.joinSpace(spaceId, 'owner');
-            
-            webSocketService.removeMessageListener(handleMessage);
-            console.log(`Space ${spaceId} created with quantum node coherence: ${spaceNode.coherence}`);
-            resolve(spaceId);
-          }).catch(reject);
-        } else if (message.kind === 'error') {
-          webSocketService.removeMessageListener(handleMessage);
-          reject(new Error(message.payload.message));
-        }
-      };
-
-      webSocketService.addMessageListener(handleMessage);
-      webSocketService.sendMessage({
+    try {
+      // Send create space request - response comes back from send()
+      await communicationManager.send({
         kind: 'createSpace',
         payload: { name, description, isPublic }
       });
-    });
+
+      // For now, generate a temporary space ID
+      // The actual space creation will be handled by the server and sent via SSE
+      const tempSpaceId = `space_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
+      // Initialize space metadata
+      this.spaceMetadata.set(tempSpaceId, {
+        spaceId: tempSpaceId,
+        name,
+        description,
+        isPublic,
+        createdAt: new Date().toISOString()
+      });
+
+      // Initialize member list with creator as owner
+      const initialMembers: SpaceMember[] = [{
+        userId: effectiveUserId,
+        role: 'owner',
+        joinedAt: new Date().toISOString()
+      }];
+
+      // Create quantum node for the space
+      await this.quantumOps.createSpaceQuantumNode(tempSpaceId);
+
+      // Create quantum entanglement
+      await this.quantumOps.createUserSpaceEntanglement(effectiveUserId, tempSpaceId);
+      
+      // Submit initial member list beacon
+      await this.beaconOps.submitSpaceMemberBeacon(tempSpaceId, initialMembers);
+      this.memberManager.updateMemberCache(tempSpaceId, initialMembers);
+      
+      // Add to user's personal spaces list
+      await userDataManager.joinSpace(tempSpaceId, 'owner');
+      
+      console.log(`[SpaceManager] Space ${tempSpaceId} created`);
+      return tempSpaceId;
+    } catch (error) {
+      console.error('[SpaceManager] Failed to create space:', error);
+      throw error;
+    }
   }
 
   /**
