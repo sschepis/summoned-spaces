@@ -7,10 +7,10 @@ function ssePlugin(): Plugin {
     name: 'sse-communication',
     configureServer(server) {
       // SSE-based communication enabled - no WebSocket server needed
-      console.log('SSE-based communication enabled - using /api/events endpoint');
+      console.log('SSE-based communication enabled - using /v1/events endpoint');
       
-      // Add middleware to handle /api routes in development
-      server.middlewares.use('/api', async (req, res, next) => {
+      // Add middleware to handle /v1 routes in development
+      server.middlewares.use('/v1', async (req, res, next) => {
         // Set CORS headers
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -22,7 +22,53 @@ function ssePlugin(): Plugin {
           return;
         }
         
-        // Handle /api/messages endpoint
+        // Handle /v1/auth/login endpoint
+        if (req.url === '/auth/login' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', () => {
+            try {
+              const credentials = JSON.parse(body);
+              console.log('[DEV API] Login attempt:', credentials.username);
+              
+              const username = credentials.username || 'devuser';
+              const userId = 'dev_' + Math.random().toString(36).substr(2, 9);
+              
+              const response = {
+                success: true,
+                payload: {
+                  sessionToken: 'dev_session_' + Date.now(),
+                  userId: userId,
+                  username: username,
+                  avatar: '',
+                  bio: 'Development user',
+                  stats: { followers: 0, following: 0, spaces: 0, resonanceScore: 0.5 },
+                  recentActivity: 'Just logged in',
+                  tags: [],
+                  pri: {
+                    nodeAddress: userId,
+                    publicResonance: {
+                      primaryPrimes: [2, 3, 5, 7, 11],
+                      harmonicPrimes: [13, 17, 19, 23]
+                    },
+                    fingerprint: 'dev_fingerprint_' + userId
+                  }
+                }
+              };
+              
+              res.setHeader('Content-Type', 'application/json');
+              res.statusCode = 200;
+              res.end(JSON.stringify(response));
+            } catch (error) {
+              console.error('[DEV API] Login error:', error);
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: 'Invalid request' }));
+            }
+          });
+          return;
+        }
+        
+        // Handle /v1/messages endpoint
         if (req.url === '/messages' && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => { body += chunk.toString(); });
@@ -77,9 +123,9 @@ function ssePlugin(): Plugin {
           return;
         }
         
-        // Handle /api/events endpoint for SSE
+        // Handle /v1/events endpoint for SSE
         if (req.url?.startsWith('/events')) {
-          console.log('[DEV API] SSE client connected to /api/events');
+          console.log('[DEV API] SSE client connected to /v1/events');
           
           // Set SSE headers
           res.setHeader('Content-Type', 'text/event-stream');
@@ -161,10 +207,10 @@ export default defineConfig({
 
 // WebSocket endpoints have been removed
 // All real-time communication now uses Server-Sent Events (SSE)
-// Connect to /api/events for real-time updates
+// Connect to /v1/events for real-time updates
 
 // Example SSE client code:
-// const eventSource = new EventSource('/api/events');
+// const eventSource = new EventSource('/v1/events');
 // eventSource.onmessage = (event) => {
 //   const data = JSON.parse(event.data);
 //   console.log('SSE message:', data);

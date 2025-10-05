@@ -63,7 +63,7 @@ class SSECommunicationManager implements CommunicationManager {
     }
 
     // Always try SSE first, regardless of environment
-    const sseUrl = `/api/events${this.userId ? `?userId=${this.userId}` : ''}`;
+    const sseUrl = `/v1/events${this.userId ? `?userId=${this.userId}` : ''}`;
     
     // Try to create EventSource - it will work on Vercel with the api/events.ts handler
     try {
@@ -158,7 +158,7 @@ class SSECommunicationManager implements CommunicationManager {
       }
     };
 
-    const response = await fetch('/api/messages', {
+    const response = await fetch('/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

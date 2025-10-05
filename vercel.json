@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/v1/(.*)",
+      "destination": "/v1/$1"
     },
     {
       "source": "/(.*)",
@@ -11,7 +11,7 @@
   ],
   "headers": [
     {
-      "source": "/api/events",
+      "source": "/v1/events",
       "headers": [
         {
           "key": "Content-Type",
