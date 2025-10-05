@@ -5,7 +5,6 @@
  */
 
 import type { HolographicMemoryManager } from '../holographic-memory';
-import type { WebSocketService } from '../websocket';
 import { beaconCacheManager } from '../beacon-cache';
 import { BEACON_TYPES } from '../../constants/beaconTypes';
 import { extractJsonPayload } from '../utils/json-repair';
@@ -27,21 +26,11 @@ export class UserDataManager {
   private spacesManager: SpacesManager;
 
   constructor(
-    private webSocketService: WebSocketService,
     private holographicMemoryManager: HolographicMemoryManager
   ) {
-    this.beaconSubmitter = new BeaconSubmitter(webSocketService, holographicMemoryManager);
-    this.followingManager = new FollowingManager(webSocketService, this.beaconSubmitter);
+    this.beaconSubmitter = new BeaconSubmitter(holographicMemoryManager);
+    this.followingManager = new FollowingManager(this.beaconSubmitter);
     this.spacesManager = new SpacesManager(this.beaconSubmitter);
-    
-    // Add listener for beacon submission responses
-    this.webSocketService.addMessageListener((message) => {
-      if (message.kind === 'submitPostSuccess') {
-        console.log(`[UserDataManager] Beacon submission successful:`, message.payload);
-      } else if (message.kind === 'error') {
-        console.error(`[UserDataManager] Server error:`, message.payload);
-      }
-    });
   }
 
   /**
@@ -192,6 +181,5 @@ export class UserDataManager {
 }
 
 // Export singleton instance for backward compatibility
-import webSocketService from '../websocket';
 import { holographicMemoryManager } from '../holographic-memory';
-export const userDataManager = new UserDataManager(webSocketService, holographicMemoryManager);
+export const userDataManager = new UserDataManager(holographicMemoryManager);

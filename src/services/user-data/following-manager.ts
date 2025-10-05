@@ -4,7 +4,6 @@
  * Handles user following operations
  */
 
-import type { WebSocketService } from '../websocket';
 import { communicationManager } from '../communication-manager';
 import type { CommunicationMessage } from '../communication-manager';
 import { BeaconSubmitter } from './beacon-submission';
@@ -13,7 +12,6 @@ export class FollowingManager {
   private followingList: string[] = [];
 
   constructor(
-    private webSocketService: WebSocketService,
     private beaconSubmitter: BeaconSubmitter
   ) {}
 
@@ -31,17 +29,13 @@ export class FollowingManager {
     this.followingList.push(userIdToFollow);
     console.log(`[FollowingManager] Updated following list:`, this.followingList);
     
-    // Send follow message to server
+    // Send follow message to server via SSE
     try {
-      if (this.webSocketService.isReady()) {
-        this.webSocketService.sendFollowMessage(userIdToFollow);
-      } else {
-        const followMessage: CommunicationMessage = {
-          kind: 'follow',
-          payload: { userIdToFollow }
-        };
-        await communicationManager.send(followMessage);
-      }
+      const followMessage: CommunicationMessage = {
+        kind: 'follow',
+        payload: { userIdToFollow }
+      };
+      await communicationManager.send(followMessage);
     } catch (error) {
       console.error('[FollowingManager] Error sending follow message:', error);
     }
@@ -59,17 +53,13 @@ export class FollowingManager {
 
     this.followingList = this.followingList.filter(id => id !== userId);
     
-    // Send unfollow message to server
+    // Send unfollow message to server via SSE
     try {
-      if (this.webSocketService.isReady()) {
-        this.webSocketService.sendUnfollowMessage(userId);
-      } else {
-        const unfollowMessage: CommunicationMessage = {
-          kind: 'unfollow',
-          payload: { userIdToUnfollow: userId }
-        };
-        await communicationManager.send(unfollowMessage);
-      }
+      const unfollowMessage: CommunicationMessage = {
+        kind: 'unfollow',
+        payload: { userIdToUnfollow: userId }
+      };
+      await communicationManager.send(unfollowMessage);
     } catch (error) {
       console.error('[FollowingManager] Error sending unfollow message:', error);
     }

@@ -5,14 +5,13 @@
  */
 
 import type { HolographicMemoryManager } from '../holographic-memory';
-import type { WebSocketService } from '../websocket';
+import { communicationManager } from '../communication-manager';
 import { beaconCacheManager } from '../beacon-cache';
 import { serializeBeacon } from '../utils/beacon-serializer';
 import { BEACON_TYPES } from '../../constants/beaconTypes';
 
 export class BeaconSubmitter {
   constructor(
-    private webSocketService: WebSocketService,
     private holographicMemoryManager: HolographicMemoryManager
   ) {}
 
@@ -40,16 +39,17 @@ export class BeaconSubmitter {
           epoch: serializableBeacon.epoch
         });
         
-        if (this.webSocketService.isReady()) {
-          this.webSocketService.sendMessage({
+        // Send via communication manager (SSE)
+        try {
+          await communicationManager.send({
             kind: 'submitPostBeacon',
             payload: {
               beacon: serializableBeacon as any,
               beaconType: BEACON_TYPES.USER_FOLLOWING_LIST
             }
           });
-        } else {
-          console.error('[BeaconSubmitter] WebSocket not ready, cannot send beacon');
+        } catch (error) {
+          console.error('[BeaconSubmitter] Failed to send beacon:', error);
         }
 
         // Invalidate cache
@@ -78,16 +78,17 @@ export class BeaconSubmitter {
     if (beacon) {
       const serializableBeacon = serializeBeacon(beacon as any);
       
-      if (this.webSocketService.isReady()) {
-        this.webSocketService.sendMessage({
+      // Send via communication manager (SSE)
+      try {
+        await communicationManager.send({
           kind: 'submitPostBeacon',
           payload: {
             beacon: serializableBeacon as any,
             beaconType: BEACON_TYPES.USER_SPACES_LIST
           }
         });
-      } else {
-        console.error('[BeaconSubmitter] WebSocket not ready, cannot send beacon');
+      } catch (error) {
+        console.error('[BeaconSubmitter] Failed to send beacon:', error);
       }
 
       // Invalidate cache
