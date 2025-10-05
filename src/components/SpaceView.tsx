@@ -9,7 +9,7 @@ import { Tabs } from './ui/Tabs';
 import { UserAvatar } from './ui/UserAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { spaceManager, SpaceMember } from '../services/space-manager';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import type { Space } from '../types/common';
 import type { ServerMessage, PublicSpacesResponseMessage } from '../../server/protocol';
 import { ArrowLeft, Crown } from 'lucide-react';

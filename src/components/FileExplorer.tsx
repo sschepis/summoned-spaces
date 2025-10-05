@@ -5,7 +5,7 @@ import { FileToolbar } from './common/files/FileToolbar';
 import { FileUploadZone } from './FileUploadZone';
 import { FileDetailsModal } from './FileDetailsModal';
 import { LoadingSpinner } from './ui/LoadingSpinner';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 

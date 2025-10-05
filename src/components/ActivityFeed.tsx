@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNetworkState, PostBeaconInfo } from '../contexts/NetworkContext';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/common';
 import { userInfoCache } from '../services/user-info-cache';

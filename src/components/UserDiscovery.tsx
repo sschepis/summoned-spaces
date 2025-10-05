@@ -2,7 +2,7 @@ import { UserCard } from './common/UserCard';
 import { Grid } from './ui/Grid';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { userInfoCache } from '../services/user-info-cache';
 import { useState, useEffect } from 'react';
 

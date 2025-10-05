@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import webSocketService from '../services/websocket';
-import { ServerMessage } from '../../server/protocol';
+import { communicationManager, type CommunicationMessage } from '../services/communication-manager';
 import { PublicResonance } from '../services/holographic-memory';
 
 // State Types
@@ -73,29 +72,28 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
   const [state, dispatch] = useReducer(networkReducer, initialState);
 
   useEffect(() => {
-    const handleServerMessage = (message: ServerMessage) => {
+    const handleServerMessage = (message: CommunicationMessage) => {
       if (message.kind === 'networkStateUpdate') {
+        const payload = message.payload as { nodes: NetworkNode[] };
         dispatch({
           type: 'SET_NETWORK_STATE',
           payload: {
-            nodes: message.payload.nodes,
-            totalConnections: message.payload.nodes.length, // Simplified for now
-            connectedUsers: new Set(message.payload.nodes.map(n => n.userId)).size, // Simplified for now
+            nodes: payload.nodes,
+            totalConnections: payload.nodes.length, // Simplified for now
+            connectedUsers: new Set(payload.nodes.map((n: NetworkNode) => n.userId)).size,
           }
         });
       } else if (message.kind === 'newPostBeacon') {
+        const beaconPayload = message.payload as unknown as Omit<PostBeaconInfo, 'receivedAt'>;
         dispatch({
           type: 'ADD_BEACON',
-          payload: { ...message.payload, receivedAt: Date.now() },
+          payload: { ...beaconPayload, receivedAt: Date.now() },
         });
       }
     };
 
-    webSocketService.addMessageListener(handleServerMessage);
-
-    return () => {
-      webSocketService.removeMessageListener(handleServerMessage);
-    };
+    communicationManager.onMessage(handleServerMessage);
+    // Note: SSE communication manager uses single callback, cleanup handled automatically
   }, []);
 
   return (

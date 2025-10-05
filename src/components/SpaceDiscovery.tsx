@@ -8,7 +8,7 @@ import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import { Space, SpaceRole } from '../types/common';
 import { CreateSpaceModal } from './CreateSpaceModal';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { ServerMessage } from '../../server/protocol';
 import { useAuth } from '../contexts/AuthContext';
 import { userDataManager } from '../services/user-data';

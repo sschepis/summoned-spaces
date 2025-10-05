@@ -7,9 +7,8 @@ import { Navigation } from './components/Navigation';
 import { NotificationSystem, useNotifications } from './components/NotificationSystem';
 import { AppRoutes } from './routes/AppRoutes';
 import { MessengerButton } from './components/MessengerButton';
-import webSocketService from './services/websocket';
+import { communicationManager, type CommunicationMessage } from './services/communication-manager';
 import { holographicMemoryManager } from './services/holographic-memory';
-import { FollowNotificationMessage } from '../server/protocol';
 
 // Main application content component
 const AppContent: React.FC = () => {
@@ -34,11 +33,12 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, loading, sessionRestoring, location.pathname, navigate]);
 
-  // Listen for follow notifications from WebSocket
+  // Listen for follow notifications via SSE
   React.useEffect(() => {
-    const handleFollowNotification = (notification: FollowNotificationMessage) => {
-      if (notification.kind === 'followNotification') {
-        const { followerId, followerUsername, type } = notification.payload;
+    const handleFollowNotification = (message: CommunicationMessage) => {
+      if (message.kind === 'followNotification') {
+        const payload = message.payload as { followerId: string; followerUsername: string; type: string };
+        const { followerId, followerUsername, type } = payload;
         
         if (type === 'follow') {
           showFollow(
@@ -63,16 +63,13 @@ const AppContent: React.FC = () => {
       }
     };
 
-    webSocketService.addNotificationListener(handleFollowNotification);
-
-    return () => {
-      webSocketService.removeNotificationListener(handleFollowNotification);
-    };
+    communicationManager.onMessage(handleFollowNotification);
+    // Note: SSE communication manager uses single callback, cleanup handled automatically
   }, [showFollow, showUnfollow]);
 
-  // Listen for global message notifications
+  // Listen for global message notifications via SSE
   React.useEffect(() => {
-    const handleGlobalMessageNotification = (message: { kind: string; payload: Record<string, unknown> }) => {
+    const handleGlobalMessageNotification = (message: CommunicationMessage) => {
       if (message.kind === 'beaconReceived') {
         const payload = message.payload as {
           beaconId: string;
@@ -125,11 +122,8 @@ const AppContent: React.FC = () => {
       }
     };
 
-    webSocketService.addMessageListener(handleGlobalMessageNotification);
-
-    return () => {
-      webSocketService.removeMessageListener(handleGlobalMessageNotification);
-    };
+    communicationManager.onMessage(handleGlobalMessageNotification);
+    // Note: SSE communication manager uses single callback, cleanup handled automatically
   }, [showMessage, currentUser?.id]);
 
   // Show loading state while checking authentication or restoring session

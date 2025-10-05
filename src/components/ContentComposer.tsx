@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Image, Video, FileText, Smile, MapPin, Globe, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
 
 const spaceOptions = [

@@ -9,7 +9,7 @@ import { StatsGrid } from './common/StatsGrid';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
 import { userDataManager } from '../services/user-data';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
 import { ServerMessage, FollowNotificationMessage } from '../../server/protocol';
 

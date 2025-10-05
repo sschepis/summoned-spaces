@@ -10,7 +10,7 @@ import { SpaceCard } from './common/SpaceCard';
 import { SearchResultsSection, PostCard } from './common/search';
 import type { PostResult } from './common/search';
 import { User as UserType, Space as SpaceType } from '../types/common';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { ServerMessage } from '../../server/protocol';
 import { useAuth } from '../contexts/AuthContext';
 

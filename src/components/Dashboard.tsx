@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { userDataManager } from '../services/user-data';
 import { quaternionicChatService } from '../services/quaternionic-chat';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { ServerMessage } from '../../server/protocol';
 import { useNotifications } from './NotificationSystem';
 

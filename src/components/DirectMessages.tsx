@@ -10,7 +10,7 @@ import { messagingService } from '../services/messaging';
 import { holographicMemoryManager } from '../services/holographic-memory';
 import { quantumNetworkOps } from '../services/quantum';
 import { userDataManager } from '../services/user-data';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
 
 interface DirectMessagesProps {

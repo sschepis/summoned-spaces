@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { messagingService } from '../services/messaging';
 import { spaceManager } from '../services/space-manager';
 import { holographicMemoryManager } from '../services/holographic-memory';
-import webSocketService from '../services/websocket';
+// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
 
 interface ChatMessage {
