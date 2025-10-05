@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beaconCacheManager, CachedBeacon } from './beacon-cache';
 import { holographicMemoryManager } from './holographic-memory';
-import webSocketService from './websocket';
-import { ServerMessage } from '../../server/protocol';
+import { communicationManager, type CommunicationMessage } from './communication-manager';
 
 /**
  * FollowerDiscoveryService - Discovers followers by decoding following list beacons
@@ -121,31 +120,49 @@ class FollowerDiscoveryService {
   }
 
   /**
-   * Fetch all following list beacons from the server
+   * Fetch all following list beacons from the server via SSE
    */
   private async fetchAllFollowingBeacons(): Promise<CachedBeacon[]> {
     return new Promise((resolve, reject) => {
-      const handleMessage = (message: ServerMessage) => {
+      let resolved = false;
+      
+      const handleMessage = (message: CommunicationMessage) => {
+        if (resolved) return;
+        
         if (message.kind === 'beaconsResponse') {
-          const beacons = message.payload.beacons as CachedBeacon[];
-          webSocketService.removeMessageListener(handleMessage);
+          const beacons = (message.payload as any).beacons as CachedBeacon[];
+          resolved = true;
           resolve(beacons);
         } else if (message.kind === 'error') {
-          webSocketService.removeMessageListener(handleMessage);
-          reject(new Error(message.payload.message));
+          resolved = true;
+          reject(new Error((message.payload as any).message));
         }
       };
 
-      webSocketService.addMessageListener(handleMessage);
+      // Register message handler
+      communicationManager.onMessage(handleMessage);
       
       // Request all following list beacons (no user filter)
-      webSocketService.sendMessage({
+      communicationManager.send({
         kind: 'getBeaconsByUser',
-        payload: { 
+        payload: {
           userId: '*', // Special marker to get all users' beacons
-          beaconType: 'user_following_list' 
+          beaconType: 'user_following_list'
+        }
+      }).catch(error => {
+        if (!resolved) {
+          resolved = true;
+          reject(error);
         }
       });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          reject(new Error('Fetch all following beacons timed out'));
+        }
+      }, 10000);
     });
   }
 

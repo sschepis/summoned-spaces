@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { holographicMemoryManager } from './holographic-memory';
-import webSocketService from './websocket';
+import { communicationManager } from './communication-manager';
 import { quantumNetworkOps } from './quantum';
 import { BEACON_TYPES } from '../constants/beaconTypes';
 
@@ -46,10 +46,10 @@ class MessagingService {
             throw new Error('MessagingService not initialized with current user');
         }
 
-        // Wait for WebSocket connection to be ready
-        console.log(`[MessagingService] Waiting for WebSocket connection...`);
-        await webSocketService.waitForConnection();
-        console.log(`[MessagingService] WebSocket connection ready`);
+        // Ensure communication manager is connected
+        console.log(`[MessagingService] Ensuring communication manager connection...`);
+        await communicationManager.connect();
+        console.log(`[MessagingService] Communication manager ready`);
         
         const messageData = JSON.stringify({
             recipientId,
@@ -109,7 +109,7 @@ class MessagingService {
                         };
                         
                         // Submit as quantum_message beacon type
-                        webSocketService.sendMessage({
+                        await communicationManager.send({
                             kind: 'submitPostBeacon',
                             payload: {
                                 beacon: serializableBeacon as any,
@@ -175,9 +175,9 @@ class MessagingService {
                         beaconType: BEACON_TYPES.DIRECT_MESSAGE
                     }
                 } as any;
-                console.log(`[MessagingService] WebSocket message to send:`, wsMessage);
+                console.log(`[MessagingService] Sending message via communication manager:`, wsMessage);
                 
-                webSocketService.sendMessage(wsMessage);
+                await communicationManager.send(wsMessage);
                 
                 console.log(`[MessagingService] Holographic beacon submitted for message to ${recipientId}`);
             } else {
@@ -206,10 +206,10 @@ class MessagingService {
             throw new Error('MessagingService not initialized with current user');
         }
 
-        // Wait for WebSocket connection to be ready
-        console.log(`[MessagingService] Waiting for WebSocket connection...`);
-        await webSocketService.waitForConnection();
-        console.log(`[MessagingService] WebSocket connection ready`);
+        // Ensure communication manager is connected
+        console.log(`[MessagingService] Ensuring communication manager connection...`);
+        await communicationManager.connect();
+        console.log(`[MessagingService] Communication manager ready`);
         
         const messageData = JSON.stringify({
             spaceId,
@@ -246,7 +246,7 @@ class MessagingService {
                 
                 console.log(`[MessagingService] Submitting space beacon with type: space_message`);
                 
-                webSocketService.sendMessage({
+                await communicationManager.send({
                     kind: 'submitPostBeacon',
                     payload: {
                         beacon: serializableBeacon as any,

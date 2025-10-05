@@ -1,50 +1,45 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import webSocketService from './websocket';
-
-interface DownloadResponse {
-    fingerprint: string;
-    content: string | null;
-    success: boolean;
-    error?: string;
-}
+import { communicationManager, type CommunicationMessage } from './communication-manager';
 
 /**
- * Download a file from a space
+ * Download a file from a space using SSE + REST API
  */
 export async function downloadFile(spaceId: string, fingerprint: string, fileName: string, fileType: string): Promise<void> {
     try {
         console.log(`[FileDownload] Requesting download for ${fileName} (${fingerprint})`);
         
-        // Send download request to server
-        webSocketService.sendMessage({
+        // Set up listener for download response
+        const downloadPromise = new Promise<string>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Download request timed out'));
+            }, 30000); // 30 second timeout
+
+            const handleMessage = (message: CommunicationMessage) => {
+                if (message.kind === 'downloadFileResponse' &&
+                    (message.payload as any).fingerprint === fingerprint) {
+                    clearTimeout(timeout);
+                    
+                    const payload = message.payload as any;
+                    if (!payload.success || !payload.content) {
+                        reject(new Error(payload.error || 'Failed to download file content'));
+                    } else {
+                        resolve(payload.content);
+                    }
+                }
+            };
+
+            // Register message handler
+            communicationManager.onMessage(handleMessage);
+        });
+
+        // Send download request
+        await communicationManager.send({
             kind: 'downloadFile',
             payload: { spaceId, fingerprint }
         });
 
-        // Wait for response
-        const response = await new Promise<DownloadResponse>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                webSocketService.removeMessageListener(handleResponse);
-                reject(new Error('Download request timed out'));
-            }, 30000); // 30 second timeout
-
-            const handleResponse = (message: any) => {
-                if (message.kind === 'downloadFileResponse' && message.payload.fingerprint === fingerprint) {
-                    clearTimeout(timeout);
-                    webSocketService.removeMessageListener(handleResponse);
-                    resolve(message.payload);
-                }
-            };
-
-            webSocketService.addMessageListener(handleResponse);
-        });
-
-        if (!response.success || !response.content) {
-            throw new Error(response.error || 'Failed to download file content');
-        }
-
-        // Convert base64 content to blob
-        const base64Content = response.content;
+        // Wait for response via SSE
+        const base64Content = await downloadPromise;
         const binaryData = atob(base64Content);
         const bytes = new Uint8Array(binaryData.length);
         for (let i = 0; i < binaryData.length; i++) {

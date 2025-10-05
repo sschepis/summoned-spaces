@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import webSocketService from './websocket';
+import { communicationManager, type CommunicationMessage } from './communication-manager';
 
 class UserInfoCache {
     private cache: Map<string, { username: string }> = new Map();
@@ -10,32 +10,46 @@ class UserInfoCache {
             return this.cache.get(userId)!;
         }
 
-        // Fetch from server
+        // Fetch from server via SSE
         return new Promise((resolve) => {
-            const handleResponse = (message: any) => {
+            let resolved = false;
+
+            const handleResponse = (message: CommunicationMessage) => {
+                if (resolved) return;
+                
                 if (message.kind === 'searchResponse') {
-                    const user = message.payload.users.find((u: any) => u.user_id === userId);
-                    if (user) {
-                        const info = { username: user.username };
-                        this.cache.set(userId, info);
-                        webSocketService.removeMessageListener(handleResponse);
-                        resolve(info);
+                    const users = (message.payload as any).users;
+                    if (Array.isArray(users)) {
+                        const user = users.find((u: any) => u.user_id === userId);
+                        if (user) {
+                            const info = { username: user.username };
+                            this.cache.set(userId, info);
+                            resolved = true;
+                            resolve(info);
+                        }
                     }
                 }
             };
 
-            webSocketService.addMessageListener(handleResponse);
-            webSocketService.sendMessage({
+            // Register message handler
+            communicationManager.onMessage(handleResponse);
+
+            // Send search request
+            communicationManager.send({
                 kind: 'search',
                 payload: { query: userId, category: 'people' }
+            }).catch(error => {
+                console.error('[UserInfoCache] Error sending search request:', error);
             });
 
             // Timeout and fallback after 2 seconds
             setTimeout(() => {
-                webSocketService.removeMessageListener(handleResponse);
-                const fallback = { username: userId.substring(0, 8) };
-                this.cache.set(userId, fallback);
-                resolve(fallback);
+                if (!resolved) {
+                    const fallback = { username: userId.substring(0, 8) };
+                    this.cache.set(userId, fallback);
+                    resolved = true;
+                    resolve(fallback);
+                }
             }, 2000);
         });
     }
