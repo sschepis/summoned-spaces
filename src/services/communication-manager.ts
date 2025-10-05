@@ -48,9 +48,12 @@ class SSECommunicationManager implements CommunicationManager {
       }
     }
 
+    // Mark as connected immediately so send() can work even if SSE setup fails
+    // (will use REST-only mode as fallback)
+    this.connected = true;
+    
     // Set up Server-Sent Events for real-time updates
     this.setupSSE();
-    this.connected = true;
   }
 
   private setupSSE(): void {
@@ -139,8 +142,10 @@ class SSECommunicationManager implements CommunicationManager {
 
 
   async send(message: CommunicationMessage): Promise<void> {
+    // Auto-connect if not connected yet
     if (!this.connected) {
-      throw new Error('SSE communication not connected');
+      console.log('[SSE] Auto-connecting before sending message...');
+      await this.connect();
     }
 
     // Add session info to message if available
