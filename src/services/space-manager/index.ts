@@ -175,8 +175,11 @@ class SpaceManager {
           // Initialize member list with creator as owner
           const initialMembers: SpaceMember[] = [{
             userId: effectiveUserId,
+            spaceId,  // Added per design spec
             role: 'owner',
-            joinedAt: new Date().toISOString()
+            joinedAt: new Date().toISOString(),
+            permissions: [],  // Owner gets all permissions via role
+            resonanceKeys: undefined  // Will be set by quantum entanglement
           }];
 
           // Create quantum node for the space
@@ -257,7 +260,7 @@ class SpaceManager {
   /**
    * Add member to space
    */
-  async addMember(spaceId: string, userId: string, role: SpaceRole = 'member'): Promise<void> {
+  async addMember(spaceId: string, userId: string, role: SpaceRole = 'contributor'): Promise<void> {
     if (!this.currentUserId) {
       throw new Error('User not authenticated');
     }
@@ -288,8 +291,11 @@ class SpaceManager {
     // Add new member
     const newMember: SpaceMember = {
       userId,
+      spaceId,  // Added per design spec
       role,
-      joinedAt: new Date().toISOString()
+      joinedAt: new Date().toISOString(),
+      permissions: [],  // TODO: Load from space.memberPolicy.defaultPermissions
+      resonanceKeys: undefined  // Will be set by quantum entanglement
     };
 
     const updatedMembers = [...members, newMember];
@@ -357,6 +363,7 @@ class SpaceManager {
 
   /**
    * Join space
+   * Default role is 'contributor' per design spec (design.md:290-297)
    */
   async joinSpace(spaceId: string): Promise<void> {
     if (!this.currentUserId) {
@@ -372,16 +379,19 @@ class SpaceManager {
 
     const newMember: SpaceMember = {
       userId: this.currentUserId,
-      role: 'member',
-      joinedAt: new Date().toISOString()
+      spaceId,  // Added per design spec
+      role: 'contributor',  // Changed from 'member' to 'contributor' per design spec
+      joinedAt: new Date().toISOString(),
+      permissions: [],  // TODO: Load from space.memberPolicy.defaultPermissions
+      resonanceKeys: undefined  // Will be set by quantum entanglement
     };
 
     const updatedMembers = [...members, newMember];
     await this.beaconOps.submitSpaceMemberBeacon(spaceId, updatedMembers);
     this.memberManager.updateMemberCache(spaceId, updatedMembers);
-    await userDataManager.joinSpace(spaceId, 'member');
+    await userDataManager.joinSpace(spaceId, 'contributor');  // Changed from 'member' to 'contributor'
 
-    console.log(`User ${this.currentUserId} joined space ${spaceId}`);
+    console.log(`User ${this.currentUserId} joined space ${spaceId} with role 'contributor'`);
   }
 
   /**

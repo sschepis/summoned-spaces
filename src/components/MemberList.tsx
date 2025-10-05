@@ -1,4 +1,4 @@
-import { Crown, Shield, Users, MoreVertical, Plus } from 'lucide-react';
+import { Crown, Shield, Users, MoreVertical, Plus, Edit, Eye } from 'lucide-react';
 import { SpaceMember, SpaceRole } from '../services/space-manager';
 import { useAuth } from '../contexts/AuthContext';
 import { userInfoCache } from '../services/user-info-cache';
@@ -11,16 +11,20 @@ interface MemberListProps {
   userRole?: SpaceRole;
 }
 
+// Role icons per design spec - updated to include all roles
 const roleIcons = {
   owner: Crown,
   admin: Shield,
-  member: Users
+  contributor: Edit,  // Added for design spec alignment
+  viewer: Eye         // Added for design spec alignment
 };
 
+// Role colors - updated to include all roles
 const roleColors = {
   owner: 'text-yellow-400 bg-yellow-400/10',
   admin: 'text-red-400 bg-red-400/10',
-  member: 'text-blue-400 bg-blue-400/10'
+  contributor: 'text-green-400 bg-green-400/10',  // Added for design spec alignment
+  viewer: 'text-gray-400 bg-gray-400/10'          // Added for design spec alignment
 };
 
 export function MemberList({ members, userRole }: MemberListProps) {

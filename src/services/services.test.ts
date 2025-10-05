@@ -3,14 +3,11 @@ import { holographicMemoryManager, PrimeResonanceIdentity } from './holographic-
 
 // Mock the wasm module import
 vi.mock('../../../summoned-spaces/resolang/build/resolang.js', () => ({
-  createHolographicEncoding: vi.fn(),
-  holographicEncodingEncode: vi.fn((encoder: unknown, text: string) => {
-    return {
-      signature: new Uint8Array([1, 2, 3]),
-      fingerprint: new Uint8Array([4, 5, 6]),
-      index: [7, 8, 9],
-      text,
-    };
+  createHolographicEncoding: vi.fn(() => ({})),
+  holographicEncodingEncode: vi.fn(() => 1.0), // Return amplitude
+  generatePrimes: vi.fn((count: number) => {
+    // Generate mock prime numbers
+    return Array.from({ length: count }, (_, i) => i * 2 + 1);
   }),
 }));
 
@@ -31,16 +28,11 @@ describe('Client-Side Services', () => {
     holographicMemoryManager.setCurrentUser(mockPRI);
     const fragment = await holographicMemoryManager.encodeMemory('hello world');
 
-    interface MockFragment {
-      signature: Uint8Array;
-      fingerprint: Uint8Array;
-      index: number[];
-      text: string;
-    }
-
     expect(fragment).toBeDefined();
-    expect(fragment!.signature).toEqual(new Uint8Array([1, 2, 3]));
-    expect((fragment as unknown as MockFragment).text).toBe('hello world');
+    expect(fragment!.signature).toBeInstanceOf(Uint8Array);
+    expect(fragment!.signature.length).toBeGreaterThan(0);
+    expect(fragment!.fingerprint).toBeInstanceOf(Uint8Array);
+    expect(fragment!.index).toBeInstanceOf(Array);
   });
 
   it('HolographicMemoryManager should not encode memory before being initialized', async () => {

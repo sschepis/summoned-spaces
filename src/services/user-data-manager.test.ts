@@ -1,14 +1,41 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the dependencies at the top level
-vi.mock('./holographic-memory');
-vi.mock('./communication-manager');
+// Mock holographic memory manager
+const mockEncodeMemory = vi.fn();
+const mockDecodeMemory = vi.fn();
+const mockSetCurrentUser = vi.fn();
+
+// Mock communication manager
+const mockSend = vi.fn();
+const mockConnect = vi.fn().mockResolvedValue(undefined);
+const mockOnMessage = vi.fn();
+const mockDisconnect = vi.fn();
+const mockIsConnected = vi.fn().mockReturnValue(true);
+
+// Mock the modules with factory functions
+vi.mock('./holographic-memory', () => ({
+  holographicMemoryManager: {
+    encodeMemory: mockEncodeMemory,
+    decodeMemory: mockDecodeMemory,
+    setCurrentUser: mockSetCurrentUser,
+    isReady: true,
+  }
+}));
+
+vi.mock('./communication-manager', () => ({
+  communicationManager: {
+    send: mockSend,
+    connect: mockConnect,
+    onMessage: mockOnMessage,
+    disconnect: mockDisconnect,
+    isConnected: mockIsConnected,
+  }
+}));
+
+// Import after mocks are set up
+const { userDataManager } = await import('./user-data');
 
 describe('UserDataManager - Holographic Architecture', () => {
-  let userDataManager: typeof import('./user-data').userDataManager;
-  let holographicMemoryManager: typeof import('./holographic-memory').holographicMemoryManager;
-  let communicationManager: typeof import('./communication-manager').communicationManager;
-
   const mockBeacon = {
     index: [1, 2, 3],
     epoch: 123,
@@ -20,47 +47,40 @@ describe('UserDataManager - Holographic Architecture', () => {
     entropy: 0,
   };
 
-  beforeEach(async () => {
-    // Dynamically import the mocked modules
-    holographicMemoryManager = (await import('./holographic-memory')).holographicMemoryManager;
-    communicationManager = (await import('./communication-manager')).communicationManager;
-
-    // Reset mocks before each test
-    vi.mocked(holographicMemoryManager.encodeMemory).mockClear();
-    vi.mocked(communicationManager.send).mockClear();
-
-    // Dynamically import the module under test
-    userDataManager = (await import('./user-data')).userDataManager;
-
-    // Reset the manager's internal state
-    // @ts-expect-error - Accessing private for test reset
-    userDataManager.followingList = [];
-    // @ts-expect-error - Accessing private for test reset
-    userDataManager.spacesList = [];
-  });
-
-  afterEach(() => {
-    vi.resetModules();
+  beforeEach(() => {
+    // Clear all mocks
+    vi.clearAllMocks();
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
+    mockSend.mockResolvedValue(undefined);
+    
+    // Reset user data manager state by accessing the managers
+    // @ts-expect-error - Accessing private managers for test reset
+    userDataManager.followingManager.setFollowingList([]);
+    // @ts-expect-error - Accessing private managers for test reset
+    userDataManager.spacesManager.setSpacesList([]);
+    
+    // Set current user
+    userDataManager.setCurrentUser('test-user');
   });
 
   it('should encode following list as holographic beacon when following a user', async () => {
-    vi.mocked(holographicMemoryManager.encodeMemory).mockResolvedValue(mockBeacon);
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
 
     await userDataManager.followUser('user123');
 
-    expect(holographicMemoryManager.encodeMemory).toHaveBeenCalledWith(
+    expect(mockEncodeMemory).toHaveBeenCalledWith(
       JSON.stringify({ following: ['user123'] })
     );
-    expect(communicationManager.send).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalled();
   });
 
   it('should not store user data in plaintext', async () => {
-    vi.mocked(holographicMemoryManager.encodeMemory).mockResolvedValue(mockBeacon);
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
 
     await userDataManager.followUser('user456');
 
     // Verify the beacon was sent, not the raw following list
-    const call = vi.mocked(communicationManager.send).mock.calls[0][0];
+    const call = mockSend.mock.calls[0][0];
     if (call.kind === 'submitPostBeacon') {
       expect(call.payload.beaconType).toBe('user_following_list');
       expect(call.payload).toHaveProperty('beacon');
@@ -68,19 +88,19 @@ describe('UserDataManager - Holographic Architecture', () => {
   });
 
   it('should manage spaces list as holographic beacon', async () => {
-    vi.mocked(holographicMemoryManager.encodeMemory).mockResolvedValue(mockBeacon);
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
 
     await userDataManager.joinSpace('space123', 'member');
 
-    expect(holographicMemoryManager.encodeMemory).toHaveBeenCalled();
-    const encodedData = vi.mocked(holographicMemoryManager.encodeMemory).mock.calls[0][0];
+    expect(mockEncodeMemory).toHaveBeenCalled();
+    const encodedData = mockEncodeMemory.mock.calls[0][0];
     const parsedData = JSON.parse(encodedData);
     expect(parsedData.spaces).toBeDefined();
     expect(parsedData.spaces[0].spaceId).toBe('space123');
   });
 
   it('should maintain local cache of following list', async () => {
-    vi.mocked(holographicMemoryManager.encodeMemory).mockResolvedValue(mockBeacon);
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
 
     await userDataManager.followUser('user1');
     await userDataManager.followUser('user2');
@@ -90,7 +110,7 @@ describe('UserDataManager - Holographic Architecture', () => {
   });
 
   it('should remove users from following list', async () => {
-    vi.mocked(holographicMemoryManager.encodeMemory).mockResolvedValue(mockBeacon);
+    mockEncodeMemory.mockResolvedValue(mockBeacon);
 
     await userDataManager.followUser('user1');
     await userDataManager.followUser('user2');
