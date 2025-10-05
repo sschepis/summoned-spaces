@@ -16,10 +16,10 @@ function ssePlugin(): Plugin {
     name: 'sse-communication',
     configureServer(server) {
       // SSE-based communication enabled - no WebSocket server needed
-      console.log('SSE-based communication enabled - using /v1/events endpoint');
+      console.log('SSE-based communication enabled - using /api/events endpoint');
       
-      // Add middleware to handle /v1 routes in development
-      server.middlewares.use('/v1', async (req, res, next) => {
+      // Add middleware to handle /api routes in development (matching Vercel production)
+      server.middlewares.use('/api', async (req, res, next) => {
         // Set CORS headers
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -167,9 +167,9 @@ function ssePlugin(): Plugin {
           return;
         }
         
-        // Handle /v1/events endpoint for SSE
+        // Handle /api/events endpoint for SSE
         if (req.url?.startsWith('/events')) {
-          console.log('[DEV API] SSE client connected to /v1/events');
+          console.log('[DEV API] SSE client connected to /api/events');
           
           // Set SSE headers
           res.setHeader('Content-Type', 'text/event-stream');
@@ -269,10 +269,10 @@ export default defineConfig({
 
 // WebSocket endpoints have been removed
 // All real-time communication now uses Server-Sent Events (SSE)
-// Connect to /v1/events for real-time updates
+// Connect to /api/events for real-time updates
 
 // Example SSE client code:
-// const eventSource = new EventSource('/v1/events');
+// const eventSource = new EventSource('/api/events');
 // eventSource.onmessage = (event) => {
 //   const data = JSON.parse(event.data);
 //   console.log('SSE message:', data);
