@@ -15,5 +15,4 @@ export * from './prime-utils';
 // Uint8Array conversion utilities
 export * from './uint8-converter';
 
-// WebSocket helper utilities
-export * from './websocket-helpers';
+// WebSocket utilities removed - now using SSE communication manager
