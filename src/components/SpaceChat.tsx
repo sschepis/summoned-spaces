@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { messagingService } from '../services/messaging';
 import { spaceManager } from '../services/space-manager';
 import { holographicMemoryManager } from '../services/holographic-memory';
-// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
+import { communicationManager } from '../services/communication-manager';
 
 interface ChatMessage {
   id: string;
@@ -106,8 +106,9 @@ export function SpaceChat({ spaceId, currentUserId }: SpaceChatProps) {
 
   // Listen for space messages
   useEffect(() => {
-    const handleSpaceMessage = (message: { kind: string; payload: Record<string, unknown> }) => {
-      console.log('[SpaceChat] ===== RECEIVED WEBSOCKET MESSAGE =====');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleSpaceMessage = (message: { kind: string; payload: Record<string, any> }) => {
+      console.log('[SpaceChat] ===== RECEIVED SSE MESSAGE =====');
       console.log('[SpaceChat] Message kind:', message.kind);
       
       if (message.kind === 'beaconReceived') {
@@ -177,8 +178,8 @@ export function SpaceChat({ spaceId, currentUserId }: SpaceChatProps) {
       }
     };
     
-    webSocketService.addMessageListener(handleSpaceMessage);
-    return () => webSocketService.removeMessageListener(handleSpaceMessage);
+    communicationManager.onMessage(handleSpaceMessage);
+    return () => {}; // SSE cleanup handled automatically
   }, [spaceId, currentUser?.id]);
 
   const handleSendMessage = async () => {

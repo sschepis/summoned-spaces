@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNetworkState, PostBeaconInfo } from '../contexts/NetworkContext';
 import { holographicMemoryManager } from '../services/holographic-memory';
-// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
+import { communicationManager } from '../services/communication-manager';
 import { User } from '../types/common';
 import { userInfoCache } from '../services/user-info-cache';
 
@@ -30,7 +30,7 @@ export function ActivityFeed() {
       const beacon = beaconInfo.beacon as any;
       const memoryId = beacon.fingerprint ? `memory_${beacon.fingerprint}_${beacon.epoch || Date.now()}` : `memory_${Date.now()}`;
       
-      webSocketService.sendMessage({
+      communicationManager.send({
         kind: 'requestTeleport',
         payload: {
           targetUserId: target.authorId,

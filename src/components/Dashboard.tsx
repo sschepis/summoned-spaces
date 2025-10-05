@@ -8,8 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { userDataManager } from '../services/user-data';
 import { quaternionicChatService } from '../services/quaternionic-chat';
-// WebSocket service removed - using SSE communication manager
-import { ServerMessage } from '../../server/protocol';
+import { communicationManager } from '../services/communication-manager';
 import { useNotifications } from './NotificationSystem';
 
 // Import dashboard components
@@ -126,13 +125,13 @@ export function Dashboard({
         });
 
         // Request real follower count from server
-        webSocketService.sendMessage({
+        communicationManager.send({
           kind: 'getFollowers',
           payload: { userId: user.id }
         });
 
         // Request real beacons for activity
-        webSocketService.sendMessage({
+        communicationManager.send({
           kind: 'getBeaconsByUser',
           payload: { userId: '*', beaconType: 'post' }
         });
@@ -245,9 +244,10 @@ export function Dashboard({
     }
   };
 
-  // Listen for real WebSocket responses
+  // Listen for real SSE responses
   useEffect(() => {
-    const handleServerResponse = (message: ServerMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleServerResponse = (message: any) => {
       if (message.kind === 'followersResponse') {
         const count = message.payload.followers.length;
         setFollowerCount(count);
@@ -262,7 +262,8 @@ export function Dashboard({
       } else if (message.kind === 'beaconsResponse') {
         // Convert recent beacons to activity items
         const beacons = message.payload.beacons || [];
-        const activities = beacons.slice(0, 5).map((beacon) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const activities = beacons.slice(0, 5).map((beacon: any) => ({
           id: beacon.beacon_id,
           type: 'post',
           user: {
@@ -293,23 +294,24 @@ export function Dashboard({
       }
     };
 
-    webSocketService.addMessageListener(handleServerResponse);
+    communicationManager.onMessage(handleServerResponse);
     
     // Listen for follow notifications to update follower count in real-time
-    const handleFollowNotification = (message: ServerMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleFollowNotification = (message: any) => {
       if (message.kind === 'followNotification' && user?.id) {
         console.log('[Dashboard] Received follow notification:', message.payload);
         
         // Re-request updated follower count when someone follows us
         if (message.payload.type === 'follow') {
           console.log('[Dashboard] Someone followed us, updating follower count');
-          webSocketService.sendMessage({
+          communicationManager.send({
             kind: 'getFollowers',
             payload: { userId: user.id }
           });
         } else if (message.payload.type === 'unfollow') {
           console.log('[Dashboard] Someone unfollowed us, updating follower count');
-          webSocketService.sendMessage({
+          communicationManager.send({
             kind: 'getFollowers',
             payload: { userId: user.id }
           });
@@ -317,12 +319,9 @@ export function Dashboard({
       }
     };
     
-    webSocketService.addNotificationListener(handleFollowNotification);
+    communicationManager.onMessage(handleFollowNotification);
     
-    return () => {
-      webSocketService.removeMessageListener(handleServerResponse);
-      webSocketService.removeNotificationListener(handleFollowNotification);
-    };
+    return () => {}; // SSE cleanup handled automatically
   }, [user?.id]);
 
   // Social feed handlers

@@ -91,7 +91,7 @@ export function validateBeaconStructure(beacon: any): beacon is BeaconWithBinary
 }
 
 /**
- * Prepare beacon for WebSocket transmission
+ * Prepare beacon for network transmission
  * Ensures all fields are properly serialized
  */
 export function prepareBeaconForTransmission(beacon: BeaconWithBinary): SerializableBeacon {

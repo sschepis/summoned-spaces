@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { Image, Video, FileText, Smile, MapPin, Globe, X, Plus, ChevronDown, Hash, User } from 'lucide-react';
 import { holographicMemoryManager } from '../services/holographic-memory';
-// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
+import { communicationManager } from '../services/communication-manager';
 
 const spaceOptions = [
   { 
@@ -67,7 +67,7 @@ export function ContentComposer() {
       // 2. Send the resulting beacon to the server
       // Note: The fragment itself is the basis state, but we send a "beacon"
       // which is a pointer to it. For now, we send the fragment itself as the beacon.
-      webSocketService.sendMessage({
+      communicationManager.send({
         kind: 'submitPostBeacon',
         payload: {
           // @ts-expect-error - In a real scenario, the fragment would be converted to a Beacon type

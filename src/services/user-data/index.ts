@@ -50,7 +50,7 @@ export class UserDataManager {
     }
 
     try {
-      // The WebSocket service is deprecated, we're using SSE now
+      // Using SSE for real-time updates
       // Just proceed with loading the data
       console.log('[UserDataManager] Loading user data for:', this.currentUserId);
 

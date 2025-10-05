@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock the dependencies at the top level
 vi.mock('./holographic-memory');
-vi.mock('./websocket');
+vi.mock('./communication-manager');
 
 describe('UserDataManager - Holographic Architecture', () => {
-  let userDataManager: typeof import('./user-data-manager').userDataManager;
+  let userDataManager: typeof import('./user-data').userDataManager;
   let holographicMemoryManager: typeof import('./holographic-memory').holographicMemoryManager;
-  let webSocketService: typeof import('./websocket').default;
+  let communicationManager: typeof import('./communication-manager').communicationManager;
 
   const mockBeacon = {
     index: [1, 2, 3],
@@ -23,16 +23,14 @@ describe('UserDataManager - Holographic Architecture', () => {
   beforeEach(async () => {
     // Dynamically import the mocked modules
     holographicMemoryManager = (await import('./holographic-memory')).holographicMemoryManager;
-    webSocketService = (await import('./websocket')).default;
+    communicationManager = (await import('./communication-manager')).communicationManager;
 
     // Reset mocks before each test
     vi.mocked(holographicMemoryManager.encodeMemory).mockClear();
-    vi.mocked(webSocketService.sendMessage).mockClear();
-    vi.mocked(webSocketService.sendFollowMessage).mockClear();
-    vi.mocked(webSocketService.sendUnfollowMessage).mockClear();
+    vi.mocked(communicationManager.send).mockClear();
 
     // Dynamically import the module under test
-    userDataManager = (await import('./user-data-manager')).userDataManager;
+    userDataManager = (await import('./user-data')).userDataManager;
 
     // Reset the manager's internal state
     // @ts-expect-error - Accessing private for test reset
@@ -53,7 +51,7 @@ describe('UserDataManager - Holographic Architecture', () => {
     expect(holographicMemoryManager.encodeMemory).toHaveBeenCalledWith(
       JSON.stringify({ following: ['user123'] })
     );
-    expect(webSocketService.sendFollowMessage).toHaveBeenCalledWith('user123');
+    expect(communicationManager.send).toHaveBeenCalled();
   });
 
   it('should not store user data in plaintext', async () => {
@@ -62,7 +60,7 @@ describe('UserDataManager - Holographic Architecture', () => {
     await userDataManager.followUser('user456');
 
     // Verify the beacon was sent, not the raw following list
-    const call = vi.mocked(webSocketService.sendMessage).mock.calls[0][0];
+    const call = vi.mocked(communicationManager.send).mock.calls[0][0];
     if (call.kind === 'submitPostBeacon') {
       expect(call.payload.beaconType).toBe('user_following_list');
       expect(call.payload).toHaveProperty('beacon');

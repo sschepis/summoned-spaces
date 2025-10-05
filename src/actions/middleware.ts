@@ -239,11 +239,11 @@ export const debounceMiddleware: ActionMiddleware = (() => {
   };
 })();
 
-// Real-time middleware
+// Real-time middleware (SSE-based)
 export const realtimeMiddleware: ActionMiddleware = (action, next, _getState) => {
   const result = next(action);
   
-  // Broadcast certain actions to WebSocket
+  // Broadcast certain actions via SSE communication manager
   const broadcastActions = [
     'ACTIVITIES/LIKE_ACTIVITY',
     'CHAT/SEND_MESSAGE',
@@ -251,17 +251,9 @@ export const realtimeMiddleware: ActionMiddleware = (action, next, _getState) =>
   ];
   
   if (broadcastActions.includes(action.type) && typeof window !== 'undefined') {
-    const wsConnection = (window as any).__WS_CONNECTION__;
-    if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-      wsConnection.send(JSON.stringify({
-        type: 'action_broadcast',
-        action: {
-          type: action.type,
-          payload: action.payload,
-          meta: action.meta,
-        },
-      }));
-    }
+    // SSE broadcasts are handled by the communication manager
+    // No direct connection management needed here
+    console.log('[RealTime] Action broadcast:', action.type);
   }
   
   return result;

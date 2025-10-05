@@ -10,9 +10,8 @@ import { SpaceCard } from './common/SpaceCard';
 import { SearchResultsSection, PostCard } from './common/search';
 import type { PostResult } from './common/search';
 import { User as UserType, Space as SpaceType } from '../types/common';
-// WebSocket service removed - using SSE communication manager
-import { ServerMessage } from '../../server/protocol';
 import { useAuth } from '../contexts/AuthContext';
+import { communicationManager } from '../services/communication-manager';
 
 interface SemanticSearchProps {
   onBack: () => void;
@@ -37,10 +36,12 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
   const { waitForAuth } = useAuth();
 
   useEffect(() => {
-    const handleMessage = (message: ServerMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleMessage = (message: { kind: string; payload: any }) => {
       if (message.kind === 'searchResponse') {
         setResults({
-          people: message.payload.users.map(u => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          people: message.payload.users.map((u: any) => ({
             id: u.user_id,
             name: u.username,
             username: `@${u.username}`,
@@ -51,7 +52,8 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
             recentActivity: 'Active',
             tags: [],
           })),
-          spaces: message.payload.spaces.map(s => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          spaces: message.payload.spaces.map((s: any) => ({
             id: s.space_id,
             name: s.name,
             description: s.description,
@@ -60,7 +62,8 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
             memberCount: 0,
             tags: [],
           })),
-          posts: message.payload.beacons.map((b) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          posts: message.payload.beacons.map((b: any) => ({
             id: b.beacon_id,
             author: {
               name: b.author_id.substring(0, 8),
@@ -81,8 +84,8 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
       }
     };
 
-    webSocketService.addMessageListener(handleMessage);
-    return () => webSocketService.removeMessageListener(handleMessage);
+    communicationManager.onMessage(handleMessage);
+    return () => {}; // SSE cleanup handled automatically
   }, []);
 
   const handleSearch = async (searchQuery: string) => {
@@ -96,7 +99,7 @@ export function SemanticSearch({ onBack }: SemanticSearchProps) {
     // Wait for auth before searching
     await waitForAuth();
     
-    webSocketService.sendMessage({
+    communicationManager.send({
       kind: 'search',
       payload: { query: searchQuery, category }
     });

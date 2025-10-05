@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { WebSocketService } from './websocket';
 import { holographicMemoryManager, PrimeResonanceIdentity } from './holographic-memory';
-import WebSocket from 'ws';
-
-// Manually assign WebSocket to the global scope for the test environment
-// @ts-expect-error - This is necessary for the test environment
-global.WebSocket = WebSocket;
 
 // Mock the wasm module import
 vi.mock('../../../summoned-spaces/resolang/build/resolang.js', () => ({
@@ -24,12 +18,6 @@ vi.mock('../../../summoned-spaces/resolang/build/resolang.js', () => ({
 describe('Client-Side Services', () => {
   afterEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('WebSocketService should be created', () => {
-    const webSocketService = new WebSocketService();
-    // This test primarily ensures the service can be instantiated in a node environment
-    expect(webSocketService).toBeDefined();
   });
 
   it('HolographicMemoryManager should encode memory after being initialized', async () => {

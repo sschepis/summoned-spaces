@@ -5,8 +5,8 @@ import { FileToolbar } from './common/files/FileToolbar';
 import { FileUploadZone } from './FileUploadZone';
 import { FileDetailsModal } from './FileDetailsModal';
 import { LoadingSpinner } from './ui/LoadingSpinner';
-// WebSocket service removed - using SSE communication manager
 import { useAuth } from '../contexts/AuthContext';
+import { communicationManager } from '../services/communication-manager';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
 interface FileRecord {
@@ -41,14 +41,15 @@ export function FileExplorer({ spaceId }: FileExplorerProps) {
     useEffect(() => {
         const fetchFiles = async () => {
             await waitForAuth();
-            webSocketService.sendMessage({
+            communicationManager.send({
                 kind: 'getSpaceFiles',
                 payload: { spaceId }
             });
         };
         fetchFiles();
 
-        const handleFileUpdate = (message: { kind: string; payload: any; }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleFileUpdate = (message: { kind: string; payload: any }) => {
             if (message.kind === 'spaceFilesResponse' && message.payload.spaceId === spaceId) {
                 // DEDUPLICATION FIX: Filter out duplicates and invalid files
                 const validFiles = (message.payload.files || []).filter((file: FileRecord, index: number, arr: FileRecord[]) => {
@@ -77,8 +78,8 @@ export function FileExplorer({ spaceId }: FileExplorerProps) {
             }
         };
 
-        webSocketService.addMessageListener(handleFileUpdate);
-        return () => webSocketService.removeMessageListener(handleFileUpdate);
+        communicationManager.onMessage(handleFileUpdate);
+        return () => {}; // SSE cleanup handled automatically
     }, [spaceId, waitForAuth]);
 
     const handleUpload = async (uploadedFiles: globalThis.File[]) => {
@@ -154,7 +155,7 @@ export function FileExplorer({ spaceId }: FileExplorerProps) {
                     const base64Content = await arrayBufferToBase64Chunked(fileContent);
                     
                     // Send file to server
-                    webSocketService.sendMessage({
+                    communicationManager.send({
                         kind: 'addFileToSpace',
                         payload: {
                             spaceId,
@@ -209,7 +210,7 @@ export function FileExplorer({ spaceId }: FileExplorerProps) {
 
     const handleRemoveFile = async (fileId: string) => {
         await waitForAuth();
-        webSocketService.sendMessage({
+        communicationManager.send({
             kind: 'removeFileFromSpace',
             payload: { spaceId, fileId }
         });

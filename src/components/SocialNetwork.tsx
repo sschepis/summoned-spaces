@@ -9,9 +9,8 @@ import { StatsGrid } from './common/StatsGrid';
 import { useNetworkState } from '../contexts/NetworkContext';
 import { useAuth } from '../contexts/AuthContext';
 import { userDataManager } from '../services/user-data';
-// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
-import { ServerMessage, FollowNotificationMessage } from '../../server/protocol';
+import { communicationManager } from '../services/communication-manager';
 
 interface SocialNetworkProps {
   onBack: () => void;
@@ -56,7 +55,7 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
             setFollowingList(followingWithUsernames);
             
             // Also request from server for completeness (to get follower notifications)
-            webSocketService.sendMessage({
+            communicationManager.send({
                 kind: 'getFollowing',
                 payload: { userId: currentUser.id }
             });
@@ -82,7 +81,7 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
         await waitForAuth();
         
         // Request followers list from server
-        webSocketService.sendMessage({
+        communicationManager.send({
           kind: 'getFollowers',
           payload: { userId: currentUser.id }
         });
@@ -92,7 +91,8 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
     };
 
     // Listen for followers response
-    const handleFollowersResponse = (message: ServerMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleFollowersResponse = (message: any) => {
       if (message.kind === 'followersResponse') {
         setFollowersList(message.payload.followers || []);
         console.log('Received followers list:', message.payload.followers);
@@ -110,14 +110,13 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
       }
     };
 
-    webSocketService.addMessageListener(handleFollowersResponse);
+    communicationManager.onMessage(handleFollowersResponse);
     fetchFollowers();
 
     // Refresh followers periodically
     const interval = setInterval(fetchFollowers, 10000); // Every 10 seconds
 
     return () => {
-      webSocketService.removeMessageListener(handleFollowersResponse);
       clearInterval(interval);
     };
   }, [currentUser?.id]);
@@ -181,7 +180,9 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
 
   // Set up follow notification listener
   useEffect(() => {
-    const handleFollowNotification = (notification: FollowNotificationMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleFollowNotification = (notification: any) => {
+      if (notification.kind !== 'followNotification') return;
       const { followerId, followerUsername, type } = notification.payload;
       
       if (type === 'follow') {
@@ -216,11 +217,9 @@ export function SocialNetwork({ onBack }: SocialNetworkProps) {
       }
     };
 
-    webSocketService.addNotificationListener(handleFollowNotification);
+    communicationManager.onMessage(handleFollowNotification);
 
-    return () => {
-      webSocketService.removeNotificationListener(handleFollowNotification);
-    };
+    return () => {}; // SSE cleanup handled automatically
   }, [showFollow, showUnfollow]);
 
   const handleFollow = async (userIdToFollow: string) => {

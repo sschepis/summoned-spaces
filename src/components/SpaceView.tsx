@@ -9,9 +9,9 @@ import { Tabs } from './ui/Tabs';
 import { UserAvatar } from './ui/UserAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { spaceManager, SpaceMember } from '../services/space-manager';
-// WebSocket service removed - using SSE communication manager
 import type { Space } from '../types/common';
-import type { ServerMessage, PublicSpacesResponseMessage } from '../../server/protocol';
+import type { PublicSpacesResponseMessage } from '../../server/protocol';
+import { communicationManager } from '../services/communication-manager';
 import { ArrowLeft, Crown } from 'lucide-react';
 
 
@@ -42,7 +42,8 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
                 
                 // Fetch space metadata from server
                 await new Promise<void>((resolve, reject) => {
-                    const handleMessage = (message: ServerMessage) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const handleMessage = (message: any) => {
                         if (message.kind === 'publicSpacesResponse') {
                             const spacesMessage = message as PublicSpacesResponseMessage;
                             const allSpaces = spacesMessage.payload.spaces;
@@ -72,16 +73,14 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
                                 });
                             }
                             
-                            webSocketService.removeMessageListener(handleMessage);
                             resolve();
                         } else if (message.kind === 'error') {
-                            webSocketService.removeMessageListener(handleMessage);
                             reject(new Error(message.payload.message));
                         }
                     };
                     
-                    webSocketService.addMessageListener(handleMessage);
-                    webSocketService.sendMessage({ kind: 'getPublicSpaces' });
+                    communicationManager.onMessage(handleMessage);
+                    communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
                 });
                 
             } catch (error) {
@@ -106,7 +105,8 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
     useEffect(() => {
         if (!spaceId || !user) return;
 
-        const handleRealtimeUpdates = async (message: ServerMessage) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleRealtimeUpdates = async (message: any) => {
             // Listen for space member updates (both our own submissions and incoming beacons)
             if (message.kind === 'submitPostSuccess') {
                 console.log('Post submitted successfully, checking if it affects space members...');
@@ -140,11 +140,9 @@ export function SpaceView({ spaceId, onBack }: SpaceViewProps) {
             }
         };
 
-        webSocketService.addMessageListener(handleRealtimeUpdates);
+        communicationManager.onMessage(handleRealtimeUpdates);
         
-        return () => {
-            webSocketService.removeMessageListener(handleRealtimeUpdates);
-        };
+        return () => {}; // SSE cleanup handled automatically
     }, [spaceId, user]);
 
     const renderTabContent = () => {

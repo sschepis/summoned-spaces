@@ -22,11 +22,10 @@ src/services/
 ### Utils (Shared Utilities)
 Foundation modules used across all services:
 
-- **`beacon-serializer.ts`** - Beacon serialization for WebSocket transmission
+- **`beacon-serializer.ts`** - Beacon serialization for network transmission
 - **`json-repair.ts`** - JSON parsing with automatic truncation repair
 - **`prime-utils.ts`** - Prime number operations with ResoLang integration
 - **`uint8-converter.ts`** - Uint8Array conversion utilities
-- **`websocket-helpers.ts`** - Reusable WebSocket patterns
 
 **Usage**:
 ```typescript
@@ -138,7 +137,6 @@ Always check `utils/` before implementing:
 - JSON parsing → `json-repair`
 - Beacon serialization → `beacon-serializer`
 - Uint8 conversion → `uint8-converter`
-- WebSocket patterns → `websocket-helpers`
 
 ### Testing Strategy
 
@@ -202,7 +200,7 @@ The following files can be deprecated once all imports are updated:
 1. **Shared Prime Cache** - Single instance across all modules
 2. **Lazy Loading** - ResoLang loaded only when needed
 3. **Efficient Caching** - Prime-based indexing for fast lookups
-4. **Request Deduplication** - Prevents duplicate WebSocket requests
+4. **SSE-Based Updates** - Real-time updates via Server-Sent Events
 
 ### Memory Usage
 - **Before**: Multiple prime caches, duplicate utilities

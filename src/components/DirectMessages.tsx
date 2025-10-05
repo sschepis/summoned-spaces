@@ -10,8 +10,8 @@ import { messagingService } from '../services/messaging';
 import { holographicMemoryManager } from '../services/holographic-memory';
 import { quantumNetworkOps } from '../services/quantum';
 import { userDataManager } from '../services/user-data';
-// WebSocket service removed - using SSE communication manager
 import { useNotifications } from './NotificationSystem';
+import { communicationManager } from '../services/communication-manager';
 
 interface DirectMessagesProps {
   onBack: () => void;
@@ -152,8 +152,9 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
 
   // Listen for P2P messages (both quantum teleported and beacon-based)
   useEffect(() => {
-    const handleP2PMessage = (message: { kind: string; payload: Record<string, unknown> }) => {
-      console.log('[DirectMessages] ===== RECEIVED WEBSOCKET MESSAGE =====');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleP2PMessage = (message: { kind: string; payload: Record<string, any> }) => {
+      console.log('[DirectMessages] ===== RECEIVED SSE MESSAGE =====');
       console.log('[DirectMessages] Message kind:', message.kind);
       console.log('[DirectMessages] Full message:', message);
       
@@ -284,8 +285,8 @@ export function DirectMessages({ onBack }: DirectMessagesProps) {
       }
     };
     
-    webSocketService.addMessageListener(handleP2PMessage);
-    return () => webSocketService.removeMessageListener(handleP2PMessage);
+    communicationManager.onMessage(handleP2PMessage);
+    return () => {}; // SSE cleanup handled automatically
   }, [selectedConversation, currentUser?.id, nodes, showMessage]);
 
 

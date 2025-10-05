@@ -395,10 +395,10 @@ export const uiActions = {
 
 // Real-time Action Creators
 export const realtimeActions = {
-  connect: (): BaseAction => createAction(ACTION_TYPES.REALTIME.WEBSOCKET_CONNECT),
-  
-  disconnect: (): BaseAction => createAction(ACTION_TYPES.REALTIME.WEBSOCKET_DISCONNECT),
-  
+  connect: (): BaseAction => createAction(ACTION_TYPES.REALTIME.SSE_CONNECT),
+
+  disconnect: (): BaseAction => createAction(ACTION_TYPES.REALTIME.SSE_DISCONNECT),
+
   subscribeToSpace: (spaceId: string): BaseAction => 
     createAction(ACTION_TYPES.REALTIME.SUBSCRIBE_SPACE, { spaceId }),
   

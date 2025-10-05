@@ -8,8 +8,7 @@ import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import { Space, SpaceRole } from '../types/common';
 import { CreateSpaceModal } from './CreateSpaceModal';
-// WebSocket service removed - using SSE communication manager
-import { ServerMessage } from '../../server/protocol';
+import { communicationManager } from '../services/communication-manager';
 import { useAuth } from '../contexts/AuthContext';
 import { userDataManager } from '../services/user-data';
 import { useNotifications } from './NotificationSystem';
@@ -30,12 +29,13 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
     // Request public spaces on mount after auth is ready
     const fetchSpaces = async () => {
       await waitForAuth();
-      webSocketService.sendMessage({ kind: 'getPublicSpaces' });
+      communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
     };
     
     fetchSpaces();
 
-    const handleMessage = async (message: ServerMessage) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleMessage = async (message: any) => {
       if (message.kind === 'publicSpacesResponse') {
         // Get user's current space memberships from userDataManager
         const userSpacesList = userDataManager.getSpacesList();
@@ -43,7 +43,8 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
         
         // Load member data for each space to get user roles
         const mappedSpaces = await Promise.all(
-          message.payload.spaces.map(async (space) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          message.payload.spaces.map(async (space: any) => {
             const userSpaceData = userSpaceMap.get(space.space_id);
             let userRole: SpaceRole | undefined = undefined;
             
@@ -77,8 +78,8 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
       }
     };
 
-    webSocketService.addMessageListener(handleMessage);
-    return () => webSocketService.removeMessageListener(handleMessage);
+    communicationManager.onMessage(handleMessage);
+    return () => {}; // SSE cleanup handled automatically
   }, [user]);
 
   // Load user's spaces from userDataManager and get actual roles
@@ -187,7 +188,7 @@ export function SpaceDiscovery({ onViewSpace }: SpaceDiscoveryProps) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Refresh both spaces lists to show the new space with owner role
-    webSocketService.sendMessage({ kind: 'getPublicSpaces' });
+    communicationManager.send({ kind: 'getPublicSpaces', payload: {} });
     
     // Reload user spaces to include the newly created space
     if (user) {
